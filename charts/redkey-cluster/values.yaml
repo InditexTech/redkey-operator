@@ -69,6 +69,7 @@ robin:
       connectionBackOffSeconds: 10
     metrics:
       collectionIntervalSeconds: 60
+      metricsLabels: {}
       redisInfoKeys:
         - keyspace_hits
         - evicted_keys

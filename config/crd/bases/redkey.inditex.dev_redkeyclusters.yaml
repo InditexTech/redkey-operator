@@ -8725,6 +8725,10 @@ spec:
                         properties:
                           collectionIntervalSeconds:
                             type: integer
+                          metricsLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
                           redisInfoKeys:
                             items:
                               type: string

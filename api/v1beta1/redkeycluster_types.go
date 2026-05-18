@@ -214,8 +214,9 @@ type RobinConfigCluster struct {
 
 // RobinConfigMetrics defines metrics configuration for Robin.
 type RobinConfigMetrics struct {
-	CollectionIntervalSeconds *int     `json:"collectionIntervalSeconds,omitempty"`
-	RedisInfoKeys             []string `json:"redisInfoKeys,omitempty"`
+	CollectionIntervalSeconds *int              `json:"collectionIntervalSeconds,omitempty"`
+	RedisInfoKeys             []string          `json:"redisInfoKeys,omitempty"`
+	MetricsLabels             map[string]string `json:"metricsLabels,omitempty"`
 }
 
 // RedisAuth defines the authentication configuration for Redis.

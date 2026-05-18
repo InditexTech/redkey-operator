@@ -92,6 +92,7 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 	connectionBackOffSeconds := 4
 	collectionIntervalSeconds := 60
 	redisInfoKeys := []string{"connected_clients", "total_commands_processed"}
+	metricsLabels := map[string]string{"env": "prod", "team": "platform"}
 
 	cluster := &redisv1.RedkeyCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,6 +115,7 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 					Metrics: &redisv1.RobinConfigMetrics{
 						CollectionIntervalSeconds: &collectionIntervalSeconds,
 						RedisInfoKeys:             redisInfoKeys,
+						MetricsLabels:             metricsLabels,
 					},
 				},
 			},
@@ -140,6 +142,7 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 	assert.Equal(t, connectionBackOffSeconds, *stored.Spec.RobinConfig.Cluster.ConnectionBackOffSeconds)
 	assert.Equal(t, collectionIntervalSeconds, *stored.Spec.RobinConfig.Metrics.CollectionIntervalSeconds)
 	assert.Equal(t, redisInfoKeys, stored.Spec.RobinConfig.Metrics.RedisInfoKeys)
+	assert.Equal(t, metricsLabels, stored.Spec.RobinConfig.Metrics.MetricsLabels)
 }
 
 func TestRedkeyClusterReconciler_CreateNewConfig_SetControllerReferenceError(t *testing.T) {

@@ -149,6 +149,7 @@ var _ = Describe("Configuration Creation", func() {
 			connectionBackOffSeconds := 5
 			collectionIntervalSeconds := 60
 			redisInfoKeys := []string{"connected_clients", "total_commands_processed"}
+			metricsLabels := map[string]string{"env": "prod", "team": "platform"}
 			cluster := &redisv1.RedkeyCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
@@ -169,6 +170,7 @@ var _ = Describe("Configuration Creation", func() {
 							Metrics: &redisv1.RobinConfigMetrics{
 								CollectionIntervalSeconds: &collectionIntervalSeconds,
 								RedisInfoKeys:             redisInfoKeys,
+								MetricsLabels:             metricsLabels,
 							},
 						},
 					},
@@ -196,6 +198,9 @@ var _ = Describe("Configuration Creation", func() {
 			Expect(*configs[0].Spec.RobinConfig.Metrics.CollectionIntervalSeconds).To(Equal(60))
 			Expect(configs[0].Spec.RobinConfig.Metrics.RedisInfoKeys).To(
 				Equal([]string{"connected_clients", "total_commands_processed"}),
+			)
+			Expect(configs[0].Spec.RobinConfig.Metrics.MetricsLabels).To(
+				Equal(map[string]string{"env": "prod", "team": "platform"}),
 			)
 		})
 	})
