@@ -85,7 +85,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # REGISTRY_NAME defines the name of the local registry container used for testing with Kind.
 # This value is used in the Makefile to check if the registry container is running and to configure the
 # local registry in the Kind cluster.
-REGISTRY_NAME ?= kind-registry
+REGISTRY_NAME ?= $(NAME)-kind-registry-dev
 
 # REGISTRY_PORT defines the port of the local registry used for testing with Kind. This value is used
 # in the Makefile to construct the image tags for the bundle and catalog images, and to configure the
