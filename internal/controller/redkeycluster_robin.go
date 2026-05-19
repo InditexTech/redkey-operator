@@ -48,6 +48,11 @@ func DesiredRobinRules() []rbacv1.PolicyRule {
 		},
 		{
 			APIGroups: []string{"redkey.inditex.dev"},
+			Resources: []string{"redkeyclusters"},
+			Verbs:     []string{"get"},
+		},
+		{
+			APIGroups: []string{"redkey.inditex.dev"},
 			Resources: []string{"redkeyclusterconfigs"},
 			Verbs:     []string{"get", "list", "watch"},
 		},
