@@ -209,7 +209,7 @@ test-all: test test-integration ## Run all tests (unit + integration).
 
 # CertManager is installed by default; skip with:
 # - CERT_MANAGER_INSTALL_SKIP=true
-KIND_CLUSTER ?= $(NAME)-test
+KIND_CLUSTER ?= $(NAME)-dev
 
 .PHONY: setup-kind
 setup-kind: kind ## Set up a Kind cluster for local tests if it does not exist
