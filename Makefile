@@ -213,7 +213,7 @@ KIND_CLUSTER ?= $(NAME)-dev
 
 .PHONY: setup-kind
 setup-kind: kind ## Set up a Kind cluster for local tests if it does not exist
-	@if [ "$(KIND_CLUSTER)" = "$(NAME)-test" ]; then \
+	@if [ "$(KIND_CLUSTER)" = "$(NAME)-dev" ]; then \
 		if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' $(REGISTRY_NAME) 2>/dev/null || echo false)" != "true" ]; then \
 			echo "Starting local registry $(REGISTRY_NAME) on port $(REGISTRY_PORT)..."; \
 			$(CONTAINER_TOOL) run -d --restart=always -p "$(REGISTRY_PORT):5000" --name $(REGISTRY_NAME) registry:2; \
@@ -240,7 +240,7 @@ setup-kind: kind ## Set up a Kind cluster for local tests if it does not exist
 
 .PHONY: cleanup-kind
 cleanup-kind: kind ## Tear down the Kind cluster used for local tests
-	@if [ "$(KIND_CLUSTER)" = "$(NAME)-test" ]; then \
+	@if [ "$(KIND_CLUSTER)" = "$(NAME)-dev" ]; then \
 		$(CONTAINER_TOOL) rm -f $(REGISTRY_NAME) || true; \
 	fi
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
