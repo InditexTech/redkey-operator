@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
-golang 1.26.2
+golang 1.26.3
 kind latest
