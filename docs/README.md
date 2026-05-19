@@ -16,10 +16,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 * [Operator deployment](operator-guide/operator-deployment.md)
 * [Redkey Robin](operator-guide/robin.md)
-* [Redis Cluster Metrics](operator-guide/cluster-metrics.md)
-* [Redis Authentication](operator-guide/authentication.md)
+* [Redkey Cluster Metrics](operator-guide/cluster-metrics.md)
+* [Redkey Authentication](operator-guide/authentication.md)
 * [Dynamic Configuration (Hot Reload)](operator-guide/dynamic-configuration.md)
-* [How to deploy a Redis Cluster](operator-guide/redis-deployment.md)
+* [How to deploy a Redkey Cluster](operator-guide/redis-deployment.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](operator-guide/ephemeral-cluster.md)
 * [Primary-Replica Clusters](operator-guide/primary-replica-cluster.md)
 * [Deleting PVCs on ScaleDown and Deletion](operator-guide/delete-pvc.md)

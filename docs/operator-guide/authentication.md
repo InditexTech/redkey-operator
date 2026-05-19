@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# Redis Authentication
+# Redkey Authentication
 
 This guide explains how to configure Redis password authentication for a Redkey Cluster.
 
