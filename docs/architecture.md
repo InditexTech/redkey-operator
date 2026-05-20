@@ -116,6 +116,8 @@ spec:
     config:
       reconciler:
         intervalSeconds: 10
+        intervalOnErrorSeconds: 10
+        intervalOnWaitSeconds: 10
 ```
 
 **Status** — a simplified, aggregated view derived from `RedkeyClusterConfig`:
@@ -491,7 +493,7 @@ On each reconciliation:
 
 ### Robin Reconciliation Loop
 
-Robin operates through a single polling loop on a configurable interval. It uses an adaptive strategy: in busy mode (processing configs or corrective actions) it loops immediately; in idle mode (all checks pass, no pending configs) it waits the full configured interval.
+Robin operates through a single polling loop with configurable idle, wait, and error intervals. It uses an adaptive strategy: in busy mode (processing configs or corrective actions) it loops immediately; in idle mode (all checks pass, no pending configs) it waits `intervalSeconds`; while waiting for readiness or convergence it uses `intervalOnWaitSeconds`; and after reconciliation errors it retries on `intervalOnErrorSeconds`.
 
 On each tick:
 

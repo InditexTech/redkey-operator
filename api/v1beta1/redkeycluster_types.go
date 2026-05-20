@@ -203,7 +203,9 @@ type RobinConfig struct {
 
 // RobinConfigReconciler defines reconciler configuration for Robin.
 type RobinConfigReconciler struct {
-	IntervalSeconds *int `json:"intervalSeconds,omitempty"`
+	IntervalSeconds        *int `json:"intervalSeconds,omitempty"`
+	IntervalOnErrorSeconds *int `json:"intervalOnErrorSeconds,omitempty"`
+	IntervalOnWaitSeconds  *int `json:"intervalOnWaitSeconds,omitempty"`
 }
 
 // RobinConfigCluster defines cluster configuration for Robin.

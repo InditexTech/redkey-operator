@@ -88,6 +88,8 @@ func TestRedkeyClusterReconciler_CreateFirstConfig(t *testing.T) {
 func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 	s := getScheme()
 	reconcileInterval := 15
+	reconcileIntervalOnError := 7
+	reconcileIntervalOnWait := 10
 	connectionMaxRetries := 10
 	connectionBackOffSeconds := 4
 	collectionIntervalSeconds := 60
@@ -106,7 +108,9 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 			Robin: &redisv1.RobinSpec{
 				Config: &redisv1.RobinConfig{
 					Reconciler: &redisv1.RobinConfigReconciler{
-						IntervalSeconds: &reconcileInterval,
+						IntervalSeconds:        &reconcileInterval,
+						IntervalOnErrorSeconds: &reconcileIntervalOnError,
+						IntervalOnWaitSeconds:  &reconcileIntervalOnWait,
 					},
 					Cluster: &redisv1.RobinConfigCluster{
 						ConnectionMaxRetries:     &connectionMaxRetries,
@@ -138,6 +142,8 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 	require.NotNil(t, stored.Spec.RobinConfig.Cluster)
 	require.NotNil(t, stored.Spec.RobinConfig.Metrics)
 	assert.Equal(t, reconcileInterval, *stored.Spec.RobinConfig.Reconciler.IntervalSeconds)
+	assert.Equal(t, reconcileIntervalOnError, *stored.Spec.RobinConfig.Reconciler.IntervalOnErrorSeconds)
+	assert.Equal(t, reconcileIntervalOnWait, *stored.Spec.RobinConfig.Reconciler.IntervalOnWaitSeconds)
 	assert.Equal(t, connectionMaxRetries, *stored.Spec.RobinConfig.Cluster.ConnectionMaxRetries)
 	assert.Equal(t, connectionBackOffSeconds, *stored.Spec.RobinConfig.Cluster.ConnectionBackOffSeconds)
 	assert.Equal(t, collectionIntervalSeconds, *stored.Spec.RobinConfig.Metrics.CollectionIntervalSeconds)

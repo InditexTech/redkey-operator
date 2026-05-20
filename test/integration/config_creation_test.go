@@ -145,6 +145,8 @@ var _ = Describe("Configuration Creation", func() {
 
 		BeforeAll(func() {
 			intervalSec := 30
+			intervalOnErrorSec := 12
+			intervalOnWaitSec := 10
 			connectionMaxRetries := 10
 			connectionBackOffSeconds := 5
 			collectionIntervalSeconds := 60
@@ -161,7 +163,9 @@ var _ = Describe("Configuration Creation", func() {
 					Robin: &redisv1.RobinSpec{
 						Config: &redisv1.RobinConfig{
 							Reconciler: &redisv1.RobinConfigReconciler{
-								IntervalSeconds: &intervalSec,
+								IntervalSeconds:        &intervalSec,
+								IntervalOnErrorSeconds: &intervalOnErrorSec,
+								IntervalOnWaitSeconds:  &intervalOnWaitSec,
 							},
 							Cluster: &redisv1.RobinConfigCluster{
 								ConnectionMaxRetries:     &connectionMaxRetries,
@@ -193,6 +197,8 @@ var _ = Describe("Configuration Creation", func() {
 			Expect(configs[0].Spec.RobinConfig.Cluster).NotTo(BeNil())
 			Expect(configs[0].Spec.RobinConfig.Metrics).NotTo(BeNil())
 			Expect(*configs[0].Spec.RobinConfig.Reconciler.IntervalSeconds).To(Equal(30))
+			Expect(*configs[0].Spec.RobinConfig.Reconciler.IntervalOnErrorSeconds).To(Equal(12))
+			Expect(*configs[0].Spec.RobinConfig.Reconciler.IntervalOnWaitSeconds).To(Equal(10))
 			Expect(*configs[0].Spec.RobinConfig.Cluster.ConnectionMaxRetries).To(Equal(10))
 			Expect(*configs[0].Spec.RobinConfig.Cluster.ConnectionBackOffSeconds).To(Equal(5))
 			Expect(*configs[0].Spec.RobinConfig.Metrics.CollectionIntervalSeconds).To(Equal(60))

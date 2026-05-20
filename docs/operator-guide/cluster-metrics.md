@@ -193,6 +193,8 @@ spec:
     config:
       reconciler:
         intervalSeconds: 30
+        intervalOnErrorSeconds: 10
+        intervalOnWaitSeconds: 10
       metrics:
         collectionIntervalSeconds: 30
         redisInfoKeys:

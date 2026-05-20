@@ -64,6 +64,8 @@ robin:
   config:
     reconciler:
       intervalSeconds: 30
+      intervalOnErrorSeconds: 10
+      intervalOnWaitSeconds: 10
     cluster:
       connectionMaxRetries: 10
       connectionBackOffSeconds: 10

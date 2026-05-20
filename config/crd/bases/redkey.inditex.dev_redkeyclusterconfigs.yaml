@@ -8690,6 +8690,10 @@ spec:
                     description: RobinConfigReconciler defines reconciler configuration
                       for Robin.
                     properties:
+                      intervalOnErrorSeconds:
+                        type: integer
+                      intervalOnWaitSeconds:
+                        type: integer
                       intervalSeconds:
                         type: integer
                     type: object
