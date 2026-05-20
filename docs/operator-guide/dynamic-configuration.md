@@ -60,7 +60,8 @@ The hot-reload mechanism relies on the `RedkeyClusterConfig` CRD as the communic
 
 5. **Components read from RuntimeConfig** on each cycle:
    - The **reconciler** checks its interval at the end of each tick, so a new interval takes effect immediately on the next sleep.
-   - The **metrics collector** reads the collection interval and the `redisInfoKeys` list at the start of each polling cycle.
+   - The **metrics collector** reads the collection interval, `redisInfoKeys`, and `metricsLabels` at the start of each polling cycle.
+   - If `metricsLabels` keys are added or removed, Robin resets only its RedKey metrics registry so Prometheus descriptors can be re-created with the new label-name set. Value-only label changes reuse the existing metric schema.
    - The **auth cache** detects when the secret name changes and invalidates the cached password, fetching from the new Secret on the next collection.
 
 ### No Restart Required

@@ -145,6 +145,6 @@ For full details on creating the Secret, configuring auth, password rotation, an
 
 ## Dynamic Configuration
 
-All Robin operational settings (`reconciler.intervalSeconds`, `metrics.collectionIntervalSeconds`, `metrics.redisInfoKeys`, connection retries, and the auth secret reference) are applied **at runtime without a Pod restart**. Robin continuously polls `RedkeyClusterConfig` resources and updates its internal state when new configurations are detected.
+All Robin operational settings (`reconciler.intervalSeconds`, `metrics.collectionIntervalSeconds`, `metrics.redisInfoKeys`, `metrics.metricsLabels`, connection retries, and the auth secret reference) are applied **at runtime without a Pod restart**. Robin continuously polls `RedkeyClusterConfig` resources and updates its internal state when new configurations are detected. Changing `metricsLabels` values is applied on the next metrics cycle; adding or removing label keys resets only Robin's RedKey metrics registry so Prometheus can ingest the new label schema.
 
 For a complete explanation of the hot-reload mechanism, propagation timing, and examples, see the [Dynamic Configuration](dynamic-configuration.md) guide.

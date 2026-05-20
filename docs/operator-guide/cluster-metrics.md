@@ -164,6 +164,8 @@ metrics:
 
 > **Note**: Avoid using reserved label names (`cluster`, `namespace`, `instanceId`) as custom labels — they are already set automatically by Robin.
 
+`metricsLabels` are hot-reloadable. Updating values for existing label keys is applied on the next metrics collection cycle. Adding or removing label keys changes the Prometheus metric schema, so Robin resets only its RedKey metrics registry and re-registers RedKey metrics with the new label set; Prometheus will mark old series stale and ingest new series with the updated labels.
+
 ### Full Example
 
 ```yaml
@@ -571,6 +573,6 @@ This means you can:
 
 If you set `redisInfoKeys: []`, Robin stops exporting node-scoped `INFO` and keyspace metrics, but cluster topology and health metrics continue to be refreshed.
 
-> **Important**: When `metricsLabels` change, metrics with the old label set stop being updated and will become stale in Prometheus after the configured stale timeout (default 5 minutes). The new labels appear immediately on the next collection cycle.
+> **Important**: Prometheus requires a fixed label-name set per metric. Changing `metricsLabels` values is seamless. Adding or removing `metricsLabels` keys performs a RedKey metrics registry reset inside Robin; default Go/process metrics are not reset. Metrics with the old label set become stale in Prometheus after the configured stale timeout (default 5 minutes), and the new labels appear on the next collection cycle.
 
 For more details on the hot-reload mechanism, see [Dynamic Configuration](dynamic-configuration.md).
