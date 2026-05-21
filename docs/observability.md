@@ -168,9 +168,10 @@ This dashboard monitors the Redis clusters managed by Robin:
 | **Operations & Commands** | Commands/sec rate, connected clients, keyspace hit ratio, evicted & expired keys rate |
 | **Network** | Network throughput (input/output rate), total network I/O (cumulative), AOF buffer |
 | **CPU** | CPU usage rate (sys + user), CPU children rate, total CPU per node (stacked) |
+| **Kubernetes API Client** | API request rate by method & status (`rest_client_requests_total`) |
 | **Cluster Topology** | Primaries count, replicas count, disconnected nodes |
 
-All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`).
+All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`). Additionally, Robin exposes `rest_client_requests_total` from the Kubernetes API client.
 
 **Variables:**
 - `datasource` — select the Prometheus data source
