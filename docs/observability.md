@@ -144,9 +144,11 @@ This dashboard monitors the health and performance of the operator's controller-
 
 | Section | Panels |
 | ------- | ------ |
-| **Reconciliation** | Reconciliation rate (by result), error rate, duration percentiles (p50/p95/p99), active workers vs max |
-| **Work Queue** | Queue depth, adds rate, queue & work duration (p95), retries rate |
-| **Kubernetes API Client** | API request rate by method and HTTP status code |
+| **Overview** | Leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
+| **Reconciliation Performance** | Reconciliation rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors |
+| **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
+| **Kubernetes API Client** | Request rate by method & status, request duration p95, request/response size p95, rate limiter wait p95, request retries |
+| **Certificates & Transport** | Certificate reads vs errors, transport cache entries |
 
 **Variables:**
 - `datasource` — select the Prometheus data source
@@ -160,10 +162,13 @@ This dashboard monitors the Redis clusters managed by Robin:
 
 | Section | Panels |
 | ------- | ------ |
-| **Cluster Health** | Cluster healthy status, membership OK, slots covered OK, balanced OK, check errors, check warnings |
-| **Redis Node Metrics** | Connected clients, memory usage (RSS vs maxmemory), commands per second (rate), CPU usage (sys + user rate) |
-| **Keyspace & Eviction** | Keyspace hits/misses rate, evicted/expired keys rate |
-| **Network** | Network I/O rate (input/output bytes), AOF buffer size |
+| **Cluster Overview** | Healthy, membership OK, slots covered, balanced, known nodes, cluster size, check errors, check warnings |
+| **Redis Version & Node Topology** | Node info table (IP, role, state, slots), Redis version table per instance |
+| **Memory** | RSS per node vs maxmemory, memory usage % (RSS/max), memory trend forecast (predict_linear 1h) |
+| **Operations & Commands** | Commands/sec rate, connected clients, keyspace hit ratio, evicted & expired keys rate |
+| **Network** | Network throughput (input/output rate), total network I/O (cumulative), AOF buffer |
+| **CPU** | CPU usage rate (sys + user), CPU children rate, total CPU per node (stacked) |
+| **Cluster Topology** | Primaries count, replicas count, disconnected nodes |
 
 All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`).
 
