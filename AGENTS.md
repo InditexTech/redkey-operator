@@ -25,9 +25,9 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 
 | Layer | Technology |
 | ----- | ---------- |
-| Language | Go 1.26+ |
+| Language | Go 1.26.3 |
 | Framework | [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) + [operator-sdk](https://github.com/operator-framework/operator-sdk) |
-| Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21 |
+| Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21.0 |
 | Target platform | Kubernetes v1.33 (also OpenShift v4.11+) |
 | Packaging | Helm charts (`charts/redkey-operator`, `charts/redkey-cluster`) + OLM bundle |
 | Testing | Go `testing`, [Ginkgo v2](https://github.com/onsi/ginkgo) + [Gomega](https://github.com/onsi/gomega), [envtest](https://sigs.k8s.io/controller-runtime/tools/setup-envtest) |
@@ -35,9 +35,46 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 
 ---
 
+## Repository Layout
+
+Key paths to understand before changing code:
+
+- `api/v1beta1/`: CRD types and API schema.
+- `cmd/main.go`: operator entrypoint and controller startup wiring.
+- `internal/controller/`: reconcile logic, config lifecycle, and Robin integration.
+- `config/`: generated CRDs, RBAC, manager manifests, samples, and kustomize bases.
+- `charts/`: Helm packaging for operator and sample cluster installation.
+- `test/integration/`: envtest-based integration suite.
+- `test/e2e/`: Kind-based end-to-end suite.
+- `docs/`: operator, architecture, OLM, and developer documentation.
+
+Operational assumptions:
+
+- The operator is stateless; durable state lives in Kubernetes resources.
+- `RedkeyClusterConfig` is the revision-tracking resource used to coordinate applied and pending cluster changes.
+- Redkey Robin is part of the runtime architecture; operator changes that affect rollout orchestration may require checking Robin integration paths too.
+- Generated artifacts matter in this repository: API or manifest changes are not complete until `make generate` and `make manifests` have been run.
+
+---
+
 ## Build Commands
 
 All common operations are driven by `make`. Tools that are not yet present are downloaded automatically into `bin/`.
+
+This repository does not use Maven. There is no `pom.xml` or `mvnw` in Redkey Operator, so agents must not suggest `mvn` commands here. If an external workflow or template expects Maven goals/phases, use the following equivalents.
+
+### Maven goal equivalents
+
+| Maven goal or phase | Operator command | Notes |
+| ------------------- | ---------------- | ----- |
+| `mvn validate` | `make manifests && make generate && make fmt && make vet && make lint` | Closest pre-test validation sequence for this repo. |
+| `mvn test` | `make test` | Unit tests only. Generates `cover.out`. |
+| `mvn failsafe:integration-test` | `make test-integration` | Runs envtest-based integration tests. |
+| `mvn failsafe:verify` | `make test-integration` | Same integration suite; no separate Maven-style verify step exists. |
+| `mvn verify` | `make verify` | Canonical full local gate for the operator. |
+| `mvn package` | `make build` | Produces `bin/manager`. |
+| `mvn install` | not applicable | No Maven-style local artifact install phase exists. |
+| profile-driven system/e2e tests | `make setup-test-e2e && make test-e2e` | Use `make cleanup-test-e2e` afterwards. |
 
 ### Prerequisites (installed manually)
 
@@ -84,11 +121,25 @@ Override the image tag with `IMG=<registry>/<name>:<tag>`.
 make build-installer           # produces dist/install.yaml (CRDs + Deployment, via kustomize)
 ```
 
-### Full CI verification
+### OLM and release packaging
+
+```shell
+make bundle                    # generates and validates the OLM bundle
+make bundle-build              # builds bundle image
+make bundle-push               # pushes bundle image
+make catalog-build             # builds OLM catalog image from bundle images
+make catalog-push              # pushes catalog image
+make bundle-deploy             # installs the operator from the bundle image
+make bundle-undeploy           # removes bundle-based installation
+```
+
+### Canonical verification
 
 ```shell
 make verify      # fmt + vet + lint + build + test-all
 ```
+
+`make verify` is the preferred full local gate. It is broader than `make lint && make test-all` because it also exercises the build path.
 
 ---
 
@@ -96,14 +147,28 @@ make verify      # fmt + vet + lint + build + test-all
 
 ### Mandatory validation for every change
 
-For every change in this repository, before considering the task complete, run:
+For code changes in this repository, before considering the task complete, run:
 
 ```shell
 make lint
 make test-all
 ```
 
-This requirement is mandatory even if the change is small.
+Use `make verify` when you want the widest local gate before handing off or opening a PR.
+
+If a change touches API types, generated manifests, deployment packaging, or install flows, also run the matching generation or packaging target you changed, such as `make generate`, `make manifests`, `make build-installer`, or `make bundle`.
+
+If a change only touches documentation or agent instructions, executable validation may be skipped when there is nothing meaningful to compile or run; in that case, keep the edit limited and aligned with the Makefile and repository layout.
+
+### Recommended validation flows
+
+```shell
+make test                               # fast unit-focused loop while iterating
+make test-integration                   # envtest coverage for controller behavior
+make verify                             # preferred full local gate
+make setup-test-e2e && make test-e2e    # cluster-level behavior checks when relevant
+make cleanup-test-e2e                   # tear down the isolated e2e cluster afterwards
+```
 
 ### Unit tests
 
@@ -114,7 +179,7 @@ make test
 Runs all packages except `e2e` and `test/integration`. Generates a coverage profile at `cover.out`.
 
 ```shell
-make coverage    # opens HTML coverage report from cover.out
+make coverage    # generates coverage.html from cover.out
 ```
 
 ### Integration tests (envtest)
@@ -145,6 +210,8 @@ make cleanup-test-e2e # tears down the e2e Kind cluster
 
 Override the cluster name with `KIND_CLUSTER_E2E=<name>`.
 
+These tests are not part of `make test-all`. Run them when the change affects deployment flows, reconciliation across real cluster objects, networking, or install/upgrade behavior.
+
 ### Local development cluster
 
 ```shell
@@ -170,6 +237,7 @@ make cleanup-kind     # tears down the Kind cluster
   - `redkeycluster_config.go` — `RedkeyClusterConfig` lifecycle
   - `redkeycluster_robin.go` — Redkey Robin integration
 - Tests mirror their subject file with a `_test.go` suffix in the same package.
+- Integration tests live under `test/integration/`; e2e tests live under `test/e2e/`.
 - Use `go.uber.org/zap` through the controller-runtime logger; do not use `fmt.Print*` for operational output.
 
 ### Architecture conventions
@@ -219,6 +287,7 @@ Every commit in a PR **must**:
 - Keep PRs focused; split unrelated changes into separate PRs.
 - For every change, ensure `make lint` and `make test-all` pass locally before opening or updating a PR.
 - Ensure `make verify` passes locally before opening a PR.
+- If the change affects install manifests, charts, or OLM packaging, run the relevant packaging target locally before opening the PR.
 - Document new features or behaviour changes in `docs/`.
 - Add or update tests for every code change.
 - An automated check will validate commit signatures and CLA compliance on every PR.
