@@ -98,6 +98,7 @@ spec:
   ephemeral: false
   storage: 1Gi
   storageClassName: standard
+  skipIfSuperseded: false
   config: |
     maxmemory-policy allkeys-lru
   resources:
@@ -248,7 +249,7 @@ Pending  ──►  Superseded  ──►  (deleted by Operator)
 
 ### Skip-If-Superseded Policy
 
-When `spec.skipIfSuperseded` is `true` and Robin detects that a newer config with a higher sequence is also `Pending`, Robin may skip the current config by transitioning it directly from `Pending` to `Superseded` without executing any changes.
+The `skipIfSuperseded` field is configured on the `RedkeyCluster` spec and propagated by the Operator to each `RedkeyClusterConfig` it creates. When `spec.skipIfSuperseded` is `true` and Robin detects that a newer config with a higher sequence is also `Pending`, Robin may skip the current config by transitioning it directly from `Pending` to `Superseded` without executing any changes.
 
 This is useful when intermediate states are not needed. For example, if two consecutive scaling changes are queued (`primaries: 3 → 5 → 7`), only the final target (`7`) matters.
 
