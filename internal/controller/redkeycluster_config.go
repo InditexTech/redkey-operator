@@ -75,7 +75,7 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 		},
 		Spec: redisv1.RedkeyClusterConfigSpec{
 			Sequence:             seq,
-			SkipIfSuperseded:     false,
+			SkipIfSuperseded:     cluster.Spec.SkipIfSuperseded,
 			Primaries:            cluster.Spec.Primaries,
 			ReplicasPerPrimary:   cluster.Spec.ReplicasPerPrimary,
 			Ephemeral:            cluster.Spec.Ephemeral,
@@ -113,20 +113,22 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 	return nil
 }
 
-// aggregateStatus reads the highest-sequence config status and mirrors the aggregated result to RedkeyCluster status.
+// aggregateStatus reads the active config status and mirrors the aggregated result to RedkeyCluster status.
+// If there is only one config, it is used directly. If there are multiple, the one currently being applied
+// (InProgress) is used, since configs are processed sequentially and pending ones have not been started yet.
 func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *redisv1.RedkeyCluster, configs []redisv1.RedkeyClusterConfig) error {
 	if len(configs) == 0 {
 		return nil
 	}
 
-	firstConfig := &configs[0]
+	activeConfig := selectActiveConfig(configs)
 
 	now := metav1.Now()
 
-	cluster.Status.Status = firstConfig.Status.Status
-	cluster.Status.Substatus = firstConfig.Status.Substatus
-	cluster.Status.Nodes = emptyNodesIfNil(firstConfig.Status.Nodes)
-	cluster.Status.Conditions = aggregateConditions(cluster.Status.Conditions, firstConfig)
+	cluster.Status.Status = activeConfig.Status.Status
+	cluster.Status.Substatus = activeConfig.Status.Substatus
+	cluster.Status.Nodes = emptyNodesIfNil(activeConfig.Status.Nodes)
+	cluster.Status.Conditions = aggregateConditions(cluster.Status.Conditions, activeConfig)
 	cluster.Status.Phase = computePhaseFromConditions(cluster.Status.Conditions)
 	cluster.Status.LastUpdatedAt = &now
 	cluster.Status.ObservedGeneration = cluster.Generation
@@ -138,8 +140,24 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 		return nil
 	}
 	log := logf.FromContext(ctx)
-	log.Info("Updated RedkeyCluster status from config", "config", firstConfig.Name, "status", cluster.Status.Status, "phase", cluster.Status.Phase)
+	log.Info("Updated RedkeyCluster status from config", "config", activeConfig.Name, "status", cluster.Status.Status, "phase", cluster.Status.Phase)
 	return err
+}
+
+// selectActiveConfig returns the config that should be used to aggregate the cluster status.
+// If there is only one config, it is returned directly. If there are multiple, the InProgress
+// config is returned (Robin processes configs sequentially). If no InProgress config exists,
+// the first config (the current Applied baseline) is used as fallback.
+func selectActiveConfig(configs []redisv1.RedkeyClusterConfig) *redisv1.RedkeyClusterConfig {
+	if len(configs) == 1 {
+		return &configs[0]
+	}
+	for i := range configs {
+		if configs[i].Status.ConfigPhase == redisv1.ConfigPhaseInProgress {
+			return &configs[i]
+		}
+	}
+	return &configs[0]
 }
 
 func aggregateConditions(existingConditions []metav1.Condition, highestConfig *redisv1.RedkeyClusterConfig) []metav1.Condition {

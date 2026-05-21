@@ -18,6 +18,7 @@ accessModes:
   - ReadWriteOnce
 
 deletePVC: false
+skipIfSuperseded: true
 # backup: false
 
 # Authentication - reference a Secret containing Redis credentials

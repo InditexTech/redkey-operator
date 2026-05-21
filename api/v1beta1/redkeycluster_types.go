@@ -53,6 +53,11 @@ type RedkeyClusterSpec struct {
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=true
+	// SkipIfSuperseded indicates whether Robin may skip intermediate configs if a newer one is pending.
+	SkipIfSuperseded bool `json:"skipIfSuperseded"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=true
 	// PurgeKeysOnRebalance specifies if keys should be purged on rebalance.
 	PurgeKeysOnRebalance *bool `json:"purgeKeysOnRebalance"`
 

@@ -802,3 +802,258 @@ func TestCleanupSupersededConfigs_EmptyConfigs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestAggregateStatus_UsesHighestSequenceConfig(t *testing.T) {
+	s := getScheme()
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 2,
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral: true,
+			Primaries: 3,
+		},
+		Status: redisv1.RedkeyClusterStatus{
+			Phase:  redisv1.PhaseReady,
+			Status: redisv1.ClusterStatusReady,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(cluster).
+		WithStatusSubresource(cluster).
+		Build()
+
+	r := &RedkeyClusterReconciler{
+		Client: fakeClient,
+		Scheme: s,
+	}
+
+	configs := []redisv1.RedkeyClusterConfig{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-1",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 1},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhaseApplied,
+				Status:      redisv1.ClusterStatusReady,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-2",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 2},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhaseInProgress,
+				Status:      "Configuring",
+			},
+		},
+	}
+
+	err := r.aggregateStatus(context.TODO(), cluster, configs)
+	require.NoError(t, err)
+
+	// Should use InProgress config (the one being applied) → Phase = Configuring
+	assert.Equal(t, redisv1.PhaseConfiguring, cluster.Status.Phase)
+	assert.Equal(t, "Configuring", cluster.Status.Status)
+}
+
+func TestAggregateStatus_PendingConfigYieldsConfiguring(t *testing.T) {
+	s := getScheme()
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 1,
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral: true,
+			Primaries: 3,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(cluster).
+		WithStatusSubresource(cluster).
+		Build()
+
+	r := &RedkeyClusterReconciler{
+		Client: fakeClient,
+		Scheme: s,
+	}
+
+	// Single Pending config (initial creation) → should yield Configuring per architecture doc
+	configs := []redisv1.RedkeyClusterConfig{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-1",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 1},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhasePending,
+			},
+		},
+	}
+
+	err := r.aggregateStatus(context.TODO(), cluster, configs)
+	require.NoError(t, err)
+
+	// Per architecture doc: single Pending config → Phase = Configuring, ConfigPending = True
+	assert.Equal(t, redisv1.PhaseConfiguring, cluster.Status.Phase)
+
+	var hasPendingCond bool
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type == "ConfigPending" && cond.Status == metav1.ConditionTrue {
+			hasPendingCond = true
+		}
+	}
+	assert.True(t, hasPendingCond, "Expected ConfigPending condition to be true")
+}
+
+func TestAggregateStatus_MultiplePendingUsesAppliedBaseline(t *testing.T) {
+	s := getScheme()
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 2,
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral: true,
+			Primaries: 5,
+		},
+		Status: redisv1.RedkeyClusterStatus{
+			Phase:  redisv1.PhaseReady,
+			Status: redisv1.ClusterStatusReady,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(cluster).
+		WithStatusSubresource(cluster).
+		Build()
+
+	r := &RedkeyClusterReconciler{
+		Client: fakeClient,
+		Scheme: s,
+	}
+
+	// Applied baseline + Pending (Robin hasn't started yet) → use Applied baseline → Phase = Ready
+	configs := []redisv1.RedkeyClusterConfig{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-1",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 1},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhaseApplied,
+				Status:      redisv1.ClusterStatusReady,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-2",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 2},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhasePending,
+			},
+		},
+	}
+
+	err := r.aggregateStatus(context.TODO(), cluster, configs)
+	require.NoError(t, err)
+
+	// No InProgress config → falls back to Applied baseline → Phase = Ready
+	assert.Equal(t, redisv1.PhaseReady, cluster.Status.Phase)
+	assert.Equal(t, redisv1.ClusterStatusReady, cluster.Status.Status)
+}
+
+func TestAggregateStatus_InProgressWithQueuedPending(t *testing.T) {
+	s := getScheme()
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 3,
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral: true,
+			Primaries: 5,
+		},
+		Status: redisv1.RedkeyClusterStatus{
+			Phase:  redisv1.PhaseReady,
+			Status: redisv1.ClusterStatusReady,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(cluster).
+		WithStatusSubresource(cluster).
+		Build()
+
+	r := &RedkeyClusterReconciler{
+		Client: fakeClient,
+		Scheme: s,
+	}
+
+	// Applied + InProgress + Pending → use InProgress (ignores queued Pending)
+	configs := []redisv1.RedkeyClusterConfig{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-1",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 1},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhaseApplied,
+				Status:      redisv1.ClusterStatusReady,
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-2",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 2},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhaseInProgress,
+				Status:      "ScalingUp",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster-3",
+				Namespace: "default",
+			},
+			Spec: redisv1.RedkeyClusterConfigSpec{Sequence: 3},
+			Status: redisv1.RedkeyClusterConfigStatus{
+				ConfigPhase: redisv1.ConfigPhasePending,
+			},
+		},
+	}
+
+	err := r.aggregateStatus(context.TODO(), cluster, configs)
+	require.NoError(t, err)
+
+	// Uses InProgress config, not the queued Pending one
+	assert.Equal(t, redisv1.PhaseConfiguring, cluster.Status.Phase)
+	assert.Equal(t, "ScalingUp", cluster.Status.Status)
+}

@@ -16343,6 +16343,11 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
+              skipIfSuperseded:
+                default: true
+                description: SkipIfSuperseded indicates whether Robin may skip intermediate
+                  configs if a newer one is pending.
+                type: boolean
               storage:
                 description: Storage is the amount of persistent storage to request
                   for each Redis node.
