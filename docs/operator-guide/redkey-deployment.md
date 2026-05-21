@@ -16,14 +16,14 @@ Below you'll find an example of manifest conforming to the resource definition t
 apiVersion: redkey.inditex.dev/v1beta1
 kind: RedkeyCluster
 metadata:
-  name: redkeycluster-sample
+  name: redkey-cluster-sample
   namespace: default
   labels:
     app: redis
     team: team-a
 spec:
   labels:
-    redis-name: redkeycluster-sample
+    redis-name: redkey-cluster-sample
     app: myapp
   primaries: 3
   storage: 3Gi
@@ -48,12 +48,12 @@ spec:
             protocol: TCP
           volumeMounts:
           - mountPath: /opt/conf/configmap
-            name: redkeycluster-sample-robin-config
+            name: redkey-cluster-sample-robin-config
         volumes:
         - configMap:
             defaultMode: 420
-            name: redkeycluster-sample-robin
-          name: redkeycluster-sample-robin-config
+            name: redkey-cluster-sample-robin
+          name: redkey-cluster-sample-robin-config
 ```
 
 ### Redis configuration

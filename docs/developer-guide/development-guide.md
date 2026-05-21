@@ -138,7 +138,7 @@ In order to launch a Redkey Cluster reconcile loop, you can edit the RedkeyClust
 To simulate Robin interactions with the `RedkeyClusterConfiguration` instances you can edit the `status` section with:
 
 ```shell
-kubectl patch redkeyclusterconfig redkeycluster-sample-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
+kubectl patch redkeyclusterconfig redkey-cluster-sample-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
 ```
 
 ### Cleanup
@@ -166,6 +166,24 @@ To remove the Kind cluster and the local registry, you can run:
 ```shell
 make kind-cleanup
 ```
+
+### Observability (Prometheus & Grafana)
+
+You can deploy a full observability stack (Prometheus + Grafana) with pre-configured dashboards for the Redkey Operator and Robin metrics:
+
+```shell
+make observability-install
+```
+
+This installs `kube-prometheus-stack` via Helm, configures scraping for both the operator and Robin, and provisions Grafana dashboards. Access Grafana at `http://localhost:30300` (credentials: `admin` / `redkey`).
+
+To remove it:
+
+```shell
+make observability-uninstall
+```
+
+For full details, see the [Observability documentation](../observability.md).
 
 ## Local testing
 

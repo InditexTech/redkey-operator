@@ -18,7 +18,7 @@ The Operator deploys a Deployment and a ConfigMap for Robin given the configurat
 
 Robin deployment can be configured in `spec.robin.template`. This field is an object representing a [PodSpecTemplate](https://github.com/kubernetes/kubernetes/blob/v1.32.2/staging/src/k8s.io/api/core/v1/types.go#L5050). The template is then used by the Redkey Operator to create, update or delete a Deployment with Robin, whose name is `<RedkeyClusterName>-robin`.
 
-Robin connects to all the nodes of the Redkey Cluster using port 6379 and the K8s Redis Pod domain name (e.g.: redkeycluster-sample-0.redis-cluster-sample). Therefore, a DNS resolving that name to the Pod IP is needed for Robin to work.
+Robin connects to all the nodes of the Redkey Cluster using port 6379 and the K8s Redis Pod domain name (e.g.: redkey-cluster-sample-0.redis-cluster-sample). Therefore, a DNS resolving that name to the Pod IP is needed for Robin to work.
 
 ### Example
 
@@ -42,12 +42,12 @@ spec:
                 protocol: TCP
             volumeMounts:
               - mountPath: /opt/conf/configmap
-                name: redkeycluster-sample-robin-config
+                name: redkey-cluster-sample-robin-config
         volumes:
           - configMap:
               defaultMode: 420
-              name: redkeycluster-sample-robin
-            name: redkeycluster-sample-robin-config
+              name: redkey-cluster-sample-robin
+            name: redkey-cluster-sample-robin-config
 ```
 
 ## How to configure Robin
@@ -104,7 +104,7 @@ spec:
           collection_interval_seconds: 60
         cluster:
           replicas: 1
-          name: "redkeycluster-sample"
+          name: "redkey-cluster-sample"
           namespace: redkey-operator
           health_probe_interval_seconds: 60
           healing_time_seconds: 60

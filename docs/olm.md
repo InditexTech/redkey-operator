@@ -156,7 +156,7 @@ and then check the status of the `RedkeyCluster`:
 ```shell
 $ kubectl get rkcl
 NAME                   PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   PHASE         STATUS   SUBSTATUS
-redkeycluster-sample   3           0          true        true        redis:8-bookworm             Configuring
+redkey-cluster-sample   3           0          true        true        redis:8-bookworm             Configuring
 ```
 
 To **clean up** the cluster:

@@ -1,0 +1,441 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Redkey Robin - Redis cluster metrics collected by Robin sidecar",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Cluster Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "UNHEALTHY" }, "1": { "text": "HEALTHY" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_healthy{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Cluster Healthy",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "FAIL" }, "1": { "text": "OK" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_membership_ok{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Membership OK",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "FAIL" }, "1": { "text": "OK" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_slots_covered_ok{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Slots Covered OK",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "FAIL" }, "1": { "text": "OK" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_balanced_ok{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Balanced OK",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_check_errors{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Check Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 6,
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [
+        {
+          "expr": "redkey_cluster_check_warnings{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Check Warnings",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Redis Node Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "redkey_connected_clients{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{instanceId}}"
+        }
+      ],
+      "title": "Connected Clients",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "decbytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "redkey_used_memory_rss{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{instanceId}} rss"
+        },
+        {
+          "expr": "redkey_maxmemory{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{instanceId}} max"
+        }
+      ],
+      "title": "Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(redkey_total_commands_processed{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}}"
+        }
+      ],
+      "title": "Commands Per Second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 10,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(redkey_used_cpu_sys{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} sys"
+        },
+        {
+          "expr": "rate(redkey_used_cpu_user{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} user"
+        }
+      ],
+      "title": "CPU Usage (rate)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 102,
+      "title": "Keyspace & Eviction",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(redkey_keyspace_hits{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} hits"
+        },
+        {
+          "expr": "rate(redkey_keyspace_misses{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} misses"
+        }
+      ],
+      "title": "Keyspace Hits / Misses (rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(redkey_evicted_keys{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} evicted"
+        },
+        {
+          "expr": "rate(redkey_expired_keys{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} expired"
+        }
+      ],
+      "title": "Evicted / Expired Keys (rate)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "id": 103,
+      "title": "Network",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "Bps"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(redkey_total_net_input_bytes{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} in"
+        },
+        {
+          "expr": "rate(redkey_total_net_output_bytes{job=~\"$job\", cluster=~\"$cluster\"}[5m])",
+          "legendFormat": "{{instanceId}} out"
+        }
+      ],
+      "title": "Network I/O (rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "decbytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "redkey_mem_aof_buffer{job=~\"$job\", cluster=~\"$cluster\"}",
+          "legendFormat": "{{instanceId}}"
+        }
+      ],
+      "title": "AOF Buffer Size",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["redkey", "robin", "redis"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data Source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(redkey_cluster_healthy, job)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "query": "label_values(redkey_cluster_healthy, job)",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(redkey_cluster_healthy{job=~\"$job\"}, cluster)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": true,
+        "name": "cluster",
+        "query": "label_values(redkey_cluster_healthy{job=~\"$job\"}, cluster)",
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Redkey Robin",
+  "uid": "redkey-robin"
+}

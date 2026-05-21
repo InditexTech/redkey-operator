@@ -1,0 +1,140 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# Helm values for kube-prometheus-stack deployed in the Kind dev cluster.
+# This provides Prometheus + Grafana with pre-configured scraping for
+# Redkey Operator and Redkey Robin metrics.
+
+# -- Prometheus configuration
+prometheus:
+  prometheusSpec:
+    # Lower resource requirements for local dev
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Scrape all ServiceMonitors/PodMonitors regardless of labels
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    # Discover ServiceMonitors/PodMonitors in ALL namespaces
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    # Retain data for 24h in dev
+    retention: 24h
+    storageSpec: {}
+    # Direct scrape configs as fallback — these use kubernetes_sd_config
+    # to discover targets by pod labels, bypassing ServiceMonitor/PodMonitor.
+    additionalScrapeConfigs:
+      # Scrape Redkey Operator metrics (HTTPS with bearer token)
+      - job_name: 'redkey-operator'
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: []
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_control_plane]
+            action: keep
+            regex: controller-manager
+          - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
+            action: keep
+            regex: redkey-operator
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: https
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+      # Scrape Redkey Robin metrics (plain HTTP)
+      - job_name: 'redkey-robin'
+        scheme: http
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: []
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: redkey-robin
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: ${1}:8080
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_label_redkey_inditex_dev_cluster]
+            target_label: cluster
+
+# -- Grafana configuration
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: redkey
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  # Grafana 13+ takes longer to initialize
+  readinessProbe:
+    initialDelaySeconds: 60
+    timeoutSeconds: 5
+  livenessProbe:
+    initialDelaySeconds: 90
+    timeoutSeconds: 5
+  service:
+    type: NodePort
+    nodePort: 30300
+  # Load dashboards from ConfigMaps with the label grafana_dashboard=1
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: false
+  # The default Prometheus datasource is auto-provisioned by kube-prometheus-stack.
+  # No need to define it here.
+
+# -- Disable components not needed for local dev
+alertmanager:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+# -- Prometheus Operator settings
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

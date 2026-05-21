@@ -30,6 +30,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 * [Development Guide](developer-guide/development-guide.md)
 * [Profiling Guide](developer-guide/profiling-guide.md)
+* [Observability (Prometheus & Grafana)](observability.md)
 
 ## Reference
 

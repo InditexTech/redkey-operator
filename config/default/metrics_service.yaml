@@ -6,7 +6,7 @@ kind: Service
 metadata:
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: redkeyoperator
+    app.kubernetes.io/name: redkey-operator
     app.kubernetes.io/managed-by: kustomize
   name: controller-manager-metrics-service
   namespace: system
@@ -18,4 +18,4 @@ spec:
     targetPort: 8443
   selector:
     control-plane: controller-manager
-    app.kubernetes.io/name: redkeyoperator
+    app.kubernetes.io/name: redkey-operator

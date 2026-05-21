@@ -531,3 +531,16 @@ bundle-deploy: manifests kustomize operator-sdk ## Deploy the operator from the 
 .PHONY: bundle-undeploy
 bundle-undeploy: operator-sdk ## Undeploy the operator from the cluster.
 	$(OPERATOR_SDK) cleanup $(NAME) --namespace operators
+
+
+##@ Observability
+
+OBSERVABILITY_NAMESPACE ?= monitoring
+
+.PHONY: observability-install
+observability-install: ## Install Prometheus + Grafana observability stack with Redkey dashboards.
+	@hack/observability/install-observability.sh $(OBSERVABILITY_NAMESPACE)
+
+.PHONY: observability-uninstall
+observability-uninstall: ## Uninstall the observability stack and clean up all resources.
+	@hack/observability/uninstall-observability.sh $(OBSERVABILITY_NAMESPACE)

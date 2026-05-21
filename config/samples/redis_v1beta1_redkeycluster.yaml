@@ -5,15 +5,15 @@ apiVersion: redkey.inditex.dev/v1beta1
 kind: RedkeyCluster
 metadata:
   labels:
-    app.kubernetes.io/name: redkeyoperator
+    app.kubernetes.io/name: redkey-operator
     app.kubernetes.io/managed-by: kustomize
-  name: redkeycluster-sample
+  name: redkey-cluster-sample
 spec:
   primaries: 3
   # replicasPerPrimary: 0
   ephemeral: true
-  accessModes: 
-  - ReadWriteOnce
+  accessModes:
+    - ReadWriteOnce
   image: redis:8-bookworm
   purgeKeysOnRebalance: true
   labels:
@@ -63,16 +63,13 @@ spec:
     template:
       spec:
         containers:
-          - image: redkey-robin:0.1.0
+          - image: redkey-robin:0.2.0
             name: robin
             imagePullPolicy: Always
             ports:
               - containerPort: 8080
                 name: prometheus
                 protocol: TCP
-            volumeMounts:
-              - mountPath: /opt/conf/configmap
-                name: redis-cluster-ephemeral-robin-config
             resources:
               requests:
                 cpu: 500m
@@ -80,11 +77,6 @@ spec:
               limits:
                 cpu: 1
                 memory: 200Mi
-        volumes:
-          - configMap:
-              defaultMode: 420
-              name: redis-cluster-ephemeral-robin
-            name: redis-cluster-ephemeral-robin-config
   # override:
   #   service:
   #     metadata:
@@ -124,7 +116,7 @@ spec:
   #                 app: foo
   #             matchLabelKeys:
   #               - pod-template-hash
-  #           containers: 
+  #           containers:
   #           - name: nginx
   #             image: nginx
   #           - name: redis
