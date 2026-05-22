@@ -5,8 +5,12 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +83,12 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	var enablePprof bool
+	var pprofAddr string
+	flag.BoolVar(&enablePprof, "enable-pprof", false,
+		"If set, a pprof HTTP server is started on the pprof-bind-address for runtime profiling.")
+	flag.StringVar(&pprofAddr, "pprof-bind-address", ":6060",
+		"The address the pprof endpoint binds to (only used when --enable-pprof is set).")
 	flag.DurationVar(&resyncInterval, "resync-interval", 5*time.Minute,
 		"Periodic resync interval for the RedkeyCluster controller as a safety net (e.g. 5m, 10m).")
 
@@ -263,8 +273,43 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx := ctrl.SetupSignalHandler()
+
+	// Start pprof server if enabled.
+	// This runs on a separate port from the metrics server and is gated
+	// entirely by the --enable-pprof flag. The server exposes standard Go
+	// pprof endpoints for heap, CPU, goroutine, and trace profiling.
+	if enablePprof {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		pprofSrv := &http.Server{
+			Addr:              pprofAddr,
+			Handler:           pprofMux,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		go func() {
+			setupLog.Info("Starting pprof server", "addr", pprofAddr)
+			if err := pprofSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				setupLog.Error(err, "pprof server failed")
+			}
+		}()
+
+		// Shut down pprof server when the manager context is cancelled.
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = pprofSrv.Shutdown(shutdownCtx)
+		}()
+	}
+
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}

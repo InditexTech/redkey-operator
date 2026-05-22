@@ -1,6 +1,5 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -8688,6 +8687,19 @@ spec:
                         items:
                           type: string
                         type: array
+                    type: object
+                  profiling:
+                    description: |-
+                      RobinConfigProfiling defines profiling configuration for Robin.
+                      When enabled, pprof endpoints are served on the metrics HTTP server
+                      allowing runtime diagnosis of memory, CPU, and goroutine issues.
+                      This setting can be toggled at runtime without restarting the Robin pod.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enabled activates pprof profiling endpoints on the metrics server.
+                          Defaults to false. Toggle this field to enable/disable profiling at runtime.
+                        type: boolean
                     type: object
                   reconciler:
                     description: RobinConfigReconciler defines reconciler configuration

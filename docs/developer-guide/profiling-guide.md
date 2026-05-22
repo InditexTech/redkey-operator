@@ -12,9 +12,9 @@ The **Redkey Operator** must manage the Redkey Clusters the *most efficient way 
 
 The tools used include the folowwing:
 
-- **pprof**: Go's built-in profiler for analyzing CPU, memory, goroutines and locks (<https://github.com/google/pprof>).
-- **profefe**: a continuous profiling system, collects profiling data from a fleet of running applications and provides API for querying profiling samples for postmortem performance analysis (<https://github.com/profefe/profefe>).
-- **kube-profefe*: Kube-profefe is a project that acts as a bridge between profefe and Kubernetes that offers a kubectl plugin and a cron-able executable that regularly sends profiling data to profefe (<https://kubernetes.profefe.dev/>).
+- **pprof**: Go's built-in profiler for analyzing CPU, memory, goroutines and locks (https://github.com/google/pprof).
+- **profefe**: a continuous profiling system, collects profiling data from a fleet of running applications and provides API for querying profiling samples for postmortem performance analysis (https://github.com/profefe/profefe).
+- **kube-profefe*: Kube-profefe is a project that acts as a bridge between profefe and Kubernetes that offers a kubectl plugin and a cron-able executable that regularly sends profiling data to profefe (https://kubernetes.profefe.dev/).
 
 ## Modifying the Manager
 

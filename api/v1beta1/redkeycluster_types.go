@@ -204,6 +204,18 @@ type RobinConfig struct {
 	Reconciler *RobinConfigReconciler `json:"reconciler,omitempty"`
 	Cluster    *RobinConfigCluster    `json:"cluster,omitempty"`
 	Metrics    *RobinConfigMetrics    `json:"metrics,omitempty"`
+	Profiling  *RobinConfigProfiling  `json:"profiling,omitempty"`
+}
+
+// RobinConfigProfiling defines profiling configuration for Robin.
+// When enabled, pprof endpoints are served on the metrics HTTP server
+// allowing runtime diagnosis of memory, CPU, and goroutine issues.
+// This setting can be toggled at runtime without restarting the Robin pod.
+type RobinConfigProfiling struct {
+	// Enabled activates pprof profiling endpoints on the metrics server.
+	// Defaults to false. Toggle this field to enable/disable profiling at runtime.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // RobinConfigReconciler defines reconciler configuration for Robin.

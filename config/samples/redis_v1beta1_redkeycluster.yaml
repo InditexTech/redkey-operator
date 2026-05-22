@@ -10,7 +10,7 @@ metadata:
   name: redkey-cluster-sample
 spec:
   primaries: 3
-  # replicasPerPrimary: 0
+  # replicasPerPrimary: 1
   ephemeral: true
   accessModes:
     - ReadWriteOnce
@@ -60,6 +60,8 @@ spec:
           - aof_base_size
           - aof_current_size
           - mem_aof_buffer
+        profiling:
+          enabled: true
     template:
       spec:
         containers:

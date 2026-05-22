@@ -16,6 +16,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 * [Operator deployment](operator-guide/operator-deployment.md)
 * [Redkey Robin](operator-guide/robin.md)
+* [Profiling (Operator & Robin)](operator-guide/profiling.md)
+* [Redkey Robin Optimizations](operator-guide/robin-optimizations.md)
 * [Redkey Cluster Metrics](operator-guide/cluster-metrics.md)
 * [Redkey Authentication](operator-guide/authentication.md)
 * [Dynamic Configuration (Hot Reload)](operator-guide/dynamic-configuration.md)
