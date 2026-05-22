@@ -60,8 +60,8 @@ spec:
           - aof_base_size
           - aof_current_size
           - mem_aof_buffer
-        profiling:
-          enabled: true
+      profiling:
+        enabled: true
     template:
       spec:
         containers:
