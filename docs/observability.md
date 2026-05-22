@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Observability
 
-This document describes the local observability stack provided for the Redkey project, including Prometheus, Grafana, and the pre-configured dashboards for the Redkey Operator and Redkey Robin.
+This document describes the local observability stack provided for the Redkey project, including Prometheus, Grafana, and the pre-configured dashboards for the Redkey Operator, Redkey Cluster (Redis), and Redkey Robin (process health).
 
 ## Table of Contents
 
@@ -154,11 +154,11 @@ This dashboard monitors the health and performance of the operator's controller-
 - `datasource` — select the Prometheus data source
 - `job` — filter by Prometheus job label (auto-filtered to `.*redkey.*`)
 
-### Redkey Robin Dashboard
+### Redkey Cluster Dashboard
 
-Located in `hack/observability/dashboards/redkey-robin.json`.
+Located in `hack/observability/dashboards/redkey-cluster.json`.
 
-This dashboard monitors the Redis clusters managed by Robin:
+This dashboard monitors the Redis clusters managed by Robin — cluster health, topology, and per-node performance:
 
 | Section | Panels |
 | ------- | ------ |
@@ -168,15 +168,34 @@ This dashboard monitors the Redis clusters managed by Robin:
 | **Operations & Commands** | Commands/sec rate, connected clients, keyspace hit ratio, evicted & expired keys rate |
 | **Network** | Network throughput (input/output rate), total network I/O (cumulative), AOF buffer |
 | **CPU** | CPU usage rate (sys + user), CPU children rate, total CPU per node (stacked) |
-| **Kubernetes API Client** | API request rate by method & status (`rest_client_requests_total`) |
 | **Cluster Topology** | Primaries count, replicas count, disconnected nodes |
 
-All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`). Additionally, Robin exposes `rest_client_requests_total` from the Kubernetes API client.
+All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`).
 
 **Variables:**
 - `datasource` — select the Prometheus data source
 - `job` — filter by Prometheus job (discovered from `redkey_cluster_healthy` metric)
 - `cluster` — filter by RedkeyCluster name
+
+### Redkey Robin Dashboard
+
+Located in `hack/observability/dashboards/redkey-robin.json`.
+
+This dashboard monitors Robin itself as a process — its runtime health, resource usage, and Kubernetes API interactions:
+
+| Section | Panels |
+| ------- | ------ |
+| **Overview** | Uptime, goroutines (current), Go version, open file descriptors |
+| **Kubernetes API Client** | Request rate by method & status (`rest_client_requests_total`), error rate (4xx/5xx) |
+| **Memory** | Process RSS vs virtual memory, Go heap (in-use, idle, stack), allocation rate, GC cycles rate |
+| **CPU & Scheduling** | Process CPU usage rate, goroutines over time, GC pause duration quantiles, live objects & heap objects |
+| **File Descriptors** | Open FDs vs limit over time, FD utilisation gauge |
+
+Metrics come from Go runtime collectors (`go_*`), process collectors (`process_*`), and the Kubernetes client-go adapter (`rest_client_requests_total`).
+
+**Variables:**
+- `datasource` — select the Prometheus data source
+- `job` — filter by Prometheus job (auto-filtered to `.*robin.*`)
 
 ## Metrics Scraping Configuration
 
