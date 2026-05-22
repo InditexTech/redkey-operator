@@ -63,7 +63,7 @@ spec:
     template:
       spec:
         containers:
-          - image: redkey-robin:0.2.0
+          - image: localhost:5005/redkey-robin:0.2.0
             name: robin
             imagePullPolicy: Always
             ports:
