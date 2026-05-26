@@ -39,6 +39,9 @@ spec:
       cluster:
         connectionMaxRetries: 10
         connectionBackOffSeconds: 10
+        clusterCommandTimeoutSeconds: 24
+        rebalanceTimeoutSeconds: 120
+        clusterMeetWaitSeconds: 5
       metrics:
         collectionIntervalSeconds: 60
         redisInfoKeys:

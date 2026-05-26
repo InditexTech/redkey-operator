@@ -10,6 +10,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 * [Operator deployment](operator-deployment.md)
 * [Redkey Robin](robin.md)
+* [Cluster Health Checks and Remediation](../cluster-health-checks.md)
 * [Redkey Cluster Metrics](cluster-metrics.md)
 * [How to deploy a Redis Cluster](redis-deployment.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)

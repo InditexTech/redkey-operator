@@ -227,8 +227,11 @@ type RobinConfigReconciler struct {
 
 // RobinConfigCluster defines cluster configuration for Robin.
 type RobinConfigCluster struct {
-	ConnectionMaxRetries     *int `json:"connectionMaxRetries,omitempty"`
-	ConnectionBackOffSeconds *int `json:"connectionBackOffSeconds,omitempty"`
+	ConnectionMaxRetries         *int `json:"connectionMaxRetries,omitempty"`
+	ConnectionBackOffSeconds     *int `json:"connectionBackOffSeconds,omitempty"`
+	ClusterCommandTimeoutSeconds *int `json:"clusterCommandTimeoutSeconds,omitempty"`
+	ClusterMeetWaitSeconds       *int `json:"clusterMeetWaitSeconds,omitempty"`
+	RebalanceTimeoutSeconds      *int `json:"rebalanceTimeoutSeconds,omitempty"`
 }
 
 // RobinConfigMetrics defines metrics configuration for Robin.

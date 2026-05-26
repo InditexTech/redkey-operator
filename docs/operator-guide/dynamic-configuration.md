@@ -21,6 +21,9 @@ All settings in `spec.robin.config` are applied dynamically:
 | Redis INFO keys | `metrics.redisInfoKeys` | Which metrics are collected and exposed to Prometheus |
 | Connection retries | `cluster.connectionMaxRetries` | Max retries when connecting to a Redis node |
 | Connection backoff | `cluster.connectionBackOffSeconds` | Wait time between connection retries |
+| Cluster command timeout | `cluster.clusterCommandTimeoutSeconds` | Timeout for `redis-cli --cluster fix` commands (default: 24) |
+| Rebalance timeout | `cluster.rebalanceTimeoutSeconds` | Timeout for `redis-cli --cluster rebalance` commands (default: 120) |
+| Cluster meet wait | `cluster.clusterMeetWaitSeconds` | Time to wait for gossip propagation after `CLUSTER MEET` (default: 5) |
 | Auth secret reference | `spec.auth.secret` | Which Secret holds the Redis password |
 
 If any reconciler interval field is omitted from the CR, Robin keeps the value it started with. In particular, `intervalOnWaitSeconds` falls back to Robin's startup default of 10 seconds unless its CLI flag overrides it.

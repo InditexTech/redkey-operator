@@ -8668,9 +8668,15 @@ spec:
                     description: RobinConfigCluster defines cluster configuration
                       for Robin.
                     properties:
+                      clusterCommandTimeoutSeconds:
+                        type: integer
+                      clusterMeetWaitSeconds:
+                        type: integer
                       connectionBackOffSeconds:
                         type: integer
                       connectionMaxRetries:
+                        type: integer
+                      rebalanceTimeoutSeconds:
                         type: integer
                     type: object
                   metrics:

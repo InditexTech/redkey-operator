@@ -37,6 +37,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 ## Reference
 
 * [Redkey Cluster Status and Substatus](redkey-cluster-status.md)
+* [Cluster Health Checks and Remediation](cluster-health-checks.md)
 * [Redkey Robin](redkey-robin.md)
 * [Key purge (purgeKeysOnRebalance)](purge-keys-on-rebalance.md)
 * [Metrics](metrics.md)

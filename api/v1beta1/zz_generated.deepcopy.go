@@ -10,7 +10,7 @@ package v1beta1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -696,6 +696,21 @@ func (in *RobinConfigCluster) DeepCopyInto(out *RobinConfigCluster) {
 	}
 	if in.ConnectionBackOffSeconds != nil {
 		in, out := &in.ConnectionBackOffSeconds, &out.ConnectionBackOffSeconds
+		*out = new(int)
+		**out = **in
+	}
+	if in.ClusterCommandTimeoutSeconds != nil {
+		in, out := &in.ClusterCommandTimeoutSeconds, &out.ClusterCommandTimeoutSeconds
+		*out = new(int)
+		**out = **in
+	}
+	if in.ClusterMeetWaitSeconds != nil {
+		in, out := &in.ClusterMeetWaitSeconds, &out.ClusterMeetWaitSeconds
+		*out = new(int)
+		**out = **in
+	}
+	if in.RebalanceTimeoutSeconds != nil {
+		in, out := &in.RebalanceTimeoutSeconds, &out.RebalanceTimeoutSeconds
 		*out = new(int)
 		**out = **in
 	}

@@ -217,6 +217,9 @@ spec:
       cluster:
         connectionMaxRetries: 3
         connectionBackOffSeconds: 5
+        clusterCommandTimeoutSeconds: 24
+        rebalanceTimeoutSeconds: 120
+        clusterMeetWaitSeconds: 5
 ```
 
 ## Exposed Metrics
