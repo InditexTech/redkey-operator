@@ -19,12 +19,14 @@ We tried to make it as comprehensive as possible, but if you have any questions 
   - [Run the Operator in your local cluster](#run-the-operator-in-your-local-cluster)
     - [Run the Operator from your local machine](#run-the-operator-from-your-local-machine)
     - [Build and push the Operator image](#build-and-push-the-operator-image)
+    - [Build and push the Robin image](#build-and-push-the-robin-image)
   - [Deploy an example Redkey Cluster](#deploy-an-example-redkey-cluster)
   - [Cleanup](#cleanup)
 - [Local testing](#local-testing)
   - [Unit tests](#unit-tests)
   - [Integration tests](#integration-tests)
   - [End-to-end tests](#end-to-end-tests)
+    - [GitHub Actions E2E workflow](#github-actions-e2e-workflow)
     - [Parallel execution](#parallel-execution)
     - [E2E environment variables](#e2e-environment-variables)
     - [Resource optimization](#resource-optimization)
@@ -123,6 +125,41 @@ make deploy
 ```
 
 These commands will build the Operator image, push it to the local registry, and deploy it to your cluster in the `redkey-operator` namespace.
+
+When you need to publish a cross-platform image, use `make docker-buildx` instead. The release workflow for the Operator uses this target to publish `linux/amd64` and `linux/arm64` runtime images.
+
+```shell
+make docker-buildx IMG=ghcr.io/inditextech/redkey-operator:<tag>
+```
+
+#### Build and push the Robin image
+
+Robin lives in the sibling `redkeyrobin` repository and imports the API types from `redkeyoperator`. To build the Robin image from source, keep both repositories checked out side by side:
+
+```text
+<workspace>/
+  redkeyoperator/
+  redkeyrobin/
+```
+
+Robin now builds from its own repository using a Docker BuildKit named context that points back to the operator checkout. From the operator repository, a typical local flow looks like this:
+
+```shell
+pushd ../redkeyrobin
+make docker-build IMG=localhost:5005/redkey-robin:dev OPERATOR_DIR=../redkeyoperator
+make docker-push IMG=localhost:5005/redkey-robin:dev
+popd
+```
+
+If your checkout names or paths differ, adjust `OPERATOR_DIR` accordingly.
+
+For cross-platform publication, Robin also provides `make docker-buildx`, and its release workflow publishes `linux/amd64` and `linux/arm64` images using the same mechanism:
+
+```shell
+pushd ../redkeyrobin
+make docker-buildx IMG=ghcr.io/inditextech/redkey-robin:<tag> OPERATOR_DIR=../redkeyoperator
+popd
+```
 
 ### Deploy an example Redkey Cluster
 
@@ -227,7 +264,7 @@ You can run Unit and Integration tests together with:
 make test-all
 ```
 
-End-to-end tests
+### End-to-end tests
 
 E2E tests simulate real-world scenarios, testing the Operator's functionality from start to finish, including interactions with the Kubernetes API and the Redkey cluster.
 
@@ -251,6 +288,25 @@ make setup-test-e2e
 
 # Cleanup the Kind cluster
 make cleanup-test-e2e
+```
+
+#### GitHub Actions E2E workflow
+
+The `.github/workflows/e2e-tests.yml` workflow in this repository checks out `redkeyoperator/` and `redkeyrobin/` side by side under `${{ github.workspace }}`. Robin is then built from its own repository with `OPERATOR_DIR=../redkeyoperator`.
+
+This layout is important: nesting the Robin checkout inside the operator repository breaks `controller-gen paths="./..."` and similar targets because the operator tooling starts scanning the nested Robin module and hits Robin's `replace ../redkeyoperator` directive.
+
+When the workflow needs a Robin ref, it resolves it in this order:
+
+1. The `workflow_dispatch` input `robin_ref`.
+2. A line in the pull request body with the form `robin-ref: <ref>`.
+3. A branch in `InditexTech/redkeyrobin` with the same name as the operator pull request branch, if it exists.
+4. `main`.
+
+To force the workflow to test a specific Robin branch from an operator pull request, add a line like this to the PR body:
+
+```text
+robin-ref: feature/full-cluster-management
 ```
 
 #### Parallel execution

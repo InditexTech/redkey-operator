@@ -115,6 +115,8 @@ Create a Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0
 make deploy-samples IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
 ```
 
+The official release workflows publish both Redkey Operator and Redkey Robin runtime images to GHCR as multi-arch manifests for `linux/amd64` and `linux/arm64`.
+
 ## Documentation
 
 Discover the architecture and design of Redkey Operator in the [architecture document](./docs/architecture.md).
