@@ -28,7 +28,7 @@ concurrency:
 env:
   OPERATOR_NAME: redkey-operator
   OPERATOR_VERSION: test-e2e
-  KUBECONFIG: ${{ github.workspace }}/.kube/config
+  KUBECONFIG: ${{ github.workspace }}/redkeyoperator/.kube/config
   LOCAL_CLUSTER_NAME: test-e2e-cluster
   LOCAL_REGISTRY: test-e2e-registry
   LOCAL_REGISTRY_PORT: 5001
@@ -44,6 +44,8 @@ jobs:
     steps:
     - name: 📥  Checkout code
       uses: actions/checkout@v4
+      with:
+        path: redkeyoperator
 
     - name: 🔀  Resolve Robin ref
       id: robin-ref
@@ -77,7 +79,7 @@ jobs:
     - name: 🏗️  Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: go.mod
+        go-version-file: redkeyoperator/go.mod
         cache: true
 
     - name: 🔧  Install kubectl
@@ -95,22 +97,26 @@ jobs:
         registry_port: ${{ env.LOCAL_REGISTRY_PORT }}
 
     - name: 🏗️  Build operator image
+      working-directory: redkeyoperator
       run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
 
     - name: 🏗️  Build Robin image
       working-directory: redkeyrobin
-      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=..
+      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkeyoperator
         
     - name: 📥 Push operator image
+      working-directory: redkeyoperator
       run: make docker-push IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
 
     - name: 📚  Install Ginkgo CLI
       run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
     
     - name: 📚 Install CRD
+      working-directory: redkeyoperator
       run: make install
 
     - name: ✅  Run E2E test suite
+      working-directory: redkeyoperator
       env:
         TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
       run: |
