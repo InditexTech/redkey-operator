@@ -25,9 +25,9 @@ const (
 	ClusterStatusScalingUp    = "ScalingUp"
 	ClusterStatusScalingDown  = "ScalingDown"
 	ClusterStatusUpgrading    = "Upgrading"
+	ClusterStatusMaintenance  = "Maintenance"
 	ClusterPhaseRebalancing   = "Rebalancing"
 	ClusterPhaseError         = "Error"
-	ClusterPhaseMaintenance   = "Maintenance"
 )
 
 // RedkeyClusterConfigSpec defines the desired state of RedkeyClusterConfig.

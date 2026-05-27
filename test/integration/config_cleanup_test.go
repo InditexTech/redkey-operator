@@ -265,6 +265,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 				Spec: redisv1.RedkeyClusterSpec{
 					Ephemeral: true,
 					Primaries: 3,
+					Robin:     redisv1.RobinSpec{Image: "redkey-robin:latest"},
 				},
 			}
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())

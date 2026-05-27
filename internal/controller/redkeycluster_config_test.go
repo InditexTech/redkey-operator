@@ -105,7 +105,8 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Ephemeral: true,
 			Primaries: 3,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Config: &redisv1.RobinConfig{
 					Reconciler: &redisv1.RobinConfigReconciler{
 						IntervalSeconds:        &reconcileInterval,

@@ -51,7 +51,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 				Spec: redisv1.RedkeyClusterSpec{
 					Ephemeral: true,
 					Primaries: 3,
-					Robin: &redisv1.RobinSpec{
+					Robin: redisv1.RobinSpec{
+						Image: "custom-robin:v1.0.0",
 						Template: &redisv1.PartialPodTemplateSpec{
 							Spec: redisv1.PartialPodSpec{
 								Containers: []corev1.Container{
@@ -130,7 +131,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 				Spec: redisv1.RedkeyClusterSpec{
 					Ephemeral: true,
 					Primaries: 3,
-					Robin: &redisv1.RobinSpec{
+					Robin: redisv1.RobinSpec{
+						Image: "robin:v2.0.0",
 						Template: &redisv1.PartialPodTemplateSpec{
 							Spec: redisv1.PartialPodSpec{
 								Containers: []corev1.Container{
@@ -240,7 +242,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 				Spec: redisv1.RedkeyClusterSpec{
 					Ephemeral: true,
 					Primaries: 3,
-					Robin: &redisv1.RobinSpec{
+					Robin: redisv1.RobinSpec{
+						Image: "robin:v1.0.0",
 						Template: &redisv1.PartialPodTemplateSpec{
 							Spec: redisv1.PartialPodSpec{
 								Containers: []corev1.Container{

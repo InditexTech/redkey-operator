@@ -220,23 +220,37 @@ func (r *RedkeyClusterReconciler) buildDesiredRobinDeployment(cluster *redisv1.R
 
 	// Base labels (always present)
 	deployLabels := map[string]string{
-		ClusterLabel: cluster.Name,
-		"app":        "redkey-robin",
+		ClusterLabel:                   cluster.Name,
+		"app":                          "redkey-robin",
+		"redkey.inditex.dev/component": "robin",
 	}
 	podLabels := map[string]string{
-		ClusterLabel: cluster.Name,
-		"app":        "redkey-robin",
+		ClusterLabel:                   cluster.Name,
+		"app":                          "redkey-robin",
+		"redkey.inditex.dev/component": "robin",
 	}
 
 	// Base container
 	container := corev1.Container{
 		Name:  "robin",
-		Image: "redkey-robin:latest",
+		Image: cluster.Spec.Robin.Image,
 		Args: []string{
 			"--cluster-name=$(CLUSTER_NAME)",
 			"--namespace=$(NAMESPACE)",
 		},
 		Env: robinDefaultEnvVars(cluster),
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "metrics",
+				ContainerPort: 8080,
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+	}
+
+	// Apply first-level robin resources if present
+	if cluster.Spec.Robin.Resources != nil {
+		container.Resources = *cluster.Spec.Robin.Resources
 	}
 
 	// Pod spec defaults
@@ -247,7 +261,7 @@ func (r *RedkeyClusterReconciler) buildDesiredRobinDeployment(cluster *redisv1.R
 	var podAnnotations map[string]string
 
 	// Apply overrides from cluster.Spec.Robin.Template if present
-	if cluster.Spec.Robin != nil && cluster.Spec.Robin.Template != nil {
+	if cluster.Spec.Robin.Template != nil {
 		tpl := cluster.Spec.Robin.Template
 
 		// Pod-level metadata

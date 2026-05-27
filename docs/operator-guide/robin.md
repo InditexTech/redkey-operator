@@ -16,39 +16,67 @@ The Operator deploys a Deployment and a ConfigMap for Robin given the configurat
 
 ## How to deploy Robin
 
-Robin deployment can be configured in `spec.robin.template`. This field is an object representing a [PodSpecTemplate](https://github.com/kubernetes/kubernetes/blob/v1.32.2/staging/src/k8s.io/api/core/v1/types.go#L5050). The template is then used by the Redkey Operator to create, update or delete a Deployment with Robin, whose name is `<RedkeyClusterName>-robin`.
+### Required fields
 
-Robin connects to all the nodes of the Redkey Cluster using port 6379 and the K8s Redis Pod domain name (e.g.: redkey-cluster-sample-0.redis-cluster-sample). Therefore, a DNS resolving that name to the Pod IP is needed for Robin to work.
-
-### Example
+The Robin container image is specified in `spec.robin.image`:
 
 ```yaml
-apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
-...
 spec:
-  ...
   robin:
-    template:
-      ...
-      spec:
-        containers:
-          - image: 'redkey-robin:0.0.1'
-            name: robin
-            imagePullPolicy: Always
-            ports:
-              - containerPort: 8080
-                name: prometheus
-                protocol: TCP
-            volumeMounts:
-              - mountPath: /opt/conf/configmap
-                name: redkey-cluster-sample-robin-config
-        volumes:
-          - configMap:
-              defaultMode: 420
-              name: redkey-cluster-sample-robin
-            name: redkey-cluster-sample-robin-config
+    image: ghcr.io/inditextech/redkey-robin:0.1.0
 ```
+
+The operator automatically exposes the metrics port (8080/TCP) on the Robin container.
+
+### Resource requirements
+
+Robin resource requests and limits are configured directly in `spec.robin.resources`:
+
+```yaml
+spec:
+  robin:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+```
+
+### Advanced template override
+
+For advanced use cases (custom tolerations, node selectors, security contexts, volumes, etc.), the full PodTemplateSpec can be overridden via `spec.robin.template`. Fields set in the template take precedence over first-level fields like `resources`.
+
+```yaml
+spec:
+  robin:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    template:
+      spec:
+        tolerations:
+          - key: "dedicated"
+            operator: "Equal"
+            value: "redis"
+            effect: "NoSchedule"
+        containers:
+          - name: robin
+            resources:  # overrides spec.robin.resources
+              requests:
+                cpu: 1
+                memory: 512Mi
+```
+
+The template supports the following overrides:
+
+| Level | Fields |
+|-------|--------|
+| Pod metadata | `labels`, `annotations` |
+| Pod spec | `nodeSelector`, `tolerations`, `affinity`, `securityContext`, `imagePullSecrets`, `priorityClassName`, `topologySpreadConstraints`, `volumes` |
+| Container (first) | `image`, `resources`, `env`, `envFrom`, `volumeMounts`, `securityContext` |
 
 ## How to configure Robin
 

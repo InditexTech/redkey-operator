@@ -91,6 +91,7 @@ var _ = Describe("Configuration Creation", func() {
 					ReplicasPerPrimary:   1,
 					Ephemeral:            true,
 					Image:                "redis:7.2",
+					Robin:                redisv1.RobinSpec{Image: "redkey-robin:latest"},
 					Version:              "7.2.0",
 					Config:               "maxmemory-policy allkeys-lru",
 					DeletePVC:            &deletePVC,
@@ -160,7 +161,8 @@ var _ = Describe("Configuration Creation", func() {
 				Spec: redisv1.RedkeyClusterSpec{
 					Ephemeral: true,
 					Primaries: 3,
-					Robin: &redisv1.RobinSpec{
+					Robin: redisv1.RobinSpec{
+						Image: "redkey-robin:latest",
 						Config: &redisv1.RobinConfig{
 							Reconciler: &redisv1.RobinConfigReconciler{
 								IntervalSeconds:        &intervalSec,
@@ -224,7 +226,7 @@ var _ = Describe("Configuration Creation", func() {
 			deleteCluster(ctx, clusterName, namespace)
 		})
 
-		It("should not set RobinConfig when Robin is nil", func() {
+		It("should not set RobinConfig when Robin.Config is nil", func() {
 			reconcileCluster(ctx, namespacedName)
 
 			configs := listConfigs(ctx, clusterName, namespace)

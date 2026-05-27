@@ -42,6 +42,7 @@ func newTestCluster(name, namespace string) *redisv1.RedkeyCluster { //nolint:un
 		Spec: redisv1.RedkeyClusterSpec{
 			Ephemeral: true,
 			Primaries: 3,
+			Robin:     redisv1.RobinSpec{Image: "redkey-robin:latest"},
 		},
 	}
 }

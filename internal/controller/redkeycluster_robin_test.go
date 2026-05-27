@@ -414,6 +414,7 @@ func TestBuildDesiredRobinDeployment_Defaults(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
+			Robin:     redisv1.RobinSpec{Image: "redkey-robin:latest"},
 		},
 	}
 
@@ -426,6 +427,10 @@ func TestBuildDesiredRobinDeployment_Defaults(t *testing.T) {
 
 	assert.Equal(t, "my-cluster", deploy.Labels[ClusterLabel])
 	assert.Equal(t, "redkey-robin", deploy.Labels["app"])
+	assert.Equal(t, "robin", deploy.Labels["redkey.inditex.dev/component"])
+	assert.Equal(t, "my-cluster", deploy.Spec.Template.Labels[ClusterLabel])
+	assert.Equal(t, "redkey-robin", deploy.Spec.Template.Labels["app"])
+	assert.Equal(t, "robin", deploy.Spec.Template.Labels["redkey.inditex.dev/component"])
 
 	require.Len(t, deploy.Spec.Template.Spec.Containers, 1)
 	container := deploy.Spec.Template.Spec.Containers[0]
@@ -440,7 +445,31 @@ func TestBuildDesiredRobinDeployment_Defaults(t *testing.T) {
 	assert.Equal(t, "my-cluster", container.Env[0].Value)
 	assert.Equal(t, "NAMESPACE", container.Env[1].Name)
 	assert.Equal(t, "production", container.Env[1].Value)
+	require.Len(t, container.Ports, 1)
+	assert.Equal(t, int32(8080), container.Ports[0].ContainerPort)
+	assert.Equal(t, "metrics", container.Ports[0].Name)
 	assert.Nil(t, deploy.Spec.Template.Annotations)
+}
+
+func TestBuildDesiredRobinDeployment_UsesSpecRobinImage(t *testing.T) {
+	s := getScheme()
+	r := &RedkeyClusterReconciler{Scheme: s}
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-cluster",
+			Namespace: "default",
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Primaries: 3,
+			Ephemeral: true,
+			Robin:     redisv1.RobinSpec{Image: "localhost:5005/redkey-robin:e2e"},
+		},
+	}
+
+	deploy := r.buildDesiredRobinDeployment(cluster)
+	require.Len(t, deploy.Spec.Template.Spec.Containers, 1)
+	assert.Equal(t, "localhost:5005/redkey-robin:e2e", deploy.Spec.Template.Spec.Containers[0].Image)
 }
 
 func TestBuildDesiredRobinDeployment_WithCustomImage(t *testing.T) {
@@ -455,7 +484,8 @@ func TestBuildDesiredRobinDeployment_WithCustomImage(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						Containers: []corev1.Container{
@@ -487,7 +517,8 @@ func TestBuildDesiredRobinDeployment_WithResources(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						Containers: []corev1.Container{
@@ -529,7 +560,8 @@ func TestBuildDesiredRobinDeployment_WithPodLabelsAndAnnotations(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Metadata: metav1.ObjectMeta{
 						Labels: map[string]string{
@@ -567,7 +599,8 @@ func TestBuildDesiredRobinDeployment_WithNodeSelectorAndTolerations(t *testing.T
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						NodeSelector: map[string]string{
@@ -608,7 +641,8 @@ func TestBuildDesiredRobinDeployment_WithAffinity(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						Affinity: &corev1.Affinity{
@@ -655,7 +689,8 @@ func TestBuildDesiredRobinDeployment_WithSecurityContext(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						SecurityContext: &corev1.PodSecurityContext{
@@ -695,7 +730,8 @@ func TestBuildDesiredRobinDeployment_WithEnvAndVolumes(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						Containers: []corev1.Container{
@@ -759,7 +795,8 @@ func TestBuildDesiredRobinDeployment_WithImagePullSecrets(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						ImagePullSecrets: []corev1.LocalObjectReference{
@@ -1027,7 +1064,8 @@ func TestEnsureRobinDeployment_PatchesOnDrift(t *testing.T) {
 		Spec: redisv1.RedkeyClusterSpec{
 			Primaries: 3,
 			Ephemeral: true,
-			Robin: &redisv1.RobinSpec{
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
 				Template: &redisv1.PartialPodTemplateSpec{
 					Spec: redisv1.PartialPodSpec{
 						Containers: []corev1.Container{

@@ -31,6 +31,14 @@ spec:
       cpu: 100m
       memory: 128Mi
   robin:
+    image: ghcr.io/inditextech/redkey-robin:latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 100Mi
+      limits:
+        cpu: 1
+        memory: 200Mi
     config:
       reconciler:
         intervalSeconds: 30
@@ -65,23 +73,23 @@ spec:
           - mem_aof_buffer
       profiling:
         enabled: true
-    template:
-      spec:
-        containers:
-          - image: localhost:5005/redkey-robin:0.2.0
-            name: robin
-            imagePullPolicy: Always
-            ports:
-              - containerPort: 8080
-                name: prometheus
-                protocol: TCP
-            resources:
-              requests:
-                cpu: 500m
-                memory: 100Mi
-              limits:
-                cpu: 1
-                memory: 200Mi
+    # template:
+    #   spec:
+    #     containers:
+    #       - image: ghcr.io/inditextech/redkey-robin:latest
+    #         name: robin
+    #         imagePullPolicy: Always
+    #         ports:
+    #           - containerPort: 8080
+    #             name: prometheus
+    #             protocol: TCP
+    #         resources:
+    #           requests:
+    #             cpu: 500m
+    #             memory: 100Mi
+    #           limits:
+    #             cpu: 1
+    #             memory: 200Mi
   # override:
   #   service:
   #     metadata:

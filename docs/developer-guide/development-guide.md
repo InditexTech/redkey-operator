@@ -226,20 +226,23 @@ End-to-end tests
 
 E2E tests simulate real-world scenarios, testing the Operator's functionality from start to finish, including interactions with the Kubernetes API and the Redkey cluster.
 
-The E2E tests are located in the `test/e2e` directory. We need a Kubernetes cluster to run them, so make sure you have one running (e.g., with Kind), the CRDs are installed and Operator and Robin images are available before executing the following command:
+The E2E tests are located in the `test/e2e` directory. We need a Kubernetes cluster to run them, so make sure the operator and Robin images are already built locally before executing the following command. `make test-e2e` will create the Kind cluster if needed and load both images into it.
 
 ```shell
-make test-e2e
+make test-e2e IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
 ```
 
-We provide an easy way to run the E2E tests with a local Kind cluster:
+To run only a subset of specs, pass a Ginkgo label filter through `LABEL`:
 
 ```shell
-# Create a Kind cluster (no registry is created with this command, the Operator image will be built and loaded directly into the cluster)
-make setup-test-e2e
+make test-e2e IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev LABEL=creation
+```
 
-# Run the E2E tests
-make test-e2e
+We provide an easy way to prepare and clean up the local Kind cluster:
+
+```shell
+# Create the Kind cluster ahead of time if you want to keep it between runs
+make setup-test-e2e
 
 # Cleanup the Kind cluster
 make cleanup-test-e2e

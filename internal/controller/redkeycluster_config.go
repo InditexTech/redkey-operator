@@ -95,7 +95,7 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 	}
 
 	// Pass Robin config if present
-	if cluster.Spec.Robin != nil && cluster.Spec.Robin.Config != nil {
+	if cluster.Spec.Robin.Config != nil {
 		config.Spec.RobinConfig = cluster.Spec.Robin.Config
 	}
 

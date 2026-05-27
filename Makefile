@@ -17,6 +17,8 @@ NAME := redkey-operator
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.2.0
 
+# ROBIN_VERSION defines the version of the Robin image used in E2E tests.
+ROBIN_VERSION ?= 0.2.0
 
 ## Tool Versions and Configuration
 
@@ -101,6 +103,9 @@ IMAGE_TAG_BASE ?= localhost:$(REGISTRY_PORT)/$(NAME)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
+
+# Robin image URL.
+IMG_ROBIN ?= localhost:$(REGISTRY_PORT)/redkey-robin:$(ROBIN_VERSION)
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -213,28 +218,32 @@ KIND_CLUSTER ?= $(NAME)-dev
 
 .PHONY: setup-kind
 setup-kind: kind ## Set up a Kind cluster for local tests if it does not exist
-	@if [ "$(KIND_CLUSTER)" = "$(NAME)-dev" ]; then \
+	@registry_created=false; \
+	if [ "$(KIND_CLUSTER)" = "$(NAME)-dev" ]; then \
 		if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' $(REGISTRY_NAME) 2>/dev/null || echo false)" != "true" ]; then \
 			echo "Starting local registry $(REGISTRY_NAME) on port $(REGISTRY_PORT)..."; \
 			$(CONTAINER_TOOL) run -d --restart=always -p "$(REGISTRY_PORT):5000" --name $(REGISTRY_NAME) registry:2; \
+			registry_created=true; \
 		else \
 			echo "Local registry $(REGISTRY_NAME) is already running."; \
 		fi; \
-	fi
-	@if echo "$$($(KIND) get clusters)" | grep -qx "$(KIND_CLUSTER)"; then \
+	fi; \
+	if echo "$$($(KIND) get clusters)" | grep -qx "$(KIND_CLUSTER)"; then \
 		echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation."; \
 	else \
 		echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
 		$(KIND) create cluster --name $(KIND_CLUSTER) --config test/config/kind-config.yaml; \
-		echo "Connecting registry to cluster nodes..."; \
-		for node in $$($(KIND) get nodes --name $(KIND_CLUSTER)); do \
-			$(CONTAINER_TOOL) exec "$$node" mkdir -p "/etc/containerd/certs.d/localhost:$(REGISTRY_PORT)"; \
-			echo "[host.\"http://$(REGISTRY_NAME):5000\"]" | $(CONTAINER_TOOL) exec -i "$$node" cp /dev/stdin "/etc/containerd/certs.d/localhost:$(REGISTRY_PORT)/hosts.toml"; \
-		done; \
-		echo "Registry configured successfully in kind cluster."; \
-		if [ "$$($(CONTAINER_TOOL) inspect -f '{{json .NetworkSettings.Networks.kind}}' $(REGISTRY_NAME))" = 'null' ]; then \
-			echo "Connecting local registry $(REGISTRY_NAME) to 'kind' network..."; \
-			$(CONTAINER_TOOL) network connect "kind" $(REGISTRY_NAME); \
+		if [ "$$registry_created" = "true" ]; then \
+			echo "Connecting registry to cluster nodes..."; \
+			for node in $$($(KIND) get nodes --name $(KIND_CLUSTER)); do \
+				$(CONTAINER_TOOL) exec "$$node" mkdir -p "/etc/containerd/certs.d/localhost:$(REGISTRY_PORT)"; \
+				echo "[host.\"http://$(REGISTRY_NAME):5000\"]" | $(CONTAINER_TOOL) exec -i "$$node" cp /dev/stdin "/etc/containerd/certs.d/localhost:$(REGISTRY_PORT)/hosts.toml"; \
+			done; \
+			echo "Registry configured successfully in kind cluster."; \
+			if [ "$$($(CONTAINER_TOOL) inspect -f '{{json .NetworkSettings.Networks.kind}}' $(REGISTRY_NAME))" = 'null' ]; then \
+				echo "Connecting local registry $(REGISTRY_NAME) to 'kind' network..."; \
+				$(CONTAINER_TOOL) network connect "kind" $(REGISTRY_NAME); \
+			fi; \
 		fi; \
 	fi
 
@@ -254,14 +263,21 @@ kind-load: kind docker-build ## Load the docker image into the Kind cluster
 # - passing it as an arg to the test-e2e target (e.g. make test-e2e KIND_CLUSTER_E2E=my-e2e-cluster)
 KIND_CLUSTER_E2E ?= $(NAME)-test-e2e
 
+# IMAGE_OPERATOR specifies the prebuilt operator image used for E2E tests.
+IMAGE_OPERATOR ?= $(IMG)
+
+# IMAGE_ROBIN specifies the prebuilt Robin image used for E2E tests.
+IMAGE_ROBIN ?= $(IMG_ROBIN)
+
 .PHONY: setup-test-e2e
-setup-test-e2e: ## Set up the environment for e2e tests, including a Kind cluster and loading the manager image into it.
+setup-test-e2e: ## Set up the Kind cluster used by E2E tests.
 	$(MAKE) setup-kind KIND_CLUSTER=$(KIND_CLUSTER_E2E)
-	$(MAKE) kind-load KIND_CLUSTER=$(KIND_CLUSTER_E2E)
 
 .PHONY: test-e2e
-test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND_CLUSTER=$(KIND_CLUSTER_E2E) CERT_MANAGER_INSTALL_SKIP=true OPERATOR_IMAGE=${IMG} go test ./test/e2e/ -v -ginkgo.v
+test-e2e: manifests generate fmt vet setup-test-e2e kind ## Run E2E tests against prebuilt images loaded into Kind.
+	$(KIND) load docker-image $(IMAGE_OPERATOR) --name $(KIND_CLUSTER_E2E)
+	$(KIND) load docker-image $(IMAGE_ROBIN) --name $(KIND_CLUSTER_E2E)
+	KIND_CLUSTER=$(KIND_CLUSTER_E2E) IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN) go test ./test/e2e/ -v -ginkgo.v $(if $(LABEL),-ginkgo.label-filter='$(LABEL)',) -timeout 90m
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
@@ -355,7 +371,7 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 
 .PHONY: deploy-samples
 deploy-samples: kustomize ## Deploy sample resources to the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/samples | $(KUBECTL) apply --server-side -f -
+	$(KUSTOMIZE) build config/samples | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
 
 .PHONY: undeploy-samples
 undeploy-samples: kustomize ## Undeploy sample resources from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

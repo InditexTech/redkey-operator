@@ -58,27 +58,10 @@ spec:
     {{- toYaml .Values.override | nindent 4 }}
   {{- end }}
   robin:
+    image: {{ .Values.robin.image }}
+    {{- if .Values.robin.resources }}
+    resources:
+      {{- toYaml .Values.robin.resources | nindent 6 }}
+    {{- end }}
     config:
       {{- toYaml .Values.robin.config | nindent 6 }}
-    template:
-      spec:
-        containers:
-          - image: {{ .Values.robin.image }}
-            name: robin
-            imagePullPolicy: {{ .Values.robin.imagePullPolicy }}
-            ports:
-              - containerPort: 8080
-                name: prometheus
-                protocol: TCP
-            volumeMounts:
-              - mountPath: /opt/conf/configmap
-                name: {{ include "redkey-cluster.name" . }}-robin-config
-            {{- if .Values.robin.resources }}
-            resources:
-              {{- toYaml .Values.robin.resources | nindent 14 }}
-            {{- end }}
-        volumes:
-          - configMap:
-              defaultMode: 420
-              name: {{ include "redkey-cluster.name" . }}-robin
-            name: {{ include "redkey-cluster.name" . }}-robin-config

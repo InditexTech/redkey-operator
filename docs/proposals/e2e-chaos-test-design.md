@@ -492,8 +492,8 @@ func verifyK6Completed(c client.Client, namespace, jobName string, timeout time.
 | `CHAOS_SEED`             | *(auto: Ginkgo random seed)*                         | Fixed random seed for reproducibility.                                                                         |
 | `CHAOS_TIMEOUT`          | `100m`                                               | Maximum Ginkgo suite timeout (`--timeout`). Must accommodate iterations x recovery time / parallelism.         |
 | `CHAOS_PACKAGES`         | `./test/chaos`                                       | Go test packages for the chaos suite.                                                                          |
-| `IMG`                    | `localhost:5001/redkey-operator:$(VERSION)`           | Operator image. Passed to tests as `OPERATOR_IMAGE`.                                                           |
-| `IMG_ROBIN`              | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)`  | Robin image. Passed to tests as `ROBIN_IMAGE`.                                                                 |
+| `IMG`                    | `localhost:5001/redkey-operator:$(VERSION)`           | Default operator image build tag. Used as fallback for `IMAGE_OPERATOR`.                                       |
+| `IMG_ROBIN`              | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)`  | Legacy Robin image variable. Prefer `IMAGE_ROBIN` for E2E runs.                                                |
 | `REDIS_IMAGE`            | `redis:8.4.0`                                        | Redis image used for cluster pods.                                                                             |
 | `GINKGO_EXTRA_OPTS`      | *(empty)*                                            | Extra Ginkgo flags (e.g. `--focus="..."`, `--label-filter=...`).                                               |
 
@@ -503,8 +503,8 @@ func verifyK6Completed(c client.Client, namespace, jobName string, timeout time.
 |-----------------------------------|---------------------------|------------------------------------------------------------------------------------------|
 | `CHAOS_KEEP_NAMESPACE_ON_FAILED`  | *(unset)*                 | When non-empty, preserves failed test namespaces for post-mortem inspection.              |
 | `KUBECONFIG`                      | `~/.kube/config`          | Path to kubeconfig file.                                                                 |
-| `OPERATOR_IMAGE`                  | `localhost:5001/redkey-operator:dev` | Operator image (set automatically by `GINKGO_ENV` from `IMG`).                  |
-| `ROBIN_IMAGE`                     | `localhost:5001/redkey-robin:dev`    | Robin image (set automatically by `GINKGO_ENV` from `IMG_ROBIN`).               |
+| `IMAGE_OPERATOR`                  | `localhost:5001/redkey-operator:dev` | Operator image loaded into Kind and deployed by the E2E suite.                  |
+| `IMAGE_ROBIN`                     | `localhost:5001/redkey-robin:dev`    | Robin image loaded into Kind and injected into the operator deployment.          |
 
 ### Recommended `.envrc` for local development
 

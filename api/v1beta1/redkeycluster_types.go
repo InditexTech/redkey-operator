@@ -47,9 +47,9 @@ type RedkeyClusterSpec struct {
 	// Backup specifies if the RedkeyCluster should be backed up.
 	Backup bool `json:"backup,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// Robin specifies the robin configuration for the RedkeyCluster.
-	Robin *RobinSpec `json:"robin,omitempty"`
+	// +kubebuilder:validation:Required
+	// Robin specifies the Robin sidecar configuration for the RedkeyCluster.
+	Robin RobinSpec `json:"robin"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=true
@@ -195,8 +195,20 @@ type RedkeyClusterList struct {
 
 // RobinSpec defines the desired state of Robin configuration for RedkeyCluster.
 type RobinSpec struct {
+	// +kubebuilder:validation:Required
+	// Image is the Robin container image to deploy for this cluster.
+	Image string `json:"image"`
+
+	// +kubebuilder:validation:Optional
+	// Resources defines the resource requirements for the Robin container.
+	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Template allows advanced overrides of the Robin Deployment's PodTemplateSpec.
+	// Fields set here take precedence over first-level fields like Resources.
 	Template *PartialPodTemplateSpec `json:"template,omitempty"`
-	Config   *RobinConfig            `json:"config,omitempty"`
+
+	Config *RobinConfig `json:"config,omitempty"`
 }
 
 // RobinConfig defines Robin's operational settings.
