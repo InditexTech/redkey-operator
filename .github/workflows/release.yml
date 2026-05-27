@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
-name: 🚀 Release
+name: Release
 permissions: read-all
 
 on:
@@ -14,21 +14,21 @@ env:
 
 jobs:
   release:
-    name: 🏷️ Release
+    name: Release
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       user_agent_version: ${{ steps.version.outputs.user_agent_version }}
     steps:
-      - name: 🛎️ Checkout
+      - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
-      - name: 🧪 Check bundle generation
+      - name: Check bundle generation
         run: |
             make bundle IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: 📝 Load Operator version
+      - name: Load Operator version
         id: version
         run: |
           echo "version=$(make version)" >> $GITHUB_OUTPUT
@@ -36,11 +36,11 @@ jobs:
           echo $GITHUB_OUTPUT
 
   check:
-    name: 🔎 Check versions
+    name: Check versions
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: 🔎 Check versions
+      - name: Check versions
         run: |
           echo "version: ${{ needs.release.outputs.version }}"
           echo "user_agent_version: ${{ needs.release.outputs.user_agent_version }}"
@@ -57,40 +57,40 @@ jobs:
           fi
 
   build:
-    name: 🛠️ Build Operator images
+    name: Build Operator images
     needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
     steps:
-      - name: 🛎️ Checkout
+      - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
 
-      - name: 🔐 Login into ${{ env.REGISTRY }}
+      - name: Login into ${{ env.REGISTRY }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🧩 Set up QEMU
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
-      - name: 🧱 Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - name: 🏗️ Build and push multi-arch Operator image
+      - name: Build and push multi-arch Operator image
         run: |
           make docker-buildx IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: 🏗️ Build and push Operator bundle
+      - name: Build and push Operator bundle
         run: |
           make bundle IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           make bundle-build IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           make bundle-push IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: 🏗️ Build and push Operator catalog
+      - name: Build and push Operator catalog
         run: |
           make catalog-build IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           make catalog-push IMAGE_TAG_BASE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
