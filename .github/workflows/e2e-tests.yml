@@ -16,6 +16,10 @@ on:
         description: Number of parallel processes for the E2E test suite
         default: '2'
         required: false
+      robin_ref:
+        description: Branch, tag or SHA to checkout from the Robin repository
+        default: main
+        required: false
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.sha }}
@@ -41,6 +45,35 @@ jobs:
     - name: 📥  Checkout code
       uses: actions/checkout@v4
 
+    - name: 🔀  Resolve Robin ref
+      id: robin-ref
+      env:
+        INPUT_ROBIN_REF: ${{ github.event.inputs.robin_ref || '' }}
+        PR_HEAD_REF: ${{ github.head_ref || '' }}
+        PR_BODY: ${{ github.event.pull_request.body || '' }}
+      run: |
+        robin_ref="${INPUT_ROBIN_REF}"
+
+        if [[ -z "${robin_ref}" && -n "${PR_BODY}" ]]; then
+          robin_ref="$(printf '%s\n' "${PR_BODY}" | sed -nE 's/^robin-ref:[[:space:]]*(.+)$/\1/p' | head -n1)"
+        fi
+
+        if [[ -z "${robin_ref}" && -n "${PR_HEAD_REF}" ]]; then
+          if git ls-remote --exit-code --heads https://github.com/InditexTech/redkeyrobin.git "${PR_HEAD_REF}" >/dev/null 2>&1; then
+            robin_ref="${PR_HEAD_REF}"
+          fi
+        fi
+
+        robin_ref="${robin_ref:-main}"
+        echo "ref=${robin_ref}" >> "$GITHUB_OUTPUT"
+
+    - name: 📥  Checkout Robin code
+      uses: actions/checkout@v4
+      with:
+        repository: InditexTech/redkeyrobin
+        ref: ${{ steps.robin-ref.outputs.ref }}
+        path: redkeyrobin
+
     - name: 🏗️  Set up Go
       uses: actions/setup-go@v5
       with:
@@ -63,6 +96,10 @@ jobs:
 
     - name: 🏗️  Build operator image
       run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
+
+    - name: 🏗️  Build Robin image
+      working-directory: redkeyrobin
+      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=..
         
     - name: 📥 Push operator image
       run: make docker-push IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
@@ -78,7 +115,8 @@ jobs:
         TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
       run: |
         make test-e2e \
-          IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }} \
+          IMAGE_OPERATOR=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }} \
+          IMAGE_ROBIN=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} \
           TEST_PARALLEL_PROCESS=${{ env.TEST_PARALLEL_PROCESSES }} \
           GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }} \
           E2E_RECONCILE_INTERVAL=5 \
