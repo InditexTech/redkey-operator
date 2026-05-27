@@ -269,6 +269,33 @@ IMAGE_OPERATOR ?= $(IMG)
 # IMAGE_ROBIN specifies the prebuilt Robin image used for E2E tests.
 IMAGE_ROBIN ?= $(IMG_ROBIN)
 
+# TEST_PARALLEL_PROCESS defines the number of parallel Ginkgo processes for E2E tests.
+# GitHub runners (ubuntu-24.04) have 4 vCPUs and 16GB RAM. Default: 1 (serial) for local dev.
+# Recommended: 2 for CI runners. Set to 1 to disable parallelism.
+# Parallel execution requires the ginkgo CLI (installed via `go install github.com/onsi/ginkgo/v2/ginkgo`).
+TEST_PARALLEL_PROCESS ?= 1
+
+# E2E tuning variables (passed as env vars to the test binary).
+# E2E_RECONCILE_INTERVAL: Robin reconcile loop interval in seconds (applies to normal, error and wait intervals).
+#   Controls how frequently Robin checks and reconciles the Redis cluster state. Lower = faster convergence.
+# E2E_POLL_INTERVAL: Polling interval in seconds for test wait helpers (WaitForClusterReady, WaitForClusterPhase, etc.).
+#   Controls how often the test framework checks if a condition is met.
+# E2E_CREATION_TIMEOUT: Maximum seconds to wait for a cluster to reach Ready state after creation.
+#   Increase if tests timeout during cluster creation on slow environments.
+# E2E_HEALTH_TIMEOUT: Maximum seconds to wait for health-related operations (remediation, node recovery).
+#   Increase for tests that involve pod restarts or network disruptions.
+E2E_RECONCILE_INTERVAL ?=
+E2E_POLL_INTERVAL ?=
+E2E_CREATION_TIMEOUT ?=
+E2E_HEALTH_TIMEOUT ?=
+
+# E2E_ENV collects all E2E_* env vars that are set, to forward them to the test process.
+E2E_ENV = KIND_CLUSTER=$(KIND_CLUSTER_E2E) IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN)
+E2E_ENV += $(if $(E2E_RECONCILE_INTERVAL),E2E_RECONCILE_INTERVAL=$(E2E_RECONCILE_INTERVAL),)
+E2E_ENV += $(if $(E2E_POLL_INTERVAL),E2E_POLL_INTERVAL=$(E2E_POLL_INTERVAL),)
+E2E_ENV += $(if $(E2E_CREATION_TIMEOUT),E2E_CREATION_TIMEOUT=$(E2E_CREATION_TIMEOUT),)
+E2E_ENV += $(if $(E2E_HEALTH_TIMEOUT),E2E_HEALTH_TIMEOUT=$(E2E_HEALTH_TIMEOUT),)
+
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up the Kind cluster used by E2E tests.
 	$(MAKE) setup-kind KIND_CLUSTER=$(KIND_CLUSTER_E2E)
@@ -277,7 +304,17 @@ setup-test-e2e: ## Set up the Kind cluster used by E2E tests.
 test-e2e: manifests generate fmt vet setup-test-e2e kind ## Run E2E tests against prebuilt images loaded into Kind.
 	$(KIND) load docker-image $(IMAGE_OPERATOR) --name $(KIND_CLUSTER_E2E)
 	$(KIND) load docker-image $(IMAGE_ROBIN) --name $(KIND_CLUSTER_E2E)
-	KIND_CLUSTER=$(KIND_CLUSTER_E2E) IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN) go test ./test/e2e/ -v -ginkgo.v $(if $(LABEL),-ginkgo.label-filter='$(LABEL)',) -timeout 90m
+ifeq ($(TEST_PARALLEL_PROCESS),1)
+	$(E2E_ENV) go test ./test/e2e/ -v -ginkgo.v \
+		$(if $(LABEL),-ginkgo.label-filter='$(LABEL)',) \
+		-timeout 90m
+else
+	$(E2E_ENV) go run github.com/onsi/ginkgo/v2/ginkgo \
+		-v -procs=$(TEST_PARALLEL_PROCESS) \
+		$(if $(LABEL),--label-filter='$(LABEL)',) \
+		--timeout=90m \
+		./test/e2e/
+endif
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests

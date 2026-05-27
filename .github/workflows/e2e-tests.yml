@@ -80,7 +80,10 @@ jobs:
         make test-e2e \
           IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }} \
           TEST_PARALLEL_PROCESS=${{ env.TEST_PARALLEL_PROCESSES }} \
-          GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }}
+          GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }} \
+          E2E_RECONCILE_INTERVAL=5 \
+          E2E_POLL_INTERVAL=3 \
+          E2E_CREATION_TIMEOUT=180
 
     - name: 🧹  Delete KinD cluster (always)
       if: always()

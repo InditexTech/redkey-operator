@@ -30,7 +30,7 @@ const metricsServiceName = "redkey-operator-controller-manager-metrics-service"
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "redkey-operator-metrics-binding"
 
-var _ = Describe("Manager", Ordered, Label("manager"), func() {
+var _ = Describe("Manager", Ordered, Serial, Label("manager"), func() {
 	var controllerPodName string
 
 	// After all tests have been executed, clean up by removing test artifacts.

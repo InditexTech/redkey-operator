@@ -69,22 +69,11 @@ func getenvOrFallback(keys ...string) string {
 	return ""
 }
 
-var _ = BeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func() []byte {
+	// Process 1 only: install CertManager and deploy operator.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	_ = ctx
-
-	// Setup controller-runtime client
-	By("setting up the Kubernetes client")
-	scheme := runtime.NewScheme()
-	Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
-	Expect(redkeyv1beta1.AddToScheme(scheme)).To(Succeed())
-
-	cfg, err := config.GetConfig()
-	Expect(err).NotTo(HaveOccurred(), "Failed to get kubeconfig")
-
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
-	Expect(err).NotTo(HaveOccurred(), "Failed to create Kubernetes client")
 
 	// Setup CertManager
 	if !skipCertManagerInstall {
@@ -102,7 +91,7 @@ var _ = BeforeSuite(func() {
 	if !skipOperatorDeploy {
 		By("deploying the operator via make deploy")
 		cmd := exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", controllerImage))
-		_, err = utils.Run(cmd)
+		_, err := utils.Run(cmd)
 		Expect(err).NotTo(HaveOccurred(), "Failed to deploy the operator")
 
 		By("waiting for operator to be ready")
@@ -114,17 +103,32 @@ var _ = BeforeSuite(func() {
 			g.Expect(output).To(Equal("Running"))
 		}, 2*time.Minute, 5*time.Second).Should(Succeed(), "Operator pod did not reach Running state")
 	}
+
+	return nil
+}, func(_ []byte) {
+	// All processes: setup the Kubernetes client.
+	By("setting up the Kubernetes client")
+	scheme := runtime.NewScheme()
+	Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
+	Expect(redkeyv1beta1.AddToScheme(scheme)).To(Succeed())
+
+	cfg, err := config.GetConfig()
+	Expect(err).NotTo(HaveOccurred(), "Failed to get kubeconfig")
+
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Kubernetes client")
 })
 
-var _ = AfterSuite(func() {
-	// Undeploy operator
+var _ = SynchronizedAfterSuite(func() {
+	// All processes: nothing to clean up per-process.
+}, func() {
+	// Process 1 only: undeploy operator and teardown CertManager.
 	if !skipOperatorDeploy {
 		By("undeploying the operator")
 		cmd := exec.Command("make", "undeploy")
 		_, _ = utils.Run(cmd)
 	}
 
-	// Teardown CertManager
 	if !skipCertManagerInstall && !isCertManagerAlreadyInstalled {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling CertManager...\n")
 		utils.UninstallCertManager()

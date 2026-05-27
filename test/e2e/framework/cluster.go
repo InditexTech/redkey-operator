@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -64,11 +65,13 @@ type ClusterOptions struct {
 	Config               string
 	RobinConfig          *redkeyv1beta1.RobinConfig
 	Resources            *corev1.ResourceRequirements
+	RobinResources       *corev1.ResourceRequirements
 	Labels               *map[string]string
 	Pdb                  redkeyv1beta1.Pdb
 }
 
-// DefaultClusterOptions returns a basic ephemeral cluster configuration.
+// DefaultClusterOptions returns a basic ephemeral cluster configuration optimized for E2E tests.
+// Resources are minimized and Robin reconcile intervals are shortened to speed up tests.
 func DefaultClusterOptions(name, namespace string) ClusterOptions {
 	return ClusterOptions{
 		Name:                 name,
@@ -82,6 +85,8 @@ func DefaultClusterOptions(name, namespace string) ClusterOptions {
 		RobinImage:           GetRobinImage(),
 		Config:               defaultConfig,
 		Resources:            defaultResources(),
+		RobinResources:       defaultRobinResources(),
+		RobinConfig:          defaultRobinConfig(),
 	}
 }
 
@@ -111,6 +116,12 @@ func (o ClusterOptions) WithRobinConfig(config *redkeyv1beta1.RobinConfig) Clust
 	return o
 }
 
+// WithRobinResources sets custom resource requirements for the Robin container.
+func (o ClusterOptions) WithRobinResources(resources *corev1.ResourceRequirements) ClusterOptions {
+	o.RobinResources = resources
+	return o
+}
+
 // WithSkipIfSuperseded configures the skipIfSuperseded flag.
 func (o ClusterOptions) WithSkipIfSuperseded(skip bool) ClusterOptions {
 	o.SkipIfSuperseded = skip
@@ -130,7 +141,8 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 			Ephemeral:          o.Ephemeral,
 			Image:              o.RedisImage,
 			Robin: redkeyv1beta1.RobinSpec{
-				Image: o.RobinImage,
+				Image:     o.RobinImage,
+				Resources: o.RobinResources,
 			},
 			Config:               o.Config,
 			SkipIfSuperseded:     o.SkipIfSuperseded,
@@ -240,11 +252,52 @@ func defaultResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("100m"),
-			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceCPU:    resource.MustParse("10m"),
+			corev1.ResourceMemory: resource.MustParse("32Mi"),
+		},
+	}
+}
+
+func defaultRobinResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
 			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("10m"),
+			corev1.ResourceMemory: resource.MustParse("32Mi"),
+		},
+	}
+}
+
+// defaultRobinConfig returns a RobinConfig with shortened intervals for faster E2E test execution.
+// Override via E2E_RECONCILE_INTERVAL env var (in seconds) — applies to all three intervals.
+func defaultRobinConfig() *redkeyv1beta1.RobinConfig {
+	reconcileInterval := 5
+	reconcileIntervalOnError := 3
+	reconcileIntervalOnWait := 3
+	clusterMeetWait := 2
+
+	if v := os.Getenv("E2E_RECONCILE_INTERVAL"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			reconcileInterval = parsed
+			reconcileIntervalOnError = parsed
+			reconcileIntervalOnWait = parsed
+		}
+	}
+
+	return &redkeyv1beta1.RobinConfig{
+		Reconciler: &redkeyv1beta1.RobinConfigReconciler{
+			IntervalSeconds:        &reconcileInterval,
+			IntervalOnErrorSeconds: &reconcileIntervalOnError,
+			IntervalOnWaitSeconds:  &reconcileIntervalOnWait,
+		},
+		Cluster: &redkeyv1beta1.RobinConfigCluster{
+			ClusterMeetWaitSeconds: &clusterMeetWait,
 		},
 	}
 }

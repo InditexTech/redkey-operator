@@ -7,6 +7,8 @@ package framework
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
@@ -19,12 +21,25 @@ import (
 )
 
 // Default timeouts and intervals for polling.
-const (
+// These can be overridden via environment variables for CI tuning:
+//   - E2E_POLL_INTERVAL: poll interval in seconds (default: 3)
+//   - E2E_CREATION_TIMEOUT: creation timeout in seconds (default: 180)
+//   - E2E_HEALTH_TIMEOUT: health timeout in seconds (default: 600)
+var (
 	DefaultTimeout      = 10 * time.Minute
-	DefaultPollInterval = 5 * time.Second
-	CreationTimeout     = 5 * time.Minute
-	HealthTimeout       = 10 * time.Minute
+	DefaultPollInterval = envDurationSeconds("E2E_POLL_INTERVAL", 3)
+	CreationTimeout     = envDurationSeconds("E2E_CREATION_TIMEOUT", 180)
+	HealthTimeout       = envDurationSeconds("E2E_HEALTH_TIMEOUT", 600)
 )
+
+func envDurationSeconds(key string, defaultSeconds int) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			return time.Duration(parsed) * time.Second
+		}
+	}
+	return time.Duration(defaultSeconds) * time.Second
+}
 
 // WaitForClusterPhase waits until the RedkeyCluster has the specified .status.phase.
 func WaitForClusterPhase(

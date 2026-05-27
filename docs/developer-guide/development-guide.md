@@ -24,6 +24,11 @@ We tried to make it as comprehensive as possible, but if you have any questions 
 - [Local testing](#local-testing)
   - [Unit tests](#unit-tests)
   - [Integration tests](#integration-tests)
+  - [End-to-end tests](#end-to-end-tests)
+    - [Parallel execution](#parallel-execution)
+    - [E2E environment variables](#e2e-environment-variables)
+    - [Resource optimization](#resource-optimization)
+    - [Available labels](#available-labels)
   - [Chaos tests](#chaos-tests)
     - [Chaos test environment variables](#chaos-test-environment-variables)
     - [Relationship between parallelism and timeouts](#relationship-between-parallelism-and-timeouts)
@@ -247,6 +252,80 @@ make setup-test-e2e
 # Cleanup the Kind cluster
 make cleanup-test-e2e
 ```
+
+#### Parallel execution
+
+E2E tests support parallel execution via Ginkgo's `-procs` flag. Each top-level
+`Describe` block runs in its own isolated namespace, making most specs safe for
+concurrent execution. Tests that interact with global operator state (Manager,
+Operator Resources, Helm Deployment) are marked `Serial` and will never run
+concurrently with other specs.
+
+To run tests in parallel, set `TEST_PARALLEL_PROCESS`:
+
+```shell
+make test-e2e TEST_PARALLEL_PROCESS=2 IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
+```
+
+When `TEST_PARALLEL_PROCESS=1` (default), tests run serially — this is
+recommended for local development to minimize resource usage. In CI (GitHub
+Actions), the default is `2` to balance speed and resource constraints on
+`ubuntu-24.04` runners (4 vCPUs, 16 GB RAM).
+
+#### E2E environment variables
+
+The following environment variables control E2E test behavior and can be passed
+to `make test-e2e` or exported in your shell:
+
+| Variable | Default | Description |
+| -------- | ------- | ----------- |
+| `TEST_PARALLEL_PROCESS` | `1` | Number of parallel Ginkgo processes. Set to `2` in CI. Each parallel process creates its own namespace with a full Redis cluster, so higher values require proportionally more cluster resources. |
+| `GOMAXPROCS` | *(Go default)* | Go runtime parallelism. Should match `TEST_PARALLEL_PROCESS` for optimal performance. |
+| `E2E_RECONCILE_INTERVAL` | `5` | Robin reconcile loop interval in seconds. Applies to **all three intervals** (normal, on-error, on-wait). Controls how frequently Robin checks and reconciles the Redis cluster state. Lower values make clusters reach Ready faster but increase CPU usage. |
+| `E2E_POLL_INTERVAL` | `3` | Polling interval in seconds for test wait helpers (`WaitForClusterReady`, `WaitForClusterPhase`, etc.). Controls how often the test framework checks whether a condition has been met. |
+| `E2E_CREATION_TIMEOUT` | `180` | Maximum seconds to wait for a cluster to reach Ready state after creation. Increase if tests timeout during cluster creation on slow environments. |
+| `E2E_HEALTH_TIMEOUT` | `600` | Maximum seconds to wait for health-related operations (remediation, node recovery, pod restart). Increase for tests that involve pod deletions or network disruptions. |
+| `IMAGE_OPERATOR` | `localhost:5005/redkey-operator:$(VERSION)` | Operator image loaded into Kind and deployed by the suite. |
+| `IMAGE_ROBIN` | `localhost:5005/redkey-robin:$(ROBIN_VERSION)` | Robin image used by the operator when creating Robin deployments. |
+| `REDIS_IMAGE` | `redis:8-bookworm` | Redis image for cluster nodes. |
+| `CERT_MANAGER_INSTALL_SKIP` | *(unset)* | Set to `true` to skip CertManager installation (if already present). |
+| `OPERATOR_DEPLOY_SKIP` | *(unset)* | Set to `true` to skip operator deployment (if already deployed manually). |
+| `LABEL` | *(unset)* | Ginkgo label filter to run a subset of specs (e.g. `creation`, `helm`, `health`). |
+
+#### Resource optimization
+
+The E2E framework uses minimal resource requests to allow multiple clusters to
+coexist on a single Kind node without overcommitting:
+
+| Component | CPU request | CPU limit | Memory request | Memory limit |
+| --------- | ----------- | --------- | -------------- | ------------ |
+| Redis pod | 10m | 100m | 32Mi | 64Mi |
+| Robin pod | 10m | 100m | 32Mi | 64Mi |
+| Operator manager | 10m | 500m | 64Mi | 128Mi |
+
+The Robin reconciler is configured with aggressive intervals during tests
+(`reconcileInterval=5s`, `reconcileIntervalOnError=3s`, `reconcileIntervalOnWait=3s`,
+`clusterMeetWait=2s`) to minimize time waiting for clusters to converge. These
+values can be tuned via `E2E_RECONCILE_INTERVAL`.
+
+#### Available labels
+
+Each test file has a Ginkgo label for selective execution:
+
+| Label | File | Description |
+| ----- | ---- | ----------- |
+| `creation` | `cluster_creation_test.go` | Cluster creation and Ready state |
+| `features` | `cluster_features_test.go` | PDB, labels, custom configs |
+| `lifecycle` | `cluster_lifecycle_test.go` | Cascading deletion |
+| `hotreload` | `config_hotreload_test.go` | Runtime config changes |
+| `helm` | `helm_deploy_test.go` | Helm chart deployment (Serial) |
+| `health` | `health_remediation_test.go` | Meet/forget recovery |
+| `manager` | `manager_test.go` | Operator pod and metrics (Serial) |
+| `operator-resources` | `operator_resources_test.go` | Robin deployment/RBAC (Serial) |
+| `resilience` | `resilience_test.go` | Robin pod restart recovery |
+| `superseding` | `superseding_test.go` | Config superseding behavior |
+| `validation` | `validation_test.go` | Webhook/admission validations |
+| `auth` | `auth_test.go` | Authentication scenarios |
 
 ### Chaos tests
 
