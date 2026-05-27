@@ -26,12 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPERATOR_NAME: redkey-operator
   OPERATOR_VERSION: test-e2e
   KUBECONFIG: ${{ github.workspace }}/redkeyoperator/.kube/config
   LOCAL_CLUSTER_NAME: test-e2e-cluster
-  LOCAL_REGISTRY: test-e2e-registry
-  LOCAL_REGISTRY_PORT: 5001
 
 jobs:
   e2e-tests:
@@ -42,12 +39,12 @@ jobs:
         shell: bash -eu -o pipefail {0}
 
     steps:
-    - name: 📥  Checkout code
+    - name: Checkout operator code
       uses: actions/checkout@v4
       with:
         path: redkeyoperator
 
-    - name: 🔀  Resolve Robin ref
+    - name: Resolve Robin ref
       id: robin-ref
       env:
         INPUT_ROBIN_REF: ${{ github.event.inputs.robin_ref || '' }}
@@ -69,66 +66,54 @@ jobs:
         robin_ref="${robin_ref:-main}"
         echo "ref=${robin_ref}" >> "$GITHUB_OUTPUT"
 
-    - name: 📥  Checkout Robin code
+    - name: Checkout Robin code
       uses: actions/checkout@v4
       with:
         repository: InditexTech/redkeyrobin
         ref: ${{ steps.robin-ref.outputs.ref }}
         path: redkeyrobin
 
-    - name: 🏗️  Set up Go
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version-file: redkeyoperator/go.mod
         cache: true
 
-    - name: 🔧  Install kubectl
+    - name: Install kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: v1.30.0
 
-    - name: 🌱 Kubernetes KinD Cluster
-      id: kind
+    - name: Create Kind cluster
       uses: helm/kind-action@v1
       with:
         cluster_name: ${{ env.LOCAL_CLUSTER_NAME }}
-        registry: true
-        registry_name: ${{ env.LOCAL_REGISTRY }}
-        registry_port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-    - name: 🏗️  Build operator image
+    - name: Build operator image
       working-directory: redkeyoperator
-      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
+      run: make docker-build IMG=redkey-operator:${{ env.OPERATOR_VERSION }}
 
-    - name: 🏗️  Build Robin image
+    - name: Build Robin image
       working-directory: redkeyrobin
-      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkeyoperator
-        
-    - name: 📥 Push operator image
-      working-directory: redkeyoperator
-      run: make docker-push IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
+      run: make docker-build IMG=redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkeyoperator
 
-    - name: 📚  Install Ginkgo CLI
+    - name: Install Ginkgo CLI
       run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
-    
-    - name: 📚 Install CRD
-      working-directory: redkeyoperator
-      run: make install
 
-    - name: ✅  Run E2E test suite
+    - name: Run E2E test suite
       working-directory: redkeyoperator
       env:
         TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
       run: |
         make test-e2e \
-          IMAGE_OPERATOR=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }} \
-          IMAGE_ROBIN=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-robin:${{ env.OPERATOR_VERSION }} \
+          IMAGE_OPERATOR=redkey-operator:${{ env.OPERATOR_VERSION }} \
+          IMAGE_ROBIN=redkey-robin:${{ env.OPERATOR_VERSION }} \
           TEST_PARALLEL_PROCESS=${{ env.TEST_PARALLEL_PROCESSES }} \
           GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }} \
           E2E_RECONCILE_INTERVAL=5 \
           E2E_POLL_INTERVAL=3 \
           E2E_CREATION_TIMEOUT=180
 
-    - name: 🧹  Delete KinD cluster (always)
+    - name: Delete Kind cluster
       if: always()
       run: kind delete cluster --name ${{ env.LOCAL_CLUSTER_NAME }}
