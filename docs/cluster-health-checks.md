@@ -31,6 +31,7 @@ When the cluster is not healthy, Robin executes remediation steps in order, stop
 - **CLUSTER FORGET**: Removes stale node IDs not associated with any current pod IP from all known nodes.
 - **CLUSTER MEET**: Introduces pod IPs that are missing from the cluster view.
 - After meeting new nodes, waits for gossip propagation (`ClusterMeetWaitSeconds`, default 5s).
+- **After a successful membership fix, Robin defers all further remediation to the next cycle.** The cluster topology is in flux after a MEET/FORGET and the health report captured before the change is stale — running slot or rebalance operations on outdated topology data could cause data loss.
 
 ### 2. Slot Coverage Remediation
 
