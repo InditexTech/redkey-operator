@@ -109,10 +109,20 @@ Deploy the operator in the cluster (replace `${VERSION}` with the desired versio
 make deploy IMG=ghcr.io/inditextech/redkey-operator:${VERSION}
 ```
 
-Create a Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkeyrobin) repo releases for available versions):
+Create a sample Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkeyrobin) repo releases for available versions):
 
 ```bash
-make deploy-samples IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+# Ephemeral cluster (3 primaries, no persistence)
+make deploy-sample-ephemeral IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with persistent storage (AOF + RDB)
+make deploy-sample-storage IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with replicas (3 primaries + 1 replica each)
+make deploy-sample-replicas IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with Redis authentication
+make deploy-sample-auth IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
 ```
 
 The official release workflows publish both Redkey Operator and Redkey Robin runtime images to GHCR as multi-arch manifests for `linux/amd64` and `linux/arm64`.

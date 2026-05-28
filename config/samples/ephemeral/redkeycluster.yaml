@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: redkey-operator
     app.kubernetes.io/managed-by: kustomize
-  name: redkey-cluster-sample
+  name: redkey-cluster-ephemeral
 spec:
   primaries: 3
   # replicasPerPrimary: 1

@@ -403,13 +403,37 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
-.PHONY: deploy-samples
-deploy-samples: kustomize ## Deploy sample resources to the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/samples | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
+.PHONY: deploy-sample-ephemeral
+deploy-sample-ephemeral: kustomize ## Deploy ephemeral sample cluster (3 primaries, no persistence).
+	$(KUSTOMIZE) build config/samples/ephemeral | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
 
-.PHONY: undeploy-samples
-undeploy-samples: kustomize ## Undeploy sample resources from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/samples | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+.PHONY: undeploy-sample-ephemeral
+undeploy-sample-ephemeral: kustomize ## Undeploy ephemeral sample cluster.
+	$(KUSTOMIZE) build config/samples/ephemeral | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy-sample-storage
+deploy-sample-storage: kustomize ## Deploy storage sample cluster (3 primaries, persistent storage with AOF).
+	$(KUSTOMIZE) build config/samples/storage | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
+
+.PHONY: undeploy-sample-storage
+undeploy-sample-storage: kustomize ## Undeploy storage sample cluster.
+	$(KUSTOMIZE) build config/samples/storage | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy-sample-replicas
+deploy-sample-replicas: kustomize ## Deploy replicas sample cluster (3 primaries + 1 replica each).
+	$(KUSTOMIZE) build config/samples/replicas | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
+
+.PHONY: undeploy-sample-replicas
+undeploy-sample-replicas: kustomize ## Undeploy replicas sample cluster.
+	$(KUSTOMIZE) build config/samples/replicas | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy-sample-auth
+deploy-sample-auth: kustomize ## Deploy auth sample cluster (3 primaries with Redis authentication).
+	$(KUSTOMIZE) build config/samples/auth | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
+
+.PHONY: undeploy-sample-auth
+undeploy-sample-auth: kustomize ## Undeploy auth sample cluster.
+	$(KUSTOMIZE) build config/samples/auth | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 
 ##@ Dependencies

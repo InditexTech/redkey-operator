@@ -63,7 +63,7 @@ redis-cluster-ephemeral   3           0          true        true        redis:8
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready 
 ```
 
-\* The sample Redkey Cluster can be deployed from the project code by executing `make apply-rkcl`.
+\* The sample Redkey Cluster can be deployed from the project code by executing `make deploy-sample-ephemeral`.
 
 ## Substatus
 

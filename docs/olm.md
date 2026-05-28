@@ -148,7 +148,7 @@ redkey-operator-controller-manager-9764b7b87-g58nk                1/1     Runnin
 Now you can proceed to create a `RedkeyCluster` resource to verify that the operator is working correctly.
 
 ```shell
-make sample-deploy
+make deploy-sample-ephemeral
 ```
 
 and then check the status of the `RedkeyCluster`:
@@ -303,7 +303,7 @@ redkey-operator-749595567c-qdq4g   1/1     Running   0          72s
 Use the included sample manifests to create a `RedkeyCluster` by executing the following command:
 
 ```shell
-make sample-deploy
+make deploy-sample-ephemeral
 ```
 
 You can check the status of the `RedkeyCluster` to see if it is being created correctly:

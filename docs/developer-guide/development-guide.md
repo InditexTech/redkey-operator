@@ -163,13 +163,23 @@ popd
 
 ### Deploy an example Redkey Cluster
 
-You can deploy an example Redkey Cluster from the `config/samples` folder with the following command:
+You can deploy example Redkey Clusters from the `config/samples` folder. Each sample demonstrates a different feature:
 
 ```shell
-make deploy-samples
+# Ephemeral cluster (3 primaries, no persistence, purgeKeysOnRebalance: true)
+make deploy-sample-ephemeral
+
+# Cluster with persistent storage (AOF + RDB snapshots, purgeKeysOnRebalance: false)
+make deploy-sample-storage
+
+# Cluster with replicas (3 primaries + 1 replica each)
+make deploy-sample-replicas
+
+# Cluster with Redis authentication (includes a sample Secret)
+make deploy-sample-auth
 ```
 
-This will create a Redkey Cluster with 3 nodes, ephemeral storage, and `purgeKeysOnRebalance` set to `true`. You can modify the sample manifest in `config/samples/redis-cluster-ephemeral.yaml` to test different configurations.
+The sample manifests are in `config/samples/{ephemeral,storage,replicas,auth}/redkeycluster.yaml`. You can modify them to test different configurations.
 
 ### Interact with the Redkey Cluster
 
@@ -180,15 +190,18 @@ In order to launch a Redkey Cluster reconcile loop, you can edit the RedkeyClust
 To simulate Robin interactions with the `RedkeyClusterConfiguration` instances you can edit the `status` section with:
 
 ```shell
-kubectl patch redkeyclusterconfig redkey-cluster-sample-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
+kubectl patch redkeyclusterconfig redkey-cluster-ephemeral-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
 ```
 
 ### Cleanup
 
-To delete the example Redkey Cluster, you can run the following command:
+To delete an example Redkey Cluster, run the corresponding undeploy target:
 
 ```shell
-make undeploy-samples
+make undeploy-sample-ephemeral
+make undeploy-sample-storage
+make undeploy-sample-replicas
+make undeploy-sample-auth
 ```
 
 To delete the Operator and all associated resources from your cluster, you can run the following commands:

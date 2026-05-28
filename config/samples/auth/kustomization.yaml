@@ -1,10 +1,6 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
 
-## Append samples of your project ##
 resources:
-- ephemeral
-- storage
-- replicas
-- auth
-# +kubebuilder:scaffold:manifestskustomizesamples
+- secret.yaml
+- redkeycluster.yaml
