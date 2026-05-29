@@ -360,9 +360,9 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 			Expect(err).NotTo(HaveOccurred())
 
 			By("resharding slots to create imbalance")
-			reshardCmd := fmt.Sprintf(
-				"redis-cli -a %s --cluster reshard localhost:6379 --cluster-from %s --cluster-to %s --cluster-slots 1000 --cluster-yes",
-				password, sourcePrimary.ID, targetPrimary.ID)
+			reshardFmt := "redis-cli -a %s --cluster reshard localhost:6379" +
+				" --cluster-from %s --cluster-to %s --cluster-slots 1000 --cluster-yes"
+			reshardCmd := fmt.Sprintf(reshardFmt, password, sourcePrimary.ID, targetPrimary.ID)
 			_, _, _ = framework.ExecInPod(clusterNs, podNames[0], reshardCmd)
 
 			By("restoring cluster to Ready")
@@ -505,9 +505,9 @@ var _ = Describe("Health Remediation Matrix - Replicas with auth", Ordered, Labe
 			Expect(err).NotTo(HaveOccurred())
 
 			By("resharding slots to create imbalance")
-			reshardCmd := fmt.Sprintf(
-				"redis-cli -a %s --cluster reshard localhost:6379 --cluster-from %s --cluster-to %s --cluster-slots 1000 --cluster-yes",
-				password, sourcePrimary.ID, targetPrimary.ID)
+			reshardFmt := "redis-cli -a %s --cluster reshard localhost:6379" +
+				" --cluster-from %s --cluster-to %s --cluster-slots 1000 --cluster-yes"
+			reshardCmd := fmt.Sprintf(reshardFmt, password, sourcePrimary.ID, targetPrimary.ID)
 			_, _, _ = framework.ExecInPod(clusterNs, podNames[0], reshardCmd)
 
 			By("restoring cluster to Ready")

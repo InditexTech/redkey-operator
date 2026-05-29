@@ -111,7 +111,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Reconciler intervalOnErrorSeconds change", func() {
+	Context("Reconciler intervalOnErrorSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-reconciler-error"
 
 		It("should apply the new intervalOnErrorSeconds without restarting Robin", func() {
@@ -150,7 +150,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Reconciler intervalOnWaitSeconds change", func() {
+	Context("Reconciler intervalOnWaitSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-reconciler-wait"
 
 		It("should apply the new intervalOnWaitSeconds without restarting Robin", func() {
@@ -191,7 +191,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	// --- Cluster Config ---
 
-	Context("Cluster connectionMaxRetries change", func() {
+	Context("Cluster connectionMaxRetries change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-retries"
 
 		It("should apply new connectionMaxRetries without restarting Robin", func() {
@@ -230,7 +230,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Cluster connectionBackOffSeconds change", func() {
+	Context("Cluster connectionBackOffSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-backoff"
 
 		It("should apply new connectionBackOffSeconds without restarting Robin", func() {
@@ -269,7 +269,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Cluster clusterCommandTimeoutSeconds change", func() {
+	Context("Cluster clusterCommandTimeoutSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-cmd-timeout"
 
 		It("should apply new clusterCommandTimeoutSeconds without restarting Robin", func() {
@@ -308,7 +308,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Cluster clusterMeetWaitSeconds change", func() {
+	Context("Cluster clusterMeetWaitSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-meet-wait"
 
 		It("should apply new clusterMeetWaitSeconds without restarting Robin", func() {
@@ -347,7 +347,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		})
 	})
 
-	Context("Cluster rebalanceTimeoutSeconds change", func() {
+	Context("Cluster rebalanceTimeoutSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-rebalance-to"
 
 		It("should apply new rebalanceTimeoutSeconds without restarting Robin", func() {
@@ -388,7 +388,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	// --- Metrics Config ---
 
-	Context("Metrics collectionIntervalSeconds change", func() {
+	Context("Metrics collectionIntervalSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-metrics-interval"
 
 		It("should apply new collectionIntervalSeconds without restarting Robin", func() {

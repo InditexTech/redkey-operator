@@ -177,7 +177,7 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 			By("verifying Robin pod was recreated (different UID)")
 			Eventually(func() bool {
 				newUID := getRobinPodUID(ctx, clusterNs, clusterName)
-				return newUID != "" && newUID != string(originalRobinPodUID)
+				return newUID != "" && newUID != originalRobinPodUID
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
 				"Robin pod should be recreated with new resources")
 

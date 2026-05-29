@@ -137,7 +137,7 @@ hz 20`
 		})
 	})
 
-	Context("Custom labels propagation", func() {
+	Context("Custom labels propagation", func() { //nolint:dupl
 		const clusterName = "additional-labels"
 
 		It("should propagate custom labels to StatefulSet pods on creation", func() {
@@ -223,7 +223,7 @@ hz 20`
 		})
 	})
 
-	Context("Custom annotations propagation", func() {
+	Context("Custom annotations propagation", func() { //nolint:dupl
 		const clusterName = "additional-annotations"
 
 		It("should propagate custom annotations to StatefulSet pods on creation", func() {
