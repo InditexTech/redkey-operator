@@ -384,17 +384,18 @@ Each test file has a Ginkgo label for selective execution:
 | Label | File | Description |
 | ----- | ---- | ----------- |
 | `creation` | `cluster_creation_test.go` | Cluster creation and Ready state |
-| `features` | `cluster_features_test.go` | PDB, labels, custom configs |
+| `features` | `cluster_features_test.go`, `additional_features_test.go` | PDB, labels, custom configs, profiling, redis config propagation |
 | `lifecycle` | `cluster_lifecycle_test.go` | Cascading deletion |
-| `hotreload` | `config_hotreload_test.go` | Runtime config changes |
+| `hotreload` | `config_hotreload_test.go` | Runtime config changes (reconciler, cluster, metrics) |
 | `helm` | `helm_deploy_test.go` | Helm chart deployment (Serial) |
-| `health` | `health_remediation_test.go` | Meet/forget recovery |
+| `health` | `health_remediation_test.go`, `health_remediation_matrix_test.go` | Meet/forget, slot fix, rebalance across all cluster types |
 | `manager` | `manager_test.go` | Operator pod and metrics (Serial) |
 | `operator-resources` | `operator_resources_test.go` | Robin deployment/RBAC (Serial) |
 | `resilience` | `resilience_test.go` | Robin pod restart recovery |
+| `robin-changes` | `robin_changes_test.go` | Robin image and resources updates |
 | `superseding` | `superseding_test.go` | Config superseding behavior |
 | `validation` | `validation_test.go` | Webhook/admission validations |
-| `auth` | `auth_test.go` | Authentication scenarios |
+| `auth` | `auth_test.go` | Authentication scenarios (with and without replicas) |
 
 ### Chaos tests
 

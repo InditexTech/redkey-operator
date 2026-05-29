@@ -19,6 +19,8 @@ spec:
   labels:
     team: a-team
     custom: custom-label
+  annotations:
+    custom-annotation: custom-value
   config: |
     maxmemory 90mb
     maxmemory-samples 5

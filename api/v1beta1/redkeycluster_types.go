@@ -74,6 +74,10 @@ type RedkeyClusterSpec struct {
 	Labels *map[string]string `json:"labels,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// Annotations is the annotations to add to the RedkeyCluster pods.
+	Annotations *map[string]string `json:"annotations,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// Pdb is the PodDisruptionBudget configuration for the RedkeyCluster.
 	Pdb Pdb `json:"pdb,omitempty"`
 

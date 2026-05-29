@@ -41,6 +41,10 @@ spec:
   labels:
     {{- toYaml .Values.labels | nindent 4 }}
   {{- end }}
+  {{- if .Values.annotations }}
+  annotations:
+    {{- toYaml .Values.annotations | nindent 4 }}
+  {{- end }}
   {{- if .Values.config }}
   config: |
     {{- .Values.config | nindent 4 }}

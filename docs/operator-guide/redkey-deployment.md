@@ -25,6 +25,9 @@ spec:
   labels:
     redis-name: redkey-cluster-sample
     app: myapp
+  annotations:
+    prometheus.io/scrape: "true"
+    custom-annotation: custom-value
   primaries: 3
   storage: 3Gi
   image: redislabs/redisgraph:2.8.9

@@ -7,6 +7,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -18,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func() {
@@ -28,10 +30,8 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		clusterNs string
 	)
 
-	const clusterName = "hotreload-cluster"
-
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 20*time.Minute)
+		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
 
 		By("creating a test namespace")
 		var err error
@@ -39,37 +39,6 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
-
-		By("creating a cluster with custom Robin config")
-		opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-		opts.RobinConfig = &redkeyv1beta1.RobinConfig{
-			Reconciler: &redkeyv1beta1.RobinConfigReconciler{
-				IntervalSeconds:        ptr.To(30),
-				IntervalOnErrorSeconds: ptr.To(10),
-				IntervalOnWaitSeconds:  ptr.To(10),
-			},
-			Cluster: &redkeyv1beta1.RobinConfigCluster{
-				ConnectionMaxRetries:         ptr.To(10),
-				ConnectionBackOffSeconds:     ptr.To(10),
-				ClusterCommandTimeoutSeconds: ptr.To(24),
-				ClusterMeetWaitSeconds:       ptr.To(5),
-			},
-			Metrics: &redkeyv1beta1.RobinConfigMetrics{
-				CollectionIntervalSeconds: ptr.To(60),
-				RedisInfoKeys: []string{
-					"keyspace_hits", "evicted_keys", "connected_clients",
-					"used_memory_rss", "maxmemory",
-				},
-			},
-		}
-		_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("waiting for the cluster to reach Ready")
-		_, err = framework.WaitForClusterReady(ctx, k8sClient,
-			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
-			framework.CreationTimeout)
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterAll(func() {
@@ -86,21 +55,42 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 		}
 	})
 
-	Context("Reconciler interval change", func() {
-		It("should apply the new reconciler interval", func() {
+	// verifyNoRobinRestart asserts that the Robin pod was NOT restarted after a hot-reload config change.
+	verifyNoRobinRestart := func(clusterName string, originalUID string) {
+		By("verifying Robin pod was NOT restarted (same UID)")
+		currentUID := getRobinPodUID(ctx, clusterNs, clusterName)
+		Expect(currentUID).To(Equal(originalUID),
+			"Robin pod should NOT be restarted for hot-reload config changes")
+	}
+
+	// --- Reconciler Config ---
+
+	Context("Reconciler intervalSeconds change", func() {
+		const clusterName = "hotreload-reconciler-interval"
+
+		It("should apply the new reconciler interval without restarting Robin", func() {
+			By("creating a cluster with explicit reconciler config")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
+					IntervalSeconds: ptr.To(30),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the cluster to reach Ready")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+			Expect(originalUID).NotTo(BeEmpty())
 
 			By("updating reconciler intervalSeconds from 30 to 15")
 			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err := k8sClient.Get(ctx, key, cluster)
+			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-
-			if cluster.Spec.Robin.Config == nil {
-				cluster.Spec.Robin.Config = &redkeyv1beta1.RobinConfig{}
-			}
-			if cluster.Spec.Robin.Config.Reconciler == nil {
-				cluster.Spec.Robin.Config.Reconciler = &redkeyv1beta1.RobinConfigReconciler{}
-			}
 			cluster.Spec.Robin.Config.Reconciler.IntervalSeconds = ptr.To(15)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -109,35 +99,43 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying cluster remains healthy after config change")
+			By("verifying cluster remains healthy")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
-
 			podNames, err := framework.GetRedisPodNames(ctx, k8sClient, clusterName, clusterNs, 3)
 			Expect(err).NotTo(HaveOccurred())
 			err = framework.VerifyClusterHealthy(clusterNs, podNames[0], 3)
 			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
 		})
 	})
 
-	Context("Metrics collection interval change", func() {
-		It("should apply the new metrics collection interval", func() {
-			Skip("Sequential hot-reload config updates are not reliably reaching Applied yet")
+	Context("Reconciler intervalOnErrorSeconds change", func() {
+		const clusterName = "hotreload-reconciler-error"
 
-			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-
-			By("updating metrics collectionIntervalSeconds from 60 to 30")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err := k8sClient.Get(ctx, key, cluster)
+		It("should apply the new intervalOnErrorSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
+					IntervalOnErrorSeconds: ptr.To(10),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
-			if cluster.Spec.Robin.Config == nil {
-				cluster.Spec.Robin.Config = &redkeyv1beta1.RobinConfig{}
-			}
-			if cluster.Spec.Robin.Config.Metrics == nil {
-				cluster.Spec.Robin.Config.Metrics = &redkeyv1beta1.RobinConfigMetrics{}
-			}
-			cluster.Spec.Robin.Config.Metrics.CollectionIntervalSeconds = ptr.To(30)
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating intervalOnErrorSeconds from 10 to 5")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Reconciler.IntervalOnErrorSeconds = ptr.To(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -145,30 +143,117 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying cluster remains healthy")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
 		})
 	})
 
-	Context("Redis client config change", func() {
-		It("should apply new connection parameters", func() {
-			Skip("Sequential hot-reload config updates are not reliably reaching Applied yet")
+	Context("Reconciler intervalOnWaitSeconds change", func() {
+		const clusterName = "hotreload-reconciler-wait"
 
-			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-
-			By("updating cluster connectionMaxRetries and connectionBackOffSeconds")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err := k8sClient.Get(ctx, key, cluster)
+		It("should apply the new intervalOnWaitSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
+					IntervalOnWaitSeconds: ptr.To(10),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
-			if cluster.Spec.Robin.Config == nil {
-				cluster.Spec.Robin.Config = &redkeyv1beta1.RobinConfig{}
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating intervalOnWaitSeconds from 10 to 5")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Reconciler.IntervalOnWaitSeconds = ptr.To(5)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	// --- Cluster Config ---
+
+	Context("Cluster connectionMaxRetries change", func() {
+		const clusterName = "hotreload-cluster-retries"
+
+		It("should apply new connectionMaxRetries without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Cluster: &redkeyv1beta1.RobinConfigCluster{
+					ConnectionMaxRetries: ptr.To(10),
+				},
 			}
-			if cluster.Spec.Robin.Config.Cluster == nil {
-				cluster.Spec.Robin.Config.Cluster = &redkeyv1beta1.RobinConfigCluster{}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating connectionMaxRetries from 10 to 5")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Cluster.ConnectionMaxRetries = ptr.To(5)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	Context("Cluster connectionBackOffSeconds change", func() {
+		const clusterName = "hotreload-cluster-backoff"
+
+		It("should apply new connectionBackOffSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Cluster: &redkeyv1beta1.RobinConfigCluster{
+					ConnectionBackOffSeconds: ptr.To(10),
+				},
 			}
-			cluster.Spec.Robin.Config.Cluster.ConnectionMaxRetries = ptr.To(20)
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating connectionBackOffSeconds from 10 to 5")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
 			cluster.Spec.Robin.Config.Cluster.ConnectionBackOffSeconds = ptr.To(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -177,29 +262,37 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying cluster remains healthy")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
 		})
 	})
 
-	Context("Cluster command timeout change", func() {
-		It("should apply new cluster command timeout", func() {
-			Skip("Sequential hot-reload config updates are not reliably reaching Applied yet")
+	Context("Cluster clusterCommandTimeoutSeconds change", func() {
+		const clusterName = "hotreload-cluster-cmd-timeout"
+
+		It("should apply new clusterCommandTimeoutSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Cluster: &redkeyv1beta1.RobinConfigCluster{
+					ClusterCommandTimeoutSeconds: ptr.To(24),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
 
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
 
 			By("updating clusterCommandTimeoutSeconds from 24 to 60")
 			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err := k8sClient.Get(ctx, key, cluster)
+			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-
-			if cluster.Spec.Robin.Config == nil {
-				cluster.Spec.Robin.Config = &redkeyv1beta1.RobinConfig{}
-			}
-			if cluster.Spec.Robin.Config.Cluster == nil {
-				cluster.Spec.Robin.Config.Cluster = &redkeyv1beta1.RobinConfigCluster{}
-			}
 			cluster.Spec.Robin.Config.Cluster.ClusterCommandTimeoutSeconds = ptr.To(60)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -208,14 +301,240 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying cluster remains healthy with new timeout")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			podNames, err := framework.GetRedisPodNames(ctx, k8sClient, clusterName, clusterNs, 3)
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	Context("Cluster clusterMeetWaitSeconds change", func() {
+		const clusterName = "hotreload-cluster-meet-wait"
+
+		It("should apply new clusterMeetWaitSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Cluster: &redkeyv1beta1.RobinConfigCluster{
+					ClusterMeetWaitSeconds: ptr.To(5),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
-			err = framework.VerifyClusterHealthy(clusterNs, podNames[0], 3)
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
 			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating clusterMeetWaitSeconds from 5 to 10")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Cluster.ClusterMeetWaitSeconds = ptr.To(10)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	Context("Cluster rebalanceTimeoutSeconds change", func() {
+		const clusterName = "hotreload-cluster-rebalance-to"
+
+		It("should apply new rebalanceTimeoutSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Cluster: &redkeyv1beta1.RobinConfigCluster{
+					RebalanceTimeoutSeconds: ptr.To(120),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating rebalanceTimeoutSeconds from 120 to 60")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Cluster.RebalanceTimeoutSeconds = ptr.To(60)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	// --- Metrics Config ---
+
+	Context("Metrics collectionIntervalSeconds change", func() {
+		const clusterName = "hotreload-metrics-interval"
+
+		It("should apply new collectionIntervalSeconds without restarting Robin", func() {
+			By("creating a cluster")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Metrics: &redkeyv1beta1.RobinConfigMetrics{
+					CollectionIntervalSeconds: ptr.To(60),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating collectionIntervalSeconds from 60 to 30")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Metrics.CollectionIntervalSeconds = ptr.To(30)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	Context("Metrics redisInfoKeys change", func() {
+		const clusterName = "hotreload-metrics-keys"
+
+		It("should apply new redisInfoKeys without restarting Robin", func() {
+			By("creating a cluster with specific redis info keys")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Metrics: &redkeyv1beta1.RobinConfigMetrics{
+					RedisInfoKeys: []string{
+						"keyspace_hits", "evicted_keys", "connected_clients",
+						"used_memory_rss", "maxmemory",
+					},
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("updating redisInfoKeys to a different subset")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Metrics.RedisInfoKeys = []string{
+				"connected_clients", "used_memory_rss", "total_commands_processed",
+			}
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+		})
+	})
+
+	Context("Metrics metricsLabels change", func() {
+		const clusterName = "hotreload-metrics-labels"
+
+		It("should apply new metricsLabels and reflect them in /metrics endpoint", func() {
+			By("creating a cluster without custom metrics labels")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalUID := getRobinPodUID(ctx, clusterNs, clusterName)
+
+			By("adding custom metricsLabels")
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			if cluster.Spec.Robin.Config == nil {
+				cluster.Spec.Robin.Config = &redkeyv1beta1.RobinConfig{}
+			}
+			if cluster.Spec.Robin.Config.Metrics == nil {
+				cluster.Spec.Robin.Config.Metrics = &redkeyv1beta1.RobinConfigMetrics{}
+			}
+			cluster.Spec.Robin.Config.Metrics.MetricsLabels = map[string]string{
+				"env":  "e2e-test",
+				"team": "platform",
+			}
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the new config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			verifyNoRobinRestart(clusterName, originalUID)
+
+			By("verifying custom labels appear in /metrics endpoint")
+			Eventually(func() bool {
+				robinPods := &corev1.PodList{}
+				if err := k8sClient.List(ctx, robinPods, client.InNamespace(clusterNs),
+					client.MatchingLabels{
+						"redkey.inditex.dev/cluster":   clusterName,
+						"redkey.inditex.dev/component": "robin",
+					}); err != nil {
+					return false
+				}
+				if len(robinPods.Items) == 0 {
+					return false
+				}
+				stdout, _, err := framework.ExecInPod(clusterNs, robinPods.Items[0].Name,
+					"wget -qO- http://localhost:8080/metrics 2>/dev/null || curl -s http://localhost:8080/metrics 2>/dev/null")
+				if err != nil {
+					return false
+				}
+				return strings.Contains(stdout, `env="e2e-test"`) &&
+					strings.Contains(stdout, `team="platform"`)
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue(),
+				"Custom metricsLabels should appear in /metrics output")
 		})
 	})
 })

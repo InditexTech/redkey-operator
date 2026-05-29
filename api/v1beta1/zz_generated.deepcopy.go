@@ -402,6 +402,17 @@ func (in *RedkeyClusterConfigSpec) DeepCopyInto(out *RedkeyClusterConfigSpec) {
 			}
 		}
 	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
+		*out = new(map[string]string)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make(map[string]string, len(*in))
+			for key, val := range *in {
+				(*out)[key] = val
+			}
+		}
+	}
 	if in.DeletePVC != nil {
 		in, out := &in.DeletePVC, &out.DeletePVC
 		*out = new(bool)
@@ -557,6 +568,17 @@ func (in *RedkeyClusterSpec) DeepCopyInto(out *RedkeyClusterSpec) {
 	}
 	if in.Labels != nil {
 		in, out := &in.Labels, &out.Labels
+		*out = new(map[string]string)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make(map[string]string, len(*in))
+			for key, val := range *in {
+				(*out)[key] = val
+			}
+		}
+	}
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
 		*out = new(map[string]string)
 		if **in != nil {
 			in, out := *in, *out

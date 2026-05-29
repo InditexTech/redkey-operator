@@ -67,6 +67,7 @@ type ClusterOptions struct {
 	Resources            *corev1.ResourceRequirements
 	RobinResources       *corev1.ResourceRequirements
 	Labels               *map[string]string
+	Annotations          *map[string]string
 	Pdb                  redkeyv1beta1.Pdb
 }
 
@@ -167,6 +168,10 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 
 	if o.Labels != nil {
 		cluster.Spec.Labels = o.Labels
+	}
+
+	if o.Annotations != nil {
+		cluster.Spec.Annotations = o.Annotations
 	}
 
 	if o.RobinConfig != nil {

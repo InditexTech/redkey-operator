@@ -87,6 +87,10 @@ type RedkeyClusterConfigSpec struct {
 	// +kubebuilder:validation:Optional
 	Labels *map[string]string `json:"labels,omitempty"`
 
+	// Annotations are additional pod annotations.
+	// +kubebuilder:validation:Optional
+	Annotations *map[string]string `json:"annotations,omitempty"`
+
 	// DeletePVC specifies if the PVC should be deleted when the cluster is deleted.
 	// +kubebuilder:validation:Optional
 	DeletePVC *bool `json:"deletePVC,omitempty"`

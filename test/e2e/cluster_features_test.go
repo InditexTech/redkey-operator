@@ -383,6 +383,173 @@ hz 20`
 				"pprof endpoint should be available after enabling profiling")
 		})
 	})
+
+	Context("Profiling disable without restart", func() {
+		const clusterName = "features-profiling-disable"
+
+		It("should disable pprof at runtime without restarting Robin", func() {
+			By("creating a cluster with profiling enabled")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Profiling: &redkeyv1beta1.RobinConfigProfiling{
+					Enabled: ptr.To(true),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the cluster to reach Ready")
+			_, err = framework.WaitForClusterReady(ctx, k8sClient,
+				types.NamespacedName{Name: clusterName, Namespace: clusterNs},
+				framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("finding the Robin pod and recording UID")
+			robinPods := &corev1.PodList{}
+			err = k8sClient.List(ctx, robinPods, client.InNamespace(clusterNs),
+				client.MatchingLabels{
+					"redkey.inditex.dev/cluster":   clusterName,
+					"redkey.inditex.dev/component": "robin",
+				})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(robinPods.Items).NotTo(BeEmpty())
+			robinPodName := robinPods.Items[0].Name
+			originalUID := string(robinPods.Items[0].UID)
+
+			By("verifying pprof IS available when enabled")
+			Eventually(func() bool {
+				cmd := "wget -qO- http://localhost:8080/debug/pprof/ 2>/dev/null" +
+					" || curl -s http://localhost:8080/debug/pprof/ 2>/dev/null"
+				stdout, _, err := framework.ExecInPod(clusterNs, robinPodName, cmd)
+				if err != nil {
+					return false
+				}
+				return containsString(stdout, "Types of profiles available") || containsString(stdout, "pprof")
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue())
+
+			By("disabling profiling via spec update")
+			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			cluster := &redkeyv1beta1.RedkeyCluster{}
+			err = k8sClient.Get(ctx, key, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			cluster.Spec.Robin.Config.Profiling.Enabled = ptr.To(false)
+			err = k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the config to be applied")
+			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying pprof is NOT available after disabling")
+			Eventually(func() bool {
+				cmd := "wget -qO- --spider http://localhost:8080/debug/pprof/ 2>&1" +
+					" || curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/debug/pprof/ 2>/dev/null"
+				stdout, _, err := framework.ExecInPod(clusterNs, robinPodName, cmd)
+				if err != nil {
+					return true
+				}
+				return stdout != "200" && !containsString(stdout, "Types of profiles available")
+			}, 2*time.Minute, 10*time.Second).Should(BeTrue(),
+				"pprof should NOT be available after disabling")
+
+			By("verifying Robin pod was NOT restarted")
+			currentUID := getRobinPodUID(ctx, clusterNs, clusterName)
+			Expect(currentUID).To(Equal(originalUID),
+				"Robin pod should NOT be restarted for profiling toggle")
+		})
+	})
+
+	Context("Profiling persists across Robin restart", func() {
+		const clusterName = "features-profiling-restart"
+
+		It("should re-enable pprof after Robin pod is recreated", func() {
+			By("creating a cluster with profiling enabled")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
+				Profiling: &redkeyv1beta1.RobinConfigProfiling{
+					Enabled: ptr.To(true),
+				},
+			}
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for the cluster to reach Ready")
+			_, err = framework.WaitForClusterReady(ctx, k8sClient,
+				types.NamespacedName{Name: clusterName, Namespace: clusterNs},
+				framework.CreationTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("verifying pprof is available")
+			robinPods := &corev1.PodList{}
+			err = k8sClient.List(ctx, robinPods, client.InNamespace(clusterNs),
+				client.MatchingLabels{
+					"redkey.inditex.dev/cluster":   clusterName,
+					"redkey.inditex.dev/component": "robin",
+				})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(robinPods.Items).NotTo(BeEmpty())
+			robinPodName := robinPods.Items[0].Name
+
+			Eventually(func() bool {
+				cmd := "wget -qO- http://localhost:8080/debug/pprof/ 2>/dev/null" +
+					" || curl -s http://localhost:8080/debug/pprof/ 2>/dev/null"
+				stdout, _, err := framework.ExecInPod(clusterNs, robinPodName, cmd)
+				if err != nil {
+					return false
+				}
+				return containsString(stdout, "Types of profiles available") || containsString(stdout, "pprof")
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue())
+
+			By("force-deleting the Robin pod")
+			err = k8sClient.Delete(ctx, &robinPods.Items[0])
+			Expect(err).NotTo(HaveOccurred())
+
+			By("waiting for a new Robin pod to be Running")
+			Eventually(func() bool {
+				pods := &corev1.PodList{}
+				if err := k8sClient.List(ctx, pods, client.InNamespace(clusterNs),
+					client.MatchingLabels{
+						"redkey.inditex.dev/cluster":   clusterName,
+						"redkey.inditex.dev/component": "robin",
+					}); err != nil {
+					return false
+				}
+				for _, pod := range pods.Items {
+					if pod.DeletionTimestamp == nil && pod.Status.Phase == corev1.PodRunning {
+						return true
+					}
+				}
+				return false
+			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
+				"New Robin pod should be running after deletion")
+
+			By("verifying pprof is still available on the new Robin pod")
+			Eventually(func() bool {
+				pods := &corev1.PodList{}
+				if err := k8sClient.List(ctx, pods, client.InNamespace(clusterNs),
+					client.MatchingLabels{
+						"redkey.inditex.dev/cluster":   clusterName,
+						"redkey.inditex.dev/component": "robin",
+					}); err != nil {
+					return false
+				}
+				for _, pod := range pods.Items {
+					if pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning {
+						continue
+					}
+					cmd := "wget -qO- http://localhost:8080/debug/pprof/ 2>/dev/null" +
+						" || curl -s http://localhost:8080/debug/pprof/ 2>/dev/null"
+					stdout, _, err := framework.ExecInPod(clusterNs, pod.Name, cmd)
+					if err != nil {
+						return false
+					}
+					return containsString(stdout, "Types of profiles available") || containsString(stdout, "pprof")
+				}
+				return false
+			}, 3*time.Minute, 10*time.Second).Should(BeTrue(),
+				"pprof should remain enabled after Robin pod restart (config from CRD)")
+		})
+	})
 })
 
 // truncate returns the first n characters of s, or s if it's shorter.

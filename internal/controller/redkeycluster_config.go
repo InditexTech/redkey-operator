@@ -87,6 +87,7 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 			Resources:            cluster.Spec.Resources,
 			Auth:                 cluster.Spec.Auth,
 			Labels:               cluster.Spec.Labels,
+			Annotations:          cluster.Spec.Annotations,
 			DeletePVC:            cluster.Spec.DeletePVC,
 			PurgeKeysOnRebalance: cluster.Spec.PurgeKeysOnRebalance,
 			Override:             cluster.Spec.Override,

@@ -152,6 +152,42 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithRobinConfig(t *testing.T) {
 	assert.Equal(t, metricsLabels, stored.Spec.RobinConfig.Metrics.MetricsLabels)
 }
 
+func TestRedkeyClusterReconciler_CreateNewConfig_WithLabelsAndAnnotations(t *testing.T) {
+	s := getScheme()
+
+	labels := map[string]string{"team": "platform", "env": "prod"}
+	annotations := map[string]string{"prometheus.io/scrape": "true", "prometheus.io/port": "9121"}
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster-la",
+			Namespace: "default",
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral:   true,
+			Primaries:   3,
+			Labels:      &labels,
+			Annotations: &annotations,
+			Robin:       redisv1.RobinSpec{Image: "redkey-robin:latest"},
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+	r := &RedkeyClusterReconciler{Client: fakeClient, Scheme: s}
+
+	err := r.createNewConfig(context.TODO(), cluster, nil)
+	require.NoError(t, err)
+
+	var stored redisv1.RedkeyClusterConfig
+	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: "test-cluster-la-1", Namespace: "default"}, &stored)
+	require.NoError(t, err)
+
+	require.NotNil(t, stored.Spec.Labels)
+	assert.Equal(t, labels, *stored.Spec.Labels)
+	require.NotNil(t, stored.Spec.Annotations)
+	assert.Equal(t, annotations, *stored.Spec.Annotations)
+}
+
 func TestRedkeyClusterReconciler_CreateNewConfig_SetControllerReferenceError(t *testing.T) {
 	r := &RedkeyClusterReconciler{
 		Client: fake.NewClientBuilder().WithScheme(getScheme()).Build(),

@@ -107,6 +107,12 @@ spec:
                 x-kubernetes-validations:
                 - message: Changing the storage access modes is not allowed
                   rule: self == oldSelf
+              annotations:
+                additionalProperties:
+                  type: string
+                description: Annotations is the annotations to add to the RedkeyCluster
+                  pods.
+                type: object
               auth:
                 description: RedisAuth
                 properties:

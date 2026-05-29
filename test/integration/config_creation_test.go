@@ -81,6 +81,7 @@ var _ = Describe("Configuration Creation", func() {
 			deletePVC := true
 			purgeKeys := true
 			labels := map[string]string{"team": "platform"}
+			annotations := map[string]string{"prometheus.io/scrape": "true"}
 			cluster := &redisv1.RedkeyCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
@@ -97,6 +98,7 @@ var _ = Describe("Configuration Creation", func() {
 					DeletePVC:            &deletePVC,
 					PurgeKeysOnRebalance: &purgeKeys,
 					Labels:               &labels,
+					Annotations:          &annotations,
 					Pdb: redisv1.Pdb{
 						Enabled: true,
 					},
@@ -134,6 +136,8 @@ var _ = Describe("Configuration Creation", func() {
 			Expect(*spec.PurgeKeysOnRebalance).To(BeTrue())
 			Expect(spec.Labels).NotTo(BeNil())
 			Expect(*spec.Labels).To(HaveKeyWithValue("team", "platform"))
+			Expect(spec.Annotations).NotTo(BeNil())
+			Expect(*spec.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
 			Expect(spec.Pdb.Enabled).To(BeTrue())
 			Expect(spec.Resources).NotTo(BeNil())
 			Expect(spec.Resources.Requests[corev1.ResourceCPU]).To(Equal(resource.MustParse("100m")))
