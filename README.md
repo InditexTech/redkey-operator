@@ -6,6 +6,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Redkey Operator
 
+![Redkey Operator icon](docs/images/redkey-logo-512.png)
+
 Seamless Redkey Cluster Management on Kubernetes
 
 [![GitHub License](https://img.shields.io/github/license/InditexTech/redkeyoperator)](LICENSE)
@@ -24,8 +26,6 @@ Seamless Redkey Cluster Management on Kubernetes
 [![GitHub Forks](https://img.shields.io/github/forks/InditexTech/redkeyoperator?style=social)](https://github.com/InditexTech/redkeyoperator/network/members)
 
 [🚀 Quick Start](#quick-start) • [📖 Documentation](./docs) • [🤝 Contributing](./CONTRIBUTING.md) • [📝 License](./LICENSE)
-
-![Redkey Operator icon](docs/images/redkey-logo-512.png)
 
 ---
 
