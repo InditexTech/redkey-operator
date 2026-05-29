@@ -12,6 +12,9 @@ The Redkey Operator tracks the lifecycle of each `RedkeyCluster` resource throug
 
 - [Status codes](#status-codes)
 - [Redkey Cluster creation Status transitions](#redkey-cluster-creation-status-transitions)
+- [Configuration change detection](#configuration-change-detection)
+  - [Change categories](#change-categories)
+  - [Status transition rules](#status-transition-rules)
 - [Substatus](#substatus)
   - [Redkey Cluster Scaling Up (Fast scaling)](#redkey-cluster-scaling-up-fast-scaling)
   - [Redkey Cluster Scaling Up (Slow scaling)](#redkey-cluster-scaling-up-slow-scaling)
@@ -64,6 +67,40 @@ redis-cluster-ephemeral   3           0          true        true        redis:8
 ```
 
 \* The sample Redkey Cluster can be deployed from the project code by executing `make deploy-sample-ephemeral`.
+
+## Configuration change detection
+
+When a new `RedkeyClusterConfig` is created for an existing cluster (i.e. there is a previous Applied config), Robin performs an automated **change detection** step before entering the state machine. This avoids unnecessary cluster operations when only lightweight (Robin-internal) settings have changed, and ensures the correct status transition is applied for structural changes.
+
+The detection is implemented in `internal/reconciler/config_changes.go` and the transition logic in `internal/reconciler/status_transitions.go`.
+
+### Change categories
+
+Robin compares the previous (Applied) spec with the target (new) spec field by field and classifies differences into five categories:
+
+| Category | Fields compared | Requires cluster operation? |
+|----------|----------------|----------------------------|
+| **Robin config** | `RobinConfig.*` (reconciler intervals, metrics, cluster connection, profiling) | No — hot-reloaded at runtime |
+| **Topology** | `Primaries`, `ReplicasPerPrimary` | Yes — scaling |
+| **Kubernetes** | `Image`, `Labels`, `Resources`, `Override`, `PodDisruptionBudget`, `Storage` | Yes — upgrade |
+| **Redis config** | `RedisConfig`, `Version`, `Auth` | Yes — upgrade |
+| **PurgeKeysOnRebalance** | `PurgeKeysOnRebalance` | Only if combined with topology changes |
+
+Control fields (`Sequence`, `SkipIfSuperseded`, `Ephemeral`) are intentionally **ignored** — they do not affect the running cluster.
+
+### Status transition rules
+
+Once changes are categorized, the status transition is determined by priority:
+
+1. **No changes / Robin-only changes** → Config is marked as **Applied** immediately. The cluster stays in its current status (typically Ready). No cluster operation is triggered.
+2. **Topology changes (scaling)** → Takes priority over all other changes.
+   - If primaries increased OR (primaries unchanged AND replicas increased) → **ScalingUp**
+   - If primaries decreased OR (primaries unchanged AND replicas decreased) → **ScalingDown**
+   - When both primaries and replicas change, the primaries delta takes precedence in determining direction.
+3. **Kubernetes / Redis config changes (without topology)** → **Upgrading**
+4. **PurgeKeysOnRebalance alone** (no topology, no K8s, no Redis config) → Treated as no-op (Applied immediately), since the flag only affects future scaling/upgrade behaviour.
+
+When topology changes are combined with Kubernetes/Redis changes, Robin handles the scaling first. After scaling completes and the cluster returns to Ready, any remaining non-topology changes are detected and trigger the Upgrading status.
 
 ## Substatus
 
