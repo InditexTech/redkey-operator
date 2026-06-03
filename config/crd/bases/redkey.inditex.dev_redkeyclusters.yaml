@@ -8636,9 +8636,11 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               primaries:
-                description: Primaries specifies the number of Redis primary nodes
-                  in the cluster.
+                description: |-
+                  Primaries specifies the number of Redis primary nodes in the cluster.
+                  A value of 0 means the cluster is scaled to zero — no Kubernetes objects will be created.
                 format: int32
+                minimum: 0
                 type: integer
               purgeKeysOnRebalance:
                 default: true
@@ -16559,6 +16561,12 @@ spec:
                 description: 'Phase is a user-facing summary derived from Conditions:
                   Ready, Configuring, or Error.'
                 type: string
+              replicas:
+                description: |-
+                  Replicas is the current number of primary nodes in the cluster.
+                  Used by the scale subresource.
+                format: int32
+                type: integer
               status:
                 description: Status mirrors the operational phase reported by the
                   highest-sequence RedkeyClusterConfig.
@@ -16583,4 +16591,7 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        specReplicasPath: .spec.primaries
+        statusReplicasPath: .status.replicas
       status: {}

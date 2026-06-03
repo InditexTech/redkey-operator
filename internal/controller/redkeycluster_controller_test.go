@@ -144,6 +144,7 @@ func TestRedkeyClusterReconciler_EnsureRBACError(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: redisv1.RedkeyClusterSpec{
+			Primaries: 3,
 			Ephemeral: true,
 		},
 	}
@@ -233,6 +234,7 @@ func TestRedkeyClusterReconciler_EnsureRobinDeploymentError(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: redisv1.RedkeyClusterSpec{
+			Primaries: 3,
 			Ephemeral: true,
 		},
 	}
@@ -264,6 +266,7 @@ func TestRedkeyClusterReconciler_CreateNewConfigError(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: redisv1.RedkeyClusterSpec{
+			Primaries: 3,
 			Ephemeral: true,
 		},
 	}
@@ -296,6 +299,7 @@ func TestRedkeyClusterReconciler_AggregateStatusError(t *testing.T) {
 			Generation: 1,
 		},
 		Spec: redisv1.RedkeyClusterSpec{
+			Primaries: 3,
 			Ephemeral: true,
 		},
 	}

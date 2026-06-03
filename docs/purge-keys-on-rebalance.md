@@ -35,3 +35,12 @@ If we want to preserve keys during Redkey Cluster upgrades and scales, then we n
 In this case, the Operator makes sure to move the slots (and their keys) from one node to another node or nodes within the cluster itself, before recreating that node or discarding it.
 
 The necessary reharding operations involve a high cost, which is impacted if the cluster receives a lot of activity from clients.
+
+> Fast scaling additionally requires the cluster to have **no replicas**
+> (`replicasPerPrimary: 0`). Clusters with replicas always use slow (key-preserving)
+> operations regardless of `purgeKeysOnRebalance`.
+
+## See also
+
+* [Scaling a Redkey Cluster](operator-guide/scaling.md) — full scale up/down flows,
+  fast vs. normal scaling, and `TRYAGAIN` guidance for application clients.

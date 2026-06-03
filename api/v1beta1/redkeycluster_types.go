@@ -26,7 +26,9 @@ type RedkeyClusterSpec struct {
 	Version string `json:"version,omitempty"`
 
 	// Primaries specifies the number of Redis primary nodes in the cluster.
+	// A value of 0 means the cluster is scaled to zero — no Kubernetes objects will be created.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=0
 	Primaries int32 `json:"primaries"`
 
 	// +kubebuilder:validation:Optional
@@ -124,6 +126,10 @@ const (
 // RedkeyClusterStatus defines the observed state of RedkeyCluster.
 // This is a simplified, user-facing status aggregated from RedkeyClusterConfig.
 type RedkeyClusterStatus struct {
+	// Replicas is the current number of primary nodes in the cluster.
+	// Used by the scale subresource.
+	Replicas int32 `json:"replicas,omitempty"`
+
 	// Phase is a user-facing summary derived from Conditions: Ready, Configuring, or Error.
 	Phase string `json:"phase"`
 
@@ -148,6 +154,7 @@ type RedkeyClusterStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.primaries,statuspath=.status.replicas
 // +kubebuilder:resource:shortName=rkcl
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Primaries",type="integer",priority=0,JSONPath=".spec.primaries",description="Amount of Redis primary nodes"

@@ -48,7 +48,7 @@ spec:
         connectionMaxRetries: 10
         connectionBackOffSeconds: 10
         clusterCommandTimeoutSeconds: 24
-        rebalanceTimeoutSeconds: 120
+        rebalanceTimeoutSeconds: 600
         clusterMeetWaitSeconds: 5
       metrics:
         collectionIntervalSeconds: 60

@@ -553,7 +553,7 @@ func TestRedkeyClusterReconciler_AggregateStatus_EmptyConfigs(t *testing.T) {
 	assert.Empty(t, cluster.Status.Conditions)
 }
 
-func TestRedkeyClusterReconciler_AggregateStatus_ConflictIsIgnored(t *testing.T) {
+func TestRedkeyClusterReconciler_AggregateStatus_PatchErrorIsReturned(t *testing.T) {
 	s := getScheme()
 	r := &RedkeyClusterReconciler{
 		Client: &statusUpdateErrClient{
@@ -581,10 +581,8 @@ func TestRedkeyClusterReconciler_AggregateStatus_ConflictIsIgnored(t *testing.T)
 	}}
 
 	err := r.aggregateStatus(context.TODO(), cluster, configs)
-	assert.NoError(t, err)
-	assert.Equal(t, redisv1.PhaseConfiguring, cluster.Status.Phase)
-	assert.Equal(t, int64(1), cluster.Status.ObservedGeneration)
-	assert.NotNil(t, cluster.Status.LastUpdatedAt)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsConflict(err))
 }
 
 func TestAggregateConditions_PreserveUnchangedTransitionTimes(t *testing.T) {

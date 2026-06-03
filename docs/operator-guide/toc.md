@@ -15,6 +15,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [How to deploy a Redis Cluster](redis-deployment.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)
 * [Primary-Replica Clusters](primary-replica-cluster.md)
+* [Scaling a Redkey Cluster](scaling.md)
 * [Deleting PVCs on ScaleDown and Deletion](delete-pvc.md)
 * [Backup Configuration](backup-configuration.md)
 * [Troubleshooting](troubleshooting.md)

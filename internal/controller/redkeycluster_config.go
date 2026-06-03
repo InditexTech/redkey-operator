@@ -126,6 +126,7 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 
 	now := metav1.Now()
 
+	cluster.Status.Replicas = cluster.Spec.Primaries
 	cluster.Status.Status = activeConfig.Status.Status
 	cluster.Status.Substatus = activeConfig.Status.Substatus
 	cluster.Status.Nodes = emptyNodesIfNil(activeConfig.Status.Nodes)
@@ -135,14 +136,12 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 	cluster.Status.ObservedGeneration = cluster.Generation
 
 	err := r.Status().Update(ctx, cluster)
-	if err != nil && errors.IsConflict(err) {
-		// Ignore conflict errors to avoid log spam. The controller runtime
-		// will requeue and retry on the next reconcile loop.
-		return nil
+	if err != nil {
+		return err
 	}
 	log := logf.FromContext(ctx)
 	log.Info("Updated RedkeyCluster status from config", "config", activeConfig.Name, "status", cluster.Status.Status, "phase", cluster.Status.Phase)
-	return err
+	return nil
 }
 
 // selectActiveConfig returns the config that should be used to aggregate the cluster status.

@@ -19,15 +19,42 @@ const (
 
 // Operational phase constants for RedkeyClusterConfig status.
 const (
-	ClusterStatusInitializing = "Initializing"
-	ClusterStatusConfiguring  = "Configuring"
-	ClusterStatusReady        = "Ready"
-	ClusterStatusScalingUp    = "ScalingUp"
-	ClusterStatusScalingDown  = "ScalingDown"
-	ClusterStatusUpgrading    = "Upgrading"
-	ClusterStatusMaintenance  = "Maintenance"
-	ClusterPhaseRebalancing   = "Rebalancing"
-	ClusterPhaseError         = "Error"
+	ClusterStatusInitializing  = "Initializing"
+	ClusterStatusConfiguring   = "Configuring"
+	ClusterStatusReady         = "Ready"
+	ClusterStatusScalingUp     = "ScalingUp"
+	ClusterStatusScalingDown   = "ScalingDown"
+	ClusterStatusScalingToZero = "ScalingToZero"
+	ClusterStatusUpgrading     = "Upgrading"
+	ClusterStatusMaintenance   = "Maintenance"
+	ClusterPhaseRebalancing    = "Rebalancing"
+	ClusterPhaseError          = "Error"
+)
+
+// Substatus constants for scaling operations (informational only — not used for control flow).
+const (
+	// Common substatus values shared across scaling operations.
+	SubstatusWaitingForPods    = "WaitingForPods"
+	SubstatusRebalancing       = "Rebalancing"
+	SubstatusAttachingReplicas = "AttachingReplicas"
+	SubstatusVerifying         = "Verifying"
+
+	// ScaleUp specific.
+	SubstatusInitializingNodes = "InitializingNodes"
+
+	// ScaleDown specific.
+	SubstatusDrainingPrimaries    = "DrainingPrimaries"
+	SubstatusRemovingNodes        = "RemovingNodes"
+	SubstatusShrinkingStatefulSet = "ShrinkingStatefulSet"
+
+	// FastScaling specific.
+	SubstatusDeletingStatefulSet = "DeletingStatefulSet"
+	SubstatusRecreatingCluster   = "RecreatingCluster"
+	SubstatusFormingCluster      = "FormingCluster"
+
+	// ScaleToZero specific.
+	SubstatusDeletingResources = "DeletingResources"
+	SubstatusDeletingPVCs      = "DeletingPVCs"
 )
 
 // RedkeyClusterConfigSpec defines the desired state of RedkeyClusterConfig.

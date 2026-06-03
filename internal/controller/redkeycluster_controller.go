@@ -39,12 +39,14 @@ type RedkeyClusterReconciler struct {
 
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusters/scale,verbs=get;update;patch
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusters/finalizers,verbs=update
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusterconfigs,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusterconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=list;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -66,6 +68,13 @@ func (r *RedkeyClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
+	}
+
+	// Scale to zero: when primaries == 0, skip normal reconciliation.
+	// This handles both creation with 0 primaries (no-op) and scaling from >0 to 0
+	// (delegate cleanup to Robin via a RKCC with primaries=0).
+	if cluster.Spec.Primaries == 0 {
+		return r.reconcileScaleToZero(ctx, &cluster)
 	}
 
 	// Ensure RBAC resources exist for Robin

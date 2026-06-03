@@ -16,10 +16,12 @@ The Redkey Operator tracks the lifecycle of each `RedkeyCluster` resource throug
   - [Change categories](#change-categories)
   - [Status transition rules](#status-transition-rules)
 - [Substatus](#substatus)
+  - [Substatus values reference](#substatus-values-reference)
   - [Redkey Cluster Scaling Up (Fast scaling)](#redkey-cluster-scaling-up-fast-scaling)
   - [Redkey Cluster Scaling Up (Slow scaling)](#redkey-cluster-scaling-up-slow-scaling)
   - [Redkey Cluster Scaling Down (Fast scaling)](#redkey-cluster-scaling-down-fast-scaling)
   - [Redkey Cluster Scaling Down (Slow scaling)](#redkey-cluster-scaling-down-slow-scaling)
+  - [Redkey Cluster Scaling to Zero](#redkey-cluster-scaling-to-zero)
   - [Redkey Cluster Upgrading (Fast upgrading)](#redkey-cluster-upgrading-fast-upgrading)
   - [Redkey Cluster Upgrading (Slow upgrading)](#redkey-cluster-upgrading-slow-upgrading)
 
@@ -41,6 +43,7 @@ The implemented status are:
   - the images set in RedkeyCluster under spec and the image set in the StatefulSet object are not the same.
 - **ScalingDown**: The cluster enters in this status to remove excess nodes. RedkeyCluster nodes (primaries * replicas per primary) > StatefulSet replicas.
 - **ScalingUp**: The cluster enters in this status to create the needed nodes to equal the desired nodes with the current nodes. RedkeyCluster primaries * replicas per primary < StatefulSet replicas.
+- **ScalingToZero**: The cluster is being scaled to zero primaries. Robin is deleting all its managed objects (StatefulSet, Service, ConfigMap, PDB, optionally PVCs). Once complete, all infrastructure is removed and the cluster reaches Ready with 0 replicas.
 - **Error**: An error is detected in the cluster. The operator tries to recover the cluster from error checking the configuration and/or scaling the cluster.
   - Storage capacity mismatch.
   - Storage class mismatch.
@@ -96,6 +99,7 @@ Once changes are categorized, the status transition is determined by priority:
 2. **Topology changes (scaling)** → Takes priority over all other changes.
    - If primaries increased OR (primaries unchanged AND replicas increased) → **ScalingUp**
    - If primaries decreased OR (primaries unchanged AND replicas decreased) → **ScalingDown**
+   - If target primaries is 0 → **ScalingToZero** (special teardown flow; see [Scale to Zero](operator-guide/scaling.md#scale-to-zero))
    - When both primaries and replicas change, the primaries delta takes precedence in determining direction.
 3. **Kubernetes / Redis config changes (without topology)** → **Upgrading**
 4. **PurgeKeysOnRebalance alone** (no topology, no K8s, no Redis config) → Treated as no-op (Applied immediately), since the flag only affects future scaling/upgrade behaviour.
@@ -104,98 +108,139 @@ When topology changes are combined with Kubernetes/Redis changes, Robin handles 
 
 ## Substatus
 
-To provide more detail about scaling and upgrade operations, a series of Substatus fields have been added to the ScalingUp, ScalingDown, and Upgrading status fields. This allows you to see the current stage of the operation for the cluster.
+To provide more detail about scaling and upgrade operations, a series of Substatus fields have been added to the ScalingUp, ScalingDown, ScalingToZero and Upgrading status fields. This allows you to see the current stage of the operation for the cluster.
 
-The Substatus that will be applied to these operations will depend on the Redkey Cluster configuration parameter [**purgeKeysOnRebalance**](./purge-keys-on-rebalance.md), which will determine whether the operations are executed with or without key loss.
+Substatus values are **purely informational** — they do not control the reconciliation flow. Robin sets them at the beginning of each significant phase to provide observability via `kubectl get rkcc -w`, dashboards, and alerting.
+
+The Substatus that will be applied to scaling operations depends on whether the cluster qualifies for **fast scaling** (ephemeral, no replicas, purgeKeysOnRebalance=true) or uses the normal **slot-migration scaling** path.
+
+### Substatus values reference
+
+| Substatus | Applies to | Meaning |
+|-----------|-----------|---------|
+| `WaitingForPods` | ScaleUp, FastScaling | StatefulSet updated, waiting for all pods to become Ready |
+| `InitializingNodes` | ScaleUp | New nodes being introduced to cluster (CLUSTER MEET + gossip convergence) |
+| `Rebalancing` | ScaleUp, ScaleDown | Slot migration in progress (rebalance/reshard) |
+| `DrainingPrimaries` | ScaleDown | Slots being migrated away from surplus primaries (weight=0) |
+| `RemovingNodes` | ScaleDown | Surplus nodes being forgotten from cluster (CLUSTER FORGET) |
+| `ShrinkingStatefulSet` | ScaleDown | StatefulSet being scaled down after nodes removed |
+| `AttachingReplicas` | ScaleUp, ScaleDown | Configuring replication topology (CLUSTER REPLICATE) |
+| `Verifying` | ScaleUp, ScaleDown | Running cluster health validation before marking Ready |
+| `DeletingStatefulSet` | FastScaling | Old StatefulSet being deleted for recreation |
+| `RecreatingCluster` | FastScaling | Cluster objects being recreated at new size |
+| `FormingCluster` | FastScaling | Building cluster from scratch on new nodes |
+| `DeletingResources` | ScaleToZero | Kubernetes objects (STS, SVC, CM, PDB) being deleted |
+| `DeletingPVCs` | ScaleToZero | PersistentVolumeClaims being removed |
 
 ### Redkey Cluster Scaling Up (Fast scaling)
 
-Two Substatus are defined:
+When the cluster qualifies for fast scaling (ephemeral, no replicas, purgeKeysOnRebalance=true), the cluster is recreated from scratch:
 
-* **FastScaling**: The StatefulSet is recreated and we wait for the new Redkey Cluster pods to be ready.
-* **EndingFastScaling**: The Operator asks Robin to recreate the cluster and waits for confirmation that it has been recreated correctly, covering all slots and remaining balanced.
+**Substatus flow:** `DeletingStatefulSet` → `RecreatingCluster` → `WaitingForPods` → `FormingCluster` → *(cleared)*
 
 ![Redkey Cluster Scaling Up Fast](./images/redkey-cluster-substatus-scalingup-fast.png)
 
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 3 to 5 primaries:
 
-
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS   SUBSTATUS
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
 redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready    
 redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   FastScaling
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   EndingFastScaling
+redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   DeletingStatefulSet
+redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   RecreatingCluster
+redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   WaitingForPods
+redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   FormingCluster
 redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready 
 ```
 
 ### Redkey Cluster Scaling Up (Slow scaling)
 
-Three Substatus are defined:
+When using slot-migration scaling (purgeKeysOnRebalance=false or cluster has replicas), slots are migrated to new nodes without data loss:
 
-* **PodScaling**: The StatefulSet is updated to create the new required pods. The Operator waits for pods readiness.
-* **RobinScaling**: All the pods are now ready and Robin is required to scale the Redkey Cluster to the new size. The Operator keeps waiting for Robin confirming the cluster is scaled. 
-* **EndingScaling**: Robin ensures the health of the cluster and rebalances the slots.
+**Substatus flow:** `WaitingForPods` → `InitializingNodes` → `Rebalancing` → `AttachingReplicas` → `Verifying` → *(cleared)*
 
 ![Redkey Cluster Scaling Up Slow](./images/redkey-cluster-substatus-scalingup-slow.png)
 
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 3 to 5 primaries, having previously changed the `purgeKeysOnRebalance` parameter to **false**:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS   SUBSTATUS
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
 redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
 redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready    
 redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   PodScaling
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   RobinScaling
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   EndingScaling
+redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   WaitingForPods
+redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   InitializingNodes
+redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   Rebalancing
+redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   AttachingReplicas
+redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   Verifying
 redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready 
 ```
 
 ### Redkey Cluster Scaling Down (Fast scaling)
 
-In this case, the same SubStatus rules apply as for the Fast Scaling Up operation.
+In this case, the same substatus flow applies as for the Fast Scaling Up operation.
 
-* **FastScaling**
-* **EndingFastScaling**
+**Substatus flow:** `DeletingStatefulSet` → `RecreatingCluster` → `WaitingForPods` → `FormingCluster` → *(cleared)*
 
 ![Redkey Cluster Scaling Down Fast](./images/redkey-cluster-substatus-scalingdown-fast.png)
 
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 5 to 3 primaries:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS   SUBSTATUS
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS        SUBSTATUS
 redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready    
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   FastScaling
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   EndingFastScaling
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   DeletingStatefulSet
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   RecreatingCluster
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   WaitingForPods
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   FormingCluster
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready 
 ```
 
 ### Redkey Cluster Scaling Down (Slow scaling)
 
-Two Substatus are defined:
+When using slot-migration scaling, slots are drained from surplus primaries before removing them:
 
-* **RobinScaling**: The Operator requests Robin to descale the cluster, moving the slots (and keys) from the exceeding nodes to those that will be maintained.
-* **PodScaling**: Robin has confirmed that the cluster has been scaled and rebalanced. The operator is now updating the StatefulSet to remove the excess pods.
+**Substatus flow:** `DrainingPrimaries` → `RemovingNodes` → `ShrinkingStatefulSet` → `AttachingReplicas` → `Verifying` → *(cleared)*
+
+Note: `AttachingReplicas` only appears if the cluster has replicas configured.
 
 ![Redkey Cluster Scaling Down Slow](./images/redkey-cluster-substatus-scalingdown-slow.png)
 
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 5 to 3 primaries, having previously changed the `purgeKeysOnRebalance` parameter to **false**:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS   SUBSTATUS
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS        SUBSTATUS
 redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready    
 redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
 redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   RobinScaling
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   PodScaling
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   DrainingPrimaries
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   RemovingNodes
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   ShrinkingStatefulSet
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   Verifying
 redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready  
 ```
 
+### Redkey Cluster Scaling to Zero
+
+When scaling to zero primaries, all cluster infrastructure is removed:
+
+**Substatus flow:** `DeletingResources` → `DeletingPVCs` (if deletePVC=true) → *(cleared)*
+
+```
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS          SUBSTATUS
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
+redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   
+redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   DeletingResources
+redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   DeletingPVCs
+redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             Ready    
+```
+
 ### Redkey Cluster Upgrading (Fast upgrading)
+
+> **Note:** Upgrade substatus values are planned for a future implementation. The values below are from the previous architecture and may change when the upgrade flow is implemented in Robin.
 
 Two Substatus are defined:
 

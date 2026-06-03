@@ -239,11 +239,26 @@ func InsertKeys(namespace, podName string, count int, password ...string) error 
 	return nil
 }
 
-// GetDBSize returns the total number of keys across all pods by running DBSIZE.
+// GetDBSize returns the total number of unique keys across all primary pods by running DBSIZE.
+// Replica pods are skipped to avoid double-counting keys that exist on both primary and replica.
 func GetDBSize(namespace string, podNames []string, password ...string) (int, error) {
 	total := 0
 	re := regexp.MustCompile(`\d+`)
 	for _, pod := range podNames {
+		// Check the node's role; only count primaries to avoid double-counting.
+		roleCmd := "redis-cli role"
+		if len(password) > 0 && password[0] != "" {
+			roleCmd = fmt.Sprintf("redis-cli -a %s role", password[0])
+		}
+		roleOut, _, err := ExecInPod(namespace, pod, roleCmd)
+		if err != nil {
+			return 0, fmt.Errorf("role check on %s: %w", pod, err)
+		}
+		firstLine := strings.TrimSpace(strings.SplitN(roleOut, "\n", 2)[0])
+		if firstLine != "master" {
+			continue
+		}
+
 		cmd := RedisCliDBSize
 		if len(password) > 0 && password[0] != "" {
 			cmd = fmt.Sprintf(RedisCliDBSizeAuth, password[0])

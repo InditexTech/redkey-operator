@@ -147,6 +147,14 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
+  - redkeyclusters/scale
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
   - redkeyclusters/status
   verbs:
   - get

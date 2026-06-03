@@ -21,6 +21,13 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - persistentvolumeclaims
+  verbs:
+  - delete
+  - list
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - get
@@ -84,6 +91,7 @@ rules:
   - redkey.inditex.dev
   resources:
   - redkeyclusterconfigs/status
+  - redkeyclusters/scale
   - redkeyclusters/status
   verbs:
   - get

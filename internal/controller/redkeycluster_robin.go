@@ -42,6 +42,11 @@ func DesiredRobinRules() []rbacv1.PolicyRule {
 			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
+			APIGroups: []string{""},
+			Resources: []string{"persistentvolumeclaims"},
+			Verbs:     []string{"list", "delete"},
+		},
+		{
 			APIGroups: []string{"policy"},
 			Resources: []string{"poddisruptionbudgets"},
 			Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
