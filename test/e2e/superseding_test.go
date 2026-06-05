@@ -175,8 +175,20 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Small delay to ensure the operator creates the config before next change
-			time.Sleep(2 * time.Second)
+			// Ensure the operator created the config for primaries=5 before applying the
+			// next change, so the two configs are applied sequentially.
+			Eventually(func() bool {
+				configs, listErr := framework.ListConfigs(ctx, k8sClient, clusterName, clusterNs)
+				if listErr != nil {
+					return false
+				}
+				for i := range configs {
+					if configs[i].Spec.Primaries == 5 {
+						return true
+					}
+				}
+				return false
+			}, framework.CreationTimeout, framework.DefaultPollInterval).Should(BeTrue())
 
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())

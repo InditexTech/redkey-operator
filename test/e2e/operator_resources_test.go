@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("Operator Resources", Ordered, Serial, Label("operator-resources"), func() {
+var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), func() {
 	var (
 		ctx       context.Context
 		cancel    context.CancelFunc

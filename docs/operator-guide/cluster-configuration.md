@@ -64,5 +64,40 @@ Since Redis uses last-write-wins for duplicate parameters, user-specified values
 ## Configuration Lifecycle
 
 1. **Cluster creation**: Robin generates `redis.conf` with defaults + user config and stores it in a ConfigMap.
-2. **Configuration update**: When `spec.config` or `spec.image` changes, the Operator creates a new `RedkeyClusterConfig`. Robin detects the change and updates the ConfigMap. If the image changed, it triggers an upgrade flow.
-3. **Hot-reload vs restart**: Redis does not hot-reload `redis.conf`. Configuration changes that affect only `redis.conf` content (not the image) take effect after the next pod restart. Image changes trigger the upgrade flow which recreates pods.
+2. **Configuration update**: When the spec changes, the Operator creates a new `RedkeyClusterConfig`. Robin detects the change and reconciles it.
+3. **Hot-reload vs restart**: Redis does not hot-reload `redis.conf`. Configuration changes that affect the Redis pod template take effect only after the pods are recycled through the [upgrade](upgrade.md) flow.
+
+## Which changes recycle the Redis pods?
+
+Not every spec change recreates Redis pods. Robin classifies a change and reacts
+accordingly:
+
+| Change | Effect |
+|--------|--------|
+| `primaries`, `replicasPerPrimary` | [Scaling](scaling.md) (no full recycle; nodes are added/removed and slots rebalanced) |
+| `image`, `version`, `config` (`redisConfig`) | [Upgrade](upgrade.md) — pods recycled with the new template |
+| `resources`, `labels`, `annotations`, `override`, `pdb` | [Upgrade](upgrade.md) — pods recycled with the new template |
+| `robin` configuration only | Hot-reloaded by Robin; **no** pod recycle |
+| `purgeKeysOnRebalance` only | Recorded; no recycle on its own |
+
+Any change that alters the Redis pod template is detected via the pod's
+`controller-revision-hash` label, so it reliably triggers a recycle even when the
+container image is unchanged (see [Upgrade](upgrade.md#detecting-which-pods-still-need-recycling)).
+
+## Immutable fields
+
+The following storage-related fields are **immutable after cluster creation**. They are
+enforced by a CEL validation rule on the CRD, so the API server rejects any update that
+changes them:
+
+| Field | Rejection message |
+|-------|-------------------|
+| `ephemeral` | `Changing the ephemeral field is not allowed` |
+| `storage` | `Changing the storage size is not allowed` |
+| `storageClassName` | `Changing the storage class name is not allowed` |
+| `accessModes` | `Changing the storage access modes is not allowed` |
+
+These fields define the persistent volumes backing the cluster, which cannot be resized
+or reprovisioned in place. To change them, create a new cluster and migrate the data
+(side-by-side migration).
+

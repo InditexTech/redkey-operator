@@ -24,13 +24,14 @@ import (
 // These can be overridden via environment variables for CI tuning:
 //   - E2E_POLL_INTERVAL: poll interval in seconds (default: 3)
 //   - E2E_CREATION_TIMEOUT: creation timeout in seconds (default: 180)
-//   - E2E_HEALTH_TIMEOUT: health timeout in seconds (default: 600)
+//   - E2E_HEALTH_TIMEOUT: health timeout in seconds (default: 180)
+//   - E2E_UPGRADE_TIMEOUT: upgrade timeout in seconds (default: 600)
 var (
 	DefaultTimeout      = 10 * time.Minute
 	DefaultPollInterval = envDurationSeconds("E2E_POLL_INTERVAL", 3)
 	CreationTimeout     = envDurationSeconds("E2E_CREATION_TIMEOUT", 180)
-	HealthTimeout       = envDurationSeconds("E2E_HEALTH_TIMEOUT", 600)
-	UpgradeTimeout      = envDurationSeconds("E2E_UPGRADE_TIMEOUT", 1800)
+	HealthTimeout       = envDurationSeconds("E2E_HEALTH_TIMEOUT", 180)
+	UpgradeTimeout      = envDurationSeconds("E2E_UPGRADE_TIMEOUT", 600)
 )
 
 func envDurationSeconds(key string, defaultSeconds int) time.Duration {
@@ -243,6 +244,68 @@ func WaitForActiveConfigApplied(
 		}
 	}
 	return active, nil
+}
+
+// WaitForActiveConfigAppliedTopology waits until the active (highest-sequence) config both
+// matches the expected topology (primaries and replicasPerPrimary) and reaches "Applied".
+//
+// Matching the topology is essential after a spec update: there is a brief window between
+// the cluster spec change and the operator creating the new config during which the
+// previous, already-Applied config is still the highest-sequence one. A plain
+// WaitForActiveConfigApplied would observe that stale config and return immediately,
+// declaring the scaling operation complete before it has even started. Requiring the active
+// config to reflect the desired topology closes that race.
+func WaitForActiveConfigAppliedTopology(
+	ctx context.Context,
+	c client.Client,
+	clusterName, namespace string,
+	expectedPrimaries, expectedReplicasPerPrimary int,
+	timeout time.Duration,
+) (*redkeyv1beta1.RedkeyClusterConfig, error) {
+	var lastPhase, lastConfigName string
+	var lastPrimaries, lastReplicas int32
+
+	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
+		func(ctx context.Context) (bool, error) {
+			configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			if err := c.List(ctx, configs, client.InNamespace(namespace),
+				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
+				return false, nil
+			}
+			if len(configs.Items) == 0 {
+				return false, nil
+			}
+
+			var active *redkeyv1beta1.RedkeyClusterConfig
+			maxSeq := -1
+			for i := range configs.Items {
+				if configs.Items[i].Spec.Sequence > maxSeq {
+					maxSeq = configs.Items[i].Spec.Sequence
+					active = &configs.Items[i]
+				}
+			}
+			if active == nil {
+				return false, nil
+			}
+
+			lastConfigName = active.Name
+			lastPhase = active.Status.ConfigPhase
+			lastPrimaries = active.Spec.Primaries
+			lastReplicas = active.Spec.ReplicasPerPrimary
+
+			topologyMatches := lastPrimaries == int32(expectedPrimaries) &&
+				lastReplicas == int32(expectedReplicasPerPrimary)
+			return topologyMatches && lastPhase == redkeyv1beta1.ConfigPhaseApplied, nil
+		})
+	if err != nil {
+		return nil, fmt.Errorf(
+			"timed out waiting for active config %q (primaries=%d replicasPerPrimary=%d) phase Applied "+
+				"matching target topology (primaries=%d replicasPerPrimary=%d) (last phase: %q): %w",
+			lastConfigName, lastPrimaries, lastReplicas,
+			expectedPrimaries, expectedReplicasPerPrimary, lastPhase, err)
+	}
+
+	return WaitForActiveConfigApplied(ctx, c, clusterName, namespace, timeout)
 }
 
 // ListConfigs returns all RedkeyClusterConfigs for a cluster, sorted by sequence.

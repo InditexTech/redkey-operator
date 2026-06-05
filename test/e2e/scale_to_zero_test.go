@@ -101,7 +101,7 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 60*time.Minute)
+		ctx, cancel = context.WithTimeout(context.Background(), 25*time.Minute)
 
 		By("creating a test namespace")
 		var err error

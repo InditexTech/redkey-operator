@@ -256,7 +256,7 @@ The upgrade lifecycle is split between the operator and Robin. Understanding the
 
 ### Operator Responsibilities (this repo)
 
-1. **Trigger**: When `RedkeyCluster.spec.image`, `.spec.version`, or `.spec.redisConfig` changes, the operator creates a new `RedkeyClusterConfig` with the updated spec.
+1. **Trigger**: When any spec field that affects the Redis pod template changes — `image`, `version`, `redisConfig`, `resources`, `labels`, `annotations`, `override`, or `pdb` — the operator creates a new `RedkeyClusterConfig` with the updated spec. Robin then recycles the pods (it compares `controller-revision-hash` against the StatefulSet `UpdateRevision`, so it is not limited to image changes). Topology fields (`primaries`, `replicasPerPrimary`) drive scaling instead, and `robin.*` changes are handled as a Robin hot-reload.
 2. **Config Checksum**: A SHA-256 checksum annotation (`redkey.inditex.dev/config-checksum`, 16 hex chars) is set on the pod template to ensure StatefulSet detects changes even when only `redisConfig` differs.
 3. **Robin Deployment**: The operator ensures a Robin Deployment exists per cluster that watches for config changes. The Robin image is specified via Helm values or the operator container environment.
 
@@ -287,6 +287,13 @@ SubstatusUpgradeScalingDown   = "RemovingExtraNode"
 SubstatusFastUpgrading     = "FastUpgrading"
 SubstatusEndingFastUpgrade = "FormingCluster"
 ```
+
+> **Note:** `SubstatusEndingFastUpgrade` deliberately reuses the literal string
+> `"FormingCluster"` (the same value as `SubstatusFormingCluster` used during initial
+> cluster formation and fast scaling). The final step of a fast upgrade is functionally
+> a cluster re-formation, so the user-facing substatus is intentionally identical. When
+> matching on substatus, distinguish these by the surrounding status/context, not by the
+> string alone.
 
 ### Important: Clusters with Replicas ALWAYS Use Rolling N+1
 

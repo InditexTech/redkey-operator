@@ -128,9 +128,21 @@ The Substatus that will be applied to scaling operations depends on whether the 
 | `Verifying` | ScaleUp, ScaleDown | Running cluster health validation before marking Ready |
 | `DeletingStatefulSet` | FastScaling | Old StatefulSet being deleted for recreation |
 | `RecreatingCluster` | FastScaling | Cluster objects being recreated at new size |
-| `FormingCluster` | FastScaling | Building cluster from scratch on new nodes |
+| `FormingCluster` | FastScaling, FastUpgrade | Building/reforming the cluster from scratch on the new nodes |
 | `DeletingResources` | ScaleToZero | Kubernetes objects (STS, SVC, CM, PDB) being deleted |
 | `DeletingPVCs` | ScaleToZero | PersistentVolumeClaims being removed |
+| `AddingExtraNode` | Upgrade (Rolling N+1) | Scaling the StatefulSet +1 (plus replicas) and meeting the extra node(s) |
+| `DrainingNode` | Upgrade (Rolling N+1) | Migrating slots from the current partition node to the destination node |
+| `RollingUpdate` | Upgrade (Rolling N+1) | Waiting for the partition pod to be recreated with the new spec, then re-joining it |
+| `MovingLastSlots` | Upgrade (Rolling N+1) | Migrating slots from the extra node back to node 0 |
+| `RemovingExtraNode` | Upgrade (Rolling N+1) | Forgetting the extra node and scaling the StatefulSet back to its original size |
+| `FastUpgrading` | Upgrade (Fast) | StatefulSet updated and pods deleted, waiting for recreation with the new image |
+
+> **Note:** the `FormingCluster` substatus string is reused by both fast scaling and the
+> final phase of a fast upgrade (`EndingFastUpgrade`). In both cases it means Robin is
+> waiting for the freshly created pods to reform the cluster, cover all slots, and become
+> balanced. The high-level `Status` field (`ScalingUp`/`ScalingDown` vs `Upgrading`)
+> disambiguates which operation is in progress.
 
 ### Redkey Cluster Scaling Up (Fast scaling)
 

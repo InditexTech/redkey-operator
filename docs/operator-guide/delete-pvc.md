@@ -28,3 +28,17 @@ spec:
   ...
   deletePVC: true
 ```
+
+## Data on the PVC during a Rolling N+1 upgrade
+
+On persistent clusters (`ephemeral: false`), a [Rolling N+1 upgrade](upgrade.md) recycles
+one node at a time. Before a drained node's pod is deleted, Robin issues a `FLUSHALL`
+followed by a synchronous `SAVE`. By that point the node no longer owns any slots (its
+slots have already been migrated away), so its remaining keys are stale. Persisting an
+empty dataset guarantees the restarted pod reloads a clean RDB from its PVC instead of the
+pre-reshard snapshot, which would otherwise still contain keys for already-migrated slots.
+
+This affects only the per-node RDB written to the PVC during the upgrade — it does not
+remove or recreate the PVC itself, and it does not affect data on nodes that still own
+slots. Ephemeral clusters skip this step entirely.
+

@@ -44,8 +44,19 @@ func waitForScaledCluster(
 ) []string {
 	key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
+	// Read the desired topology from the (already-updated) cluster spec so the config wait
+	// can require the active config to reflect it. Without this, the wait could observe the
+	// previous, already-Applied config during the window before the operator creates the
+	// new config and return prematurely — letting a subsequent scaling spec start while
+	// this operation is still in flight and starving its timeout budget.
+	cluster := &redkeyv1beta1.RedkeyCluster{}
+	Expect(k8sClient.Get(ctx, key, cluster)).To(Succeed())
+	expectedPrimaries := int(cluster.Spec.Primaries)
+	expectedReplicasPerPrimary := int(cluster.Spec.ReplicasPerPrimary)
+
 	By(fmt.Sprintf("waiting for the active config to be Applied (target %d nodes)", expectedNodes))
-	_, err := framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.HealthTimeout)
+	_, err := framework.WaitForActiveConfigAppliedTopology(ctx, k8sClient, clusterName, clusterNs,
+		expectedPrimaries, expectedReplicasPerPrimary, framework.HealthTimeout)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("waiting for the cluster to reach Ready")
@@ -77,7 +88,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 60*time.Minute)
+		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Minute)
 
 		By("creating a test namespace")
 		var err error

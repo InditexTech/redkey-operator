@@ -12,7 +12,13 @@ This document describes the Redis image/configuration upgrade mechanism implemen
 
 > **IMPORTANT**: This upgrade mechanism assumes **compatible images** (same major version or known-compatible minor/patch upgrades). For major version upgrades with breaking changes (e.g., Redis 7 → Redis 8 with incompatible RDB format), use the **side-by-side migration strategy** (create a destination cluster and migrate data externally).
 
-The mechanism triggers when a new `RedkeyClusterConfig` changes the `image`, `version`, or `redisConfig` fields while the cluster is in `Ready` status.
+The mechanism triggers when a new `RedkeyClusterConfig` changes any field that alters the
+Redis pod template while the cluster is in `Ready` status. This includes not only the
+`image`, `version`, and `redisConfig` fields, but also `resources`, `labels`,
+`annotations`, `override`, and `pdb`. Any of these changes recycles the pods through the
+same zero-downtime Rolling N+1 (or Fast Upgrade) flow described below. Pure scaling
+changes (`primaries`/`replicasPerPrimary`) are handled by [scaling](scaling.md) instead,
+and Robin-only configuration changes are hot-reloaded without recycling pods.
 
 ## Upgrade Strategies
 
@@ -31,6 +37,10 @@ Used only for ephemeral clusters without replicas where data loss is acceptable 
 ```
 (default) → FastUpgrading → FormingCluster → Ready
 ```
+
+> The final `FormingCluster` substatus of a fast upgrade corresponds to the internal
+> `EndingFastUpgrade` step, which reuses the same `FormingCluster` string as fast scaling.
+> The high-level `Status` field (`Upgrading`) disambiguates it from a scaling operation.
 
 **Steps:**
 1. Update ConfigMap with new `redis.conf`
@@ -81,6 +91,26 @@ For a cluster with 3 primaries and 1 replica/primary: pods 0–2 are primaries, 
 
 6. **ScalingDown**: Scale StatefulSet back to original size. Restore **RollingUpdate** strategy with partition=0 (normal operating mode). Run `CLUSTER CHECK` to verify health. If replicas configured: **rebalance replicas** — force the correct primary→replica mapping for all primaries via `CLUSTER REPLICATE` to fix any drift caused by Redis auto-migration during the upgrade. Set status to Ready.
 
+## Data safety and HA guarantees
+
+The Rolling N+1 flow includes several safeguards so that the cluster never loses slot
+coverage or stale-reads during the upgrade:
+
+- **Replica sync wait** — after attaching a replica with `CLUSTER REPLICATE` (the pivot
+  replica and recycled replicas), Robin waits until the replica reports
+  `master_link_status:up` (via `INFO replication`) before relying on it for HA. A replica
+  that has not finished its initial sync cannot safely cover for its primary.
+- **Per-iteration cluster check** — before advancing to the next partition, Robin runs a
+  `CLUSTER CHECK`. If the check reports any error (open slots, coverage gaps), the
+  reconcile waits and retries instead of advancing, preventing the upgrade from running
+  ahead of an inconsistent topology.
+- **Flush + persist on persistent clusters** — for non-ephemeral clusters, before a
+  drained node's pod is deleted Robin issues a `FLUSHALL` followed by a synchronous
+  `SAVE`. The drained node no longer owns any slots, so its keys are stale; persisting an
+  empty dataset to disk ensures the restarted pod reloads a clean RDB instead of the
+  pre-reshard snapshot (which would still contain keys for slots that have already been
+  migrated). Ephemeral clusters skip this step since they have no persistent volumes.
+
 ## Config Checksum
 
 A SHA-256 checksum of `image + version + redisConfig` is stored as an annotation on the pod template:
@@ -90,6 +120,23 @@ redkey.inditex.dev/config-checksum: <16-char hex>
 ```
 
 This ensures Kubernetes detects a template change even when only the Redis configuration (not the image) changes.
+
+## Detecting which pods still need recycling
+
+Within the Rolling N+1 flow, Robin must decide, per pod, whether it has already been
+recreated with the new template or is still running the old one. Instead of comparing
+container images (which misses changes to `resources`, `labels`, `annotations`, or
+`redisConfig`), Robin compares the pod's `controller-revision-hash` label against the
+StatefulSet's `status.updateRevision`:
+
+- If the pod's revision **differs** from the StatefulSet's update revision, the pod still
+  runs the old template and must be recycled.
+- If they **match**, the pod has already been recycled and is left untouched (re-deleting
+  an already-recycled, slot-owning pod would orphan its slots and stall the upgrade).
+
+Because the `controller-revision-hash` is computed by Kubernetes from the **entire** pod
+template, this covers every template-affecting field — not just the image — and is robust
+to reconcile retries and restarts.
 
 ## Observability
 

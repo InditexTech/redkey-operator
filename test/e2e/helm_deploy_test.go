@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("Helm Deployment", Ordered, Serial, Label("helm"), func() {
+var _ = Describe("Helm Deployment", Ordered, Label("helm"), func() {
 	var (
 		ctx       context.Context
 		cancel    context.CancelFunc

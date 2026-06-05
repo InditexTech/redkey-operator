@@ -224,11 +224,18 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	// --- Rolling N+1 Upgrade (purgeKeysOnRebalance=false) ---
 
 	// rollingUpgradeContext defines a Context that verifies a rolling N+1 upgrade
-	// preserves all data (zero data loss) for the given topology.
-	rollingUpgradeContext := func(description, clusterName string, replicasPerPrimary int32, totalNodes, keyCount int) {
+	// preserves all data (zero data loss) for the given topology. When persistent is
+	// true the cluster is backed by a PVC, which exercises the flush+persist (SAVE)
+	// path on drained nodes during the rolling upgrade.
+	rollingUpgradeContext := func(
+		description, clusterName string, replicasPerPrimary int32, totalNodes, keyCount int, persistent bool,
+	) {
 		Context(description, func() {
 			It("creates the cluster and inserts data", func() {
 				opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+				if persistent {
+					opts = opts.WithPVC("100Mi")
+				}
 				opts.Primaries = 3
 				opts.ReplicasPerPrimary = replicasPerPrimary
 				opts.PurgeKeysOnRebalance = ptr.To(false) // rolling upgrade
@@ -271,8 +278,21 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	}
 
 	rollingUpgradeContext("Rolling N+1 upgrade (ephemeral, no replicas)",
-		"upgrade-rolling-noreplica", 0, 3, 100)
+		"upgrade-rolling-noreplica", 0, 3, 100, false)
 
 	rollingUpgradeContext("Rolling N+1 upgrade (ephemeral, with replicas)",
-		"upgrade-rolling-replicas", 1, 6, 50)
+		"upgrade-rolling-replicas", 1, 6, 50, false)
+
+	// Multi-replica topology (3 primaries × 2 replicas = 9 nodes) exercises the
+	// per-primary replica recycling loop with more than one replica per primary.
+	rollingUpgradeContext("Rolling N+1 upgrade (ephemeral, 2 replicas per primary)",
+		"upgrade-rolling-multireplica", 2, 9, 50, false)
+
+	// Persistent topologies (PVC-backed) exercise the FLUSHALL+SAVE path on drained
+	// nodes. These previously had 0% coverage in the upgrade suite.
+	rollingUpgradeContext("Rolling N+1 upgrade (persistent, no replicas)",
+		"upgrade-rolling-persistent-noreplica", 0, 3, 80, true)
+
+	rollingUpgradeContext("Rolling N+1 upgrade (persistent, with replicas)",
+		"upgrade-rolling-persistent-replicas", 1, 6, 40, true)
 })

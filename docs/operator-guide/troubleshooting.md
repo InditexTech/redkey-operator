@@ -36,6 +36,30 @@ If a slave node is present in a primaries-only cluster, ix this by running the [
 
 You can find the node IP information by running the [nodes command](#gathering-nodes-information). If the IPs are inconsistent run the [cluster meet](#cluster-meet) from a correctly configured node to the incorrect node.
 
+### An upgrade is stuck on a partition
+
+During a [Rolling N+1 upgrade](upgrade.md) the cluster status stays `Upgrading` and the
+`substatus.upgradingPartition` does not advance over several reconcile intervals. Robin
+deliberately refuses to advance to the next partition while the topology is inconsistent,
+so this usually means a previous reshard left the cluster in a bad state. Common causes:
+
+- **Open slots** left in a `MIGRATING`/`IMPORTING` state by an interrupted reshard. Run
+  the [check command](#check-the-cluster) — if it reports open slots, run the
+  [fix command](#fixing-the-cluster). Robin also runs `redis-cli --cluster fix`
+  automatically before each reshard, so confirm the source node can be reached.
+- **Dead/`FAIL` nodes** from earlier recycles that were not cleaned up, causing reshard
+  timeouts. Run the [check command](#check-the-cluster); if you see nodes in `fail` state,
+  [forget them](#forget-a-node) from every surviving member.
+- **Gossip not converged** — a recycled pod has not yet been recognised by all peers.
+  Verify the IPs with the [nodes command](#gathering-nodes-information) and, if needed,
+  issue a [cluster meet](#cluster-meet) from a healthy node.
+- **A replica that never synced** — Robin waits for `master_link_status:up` before
+  treating a replica as HA. Check `redis-cli -h <pod> INFO replication`; a replica stuck
+  at `master_link_status:down` points to a connectivity or auth problem with its primary.
+
+Once the underlying inconsistency is fixed, Robin resumes the upgrade from the last
+recorded substatus on the next reconcile — no manual status edit is required.
+
 ## Cluster manager commands
 
 Below are a list of commands and code snippets for inspecting and repairing the cluster. Most commands use kubectl combined with the Redkey cluster manager tool. This tool is invoked with

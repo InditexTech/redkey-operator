@@ -96,8 +96,10 @@ clusters except those eligible for [fast scaling](#fast-scaling-data-purged).
    disrupted. Future replica nodes are **not** joined yet — this prevents the rebalance
    from distributing slots to them.
 4. **Rebalance slots** ⚠️ *(`TRYAGAIN` window)*. Robin runs
-   `redis-cli --cluster rebalance <node> --cluster-use-empty-masters --cluster-pipeline N --cluster-yes`,
-   moving slots from the existing primaries onto the new empty masters. A full reshard
+   `redis-cli --cluster rebalance <node> --cluster-use-empty-masters --cluster-pipeline 50 --cluster-yes`,
+   moving slots from the existing primaries onto the new empty masters. The
+   `--cluster-pipeline 50` flag batches 50 keys per `MIGRATE` call to speed up the
+   transfer. A full reshard
    moves all affected slots (and their keys) in a single `redis-cli` invocation, which
    may take several minutes on clusters that hold data; the rebalance timeout
    (`cluster.rebalanceTimeoutSeconds`, default `600`) must be generous enough to let it

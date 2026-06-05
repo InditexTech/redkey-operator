@@ -28,6 +28,16 @@ All settings in `spec.robin.config` are applied dynamically:
 
 If any reconciler interval field is omitted from the CR, Robin keeps the value it started with. In particular, `intervalOnWaitSeconds` falls back to Robin's startup default of 10 seconds unless its CLI flag overrides it.
 
+### Settings that are *not* hot-reloadable
+
+Only `spec.robin.config` and `spec.auth.secret` are applied in-flight. Any change that
+alters the Redis pod template — `image`, `version`, `config` (the Redis configuration),
+`resources`, `labels`, `annotations`, `override`, or `pdb` — recycles the Redis pods
+through the zero-downtime [upgrade](upgrade.md) flow instead of being hot-reloaded.
+Topology fields (`primaries`, `replicasPerPrimary`) are handled by [scaling](scaling.md).
+See [Which changes recycle the Redis pods?](cluster-configuration.md#which-changes-recycle-the-redis-pods)
+for the full classification.
+
 ## How It Works
 
 The hot-reload mechanism relies on the `RedkeyClusterConfig` CRD as the communication channel between the Operator and Robin:
