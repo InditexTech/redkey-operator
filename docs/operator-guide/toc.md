@@ -13,6 +13,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [Cluster Health Checks and Remediation](../cluster-health-checks.md)
 * [Redkey Cluster Metrics](cluster-metrics.md)
 * [How to deploy a Redis Cluster](redis-deployment.md)
+* [Cluster Configuration Defaults](cluster-configuration.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)
 * [Primary-Replica Clusters](primary-replica-cluster.md)
 * [Scaling a Redkey Cluster](scaling.md)

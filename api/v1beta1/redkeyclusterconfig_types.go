@@ -55,6 +55,18 @@ const (
 	// ScaleToZero specific.
 	SubstatusDeletingResources = "DeletingResources"
 	SubstatusDeletingPVCs      = "DeletingPVCs"
+
+	// Upgrade — Rolling N+1 substatus values.
+	SubstatusUpgradeScalingUp     = "AddingExtraNode"   // Scaling StatefulSet +1 (or +replicas) and meeting extra node(s).
+	SubstatusUpgradeResharding    = "DrainingNode"      // Migrating slots from current partition node to destination.
+	SubstatusUpgradeRollingUpdate = "RollingUpdate"     // Waiting for pod at current partition to be recreated with new image.
+	SubstatusUpgradeEnding        = "MovingLastSlots"   // Migrating slots from extra node back to node 0.
+	SubstatusUpgradeScalingDown   = "RemovingExtraNode" // Scaling StatefulSet back to original size.
+
+	// Upgrade — Fast Upgrade substatus values.
+	SubstatusFastUpgrading      = "FastUpgrading"      // StatefulSet updated and pods deleted for fast upgrade.
+	SubstatusEndingFastUpgrade  = "FormingCluster"     // Waiting for pods to restart and cluster to reform.
+	SubstatusFastUpgradeForming = "FastUpgradeForming" // Stale state cleared once; forming the new cluster idempotently.
 )
 
 // RedkeyClusterConfigSpec defines the desired state of RedkeyClusterConfig.

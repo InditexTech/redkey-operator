@@ -248,6 +248,81 @@ make cleanup-kind     # tears down the Kind cluster
 - Cleanup logic retains the last `ConfigPhaseApplied` config and any newer configs; do not assume older configs survive cleanup.
 - REUSE compliance is required: every source file must have an `SPDX-FileCopyrightText` and `SPDX-License-Identifier` header. See `REUSE.toml` and `hack/boilerplate.go.txt`.
 
+---
+
+## Upgrade Architecture — Cross-Repo Knowledge
+
+The upgrade lifecycle is split between the operator and Robin. Understanding the boundary is critical.
+
+### Operator Responsibilities (this repo)
+
+1. **Trigger**: When `RedkeyCluster.spec.image`, `.spec.version`, or `.spec.redisConfig` changes, the operator creates a new `RedkeyClusterConfig` with the updated spec.
+2. **Config Checksum**: A SHA-256 checksum annotation (`redkey.inditex.dev/config-checksum`, 16 hex chars) is set on the pod template to ensure StatefulSet detects changes even when only `redisConfig` differs.
+3. **Robin Deployment**: The operator ensures a Robin Deployment exists per cluster that watches for config changes. The Robin image is specified via Helm values or the operator container environment.
+
+### Robin Responsibilities (in `../redkeyrobin`)
+
+Robin owns the entire upgrade execution:
+- Strategy selection: Fast vs Rolling N+1
+- StatefulSet manipulation (scale, template updates with OnDelete strategy, manual pod deletion)
+- Redis cluster commands (`CLUSTER MEET`, `CLUSTER REPLICATE`, `CLUSTER FORGET`, `--cluster reshard`, `--cluster fix`)
+- Status/substatus updates on the `RedkeyClusterConfig`
+- **HA preservation**: Only drained primaries (0 slots) and their specific replicas are recycled. Replicas of active primaries are never touched.
+
+### Key CRD Constants for Upgrade (defined in `api/v1beta1/`)
+
+```go
+// Strategy selection criteria:
+// fastUpgradeEligible = Ephemeral && ReplicasPerPrimary == 0 && PurgeKeysOnRebalance == true
+// Everything else → Rolling N+1
+
+// Substatus flow — Rolling N+1:
+SubstatusUpgradeScalingUp     = "AddingExtraNode"
+SubstatusUpgradeResharding    = "DrainingNode"
+SubstatusUpgradeRollingUpdate = "RollingUpdate"
+SubstatusUpgradeEnding        = "MovingLastSlots"
+SubstatusUpgradeScalingDown   = "RemovingExtraNode"
+
+// Substatus flow — Fast Upgrade:
+SubstatusFastUpgrading     = "FastUpgrading"
+SubstatusEndingFastUpgrade = "FormingCluster"
+```
+
+### Important: Clusters with Replicas ALWAYS Use Rolling N+1
+
+Even if a cluster is ephemeral with `purgeKeysOnRebalance=true`, if `replicasPerPrimary > 0` it uses Rolling N+1. This is intentional — destroying replicas causes election races and potential data loss during cluster reformation.
+
+### StatefulSet Layout (reference for pod ordinal calculations)
+
+For `primaries=P`, `replicasPerPrimary=R`:
+- Pods `0 .. P-1` → primaries
+- Pods `P .. P+P*R-1` → replicas
+- During upgrade: pods `P+P*R` → extra primary, pods `P+P*R+1 .. P+P*R+R` → extra replicas
+
+Formula: `totalMembers = P + P*R`. This is the base size before the extra node is added.
+
+### E2E Testing (runs from this repo)
+
+```shell
+# Full upgrade suite:
+make test-e2e LABEL=upgrade
+
+# With replicas only (critical path — most bugs appear here):
+go test ./test/e2e/ -v -ginkgo.v -ginkgo.label-filter="upgrade" -ginkgo.focus="with replicas" -timeout 20m
+
+# Without replicas:
+go test ./test/e2e/ -v -ginkgo.v -ginkgo.label-filter="upgrade" -ginkgo.focus="without replicas" -timeout 15m
+```
+
+E2E tests require:
+- Kind cluster `redkey-operator-test-e2e` (or override with `KIND_CLUSTER_E2E`)
+- Local registry at `localhost:5005`
+- Both images pushed: `localhost:5005/redkey-operator:<VERSION>` and `localhost:5005/redkey-robin:<VERSION>`
+
+### Documentation
+
+Upgrade docs live in `docs/operator-guide/upgrade.md` and `docs/redkey-cluster-status.md`. These document the Rolling N+1 pivot pattern, substatus flow, and topology support matrix. Keep them in sync when modifying the upgrade flow.
+
 ### Dependency management
 
 - Use `go mod tidy` after adding or removing dependencies.

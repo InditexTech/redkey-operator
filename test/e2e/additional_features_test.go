@@ -59,10 +59,6 @@ var _ = Describe("Additional Features", Ordered, Label("features"), func() {
 		const clusterName = "additional-redis-config"
 
 		It("should propagate Redis config changes to all nodes via new RedkeyClusterConfig", func() {
-			// TODO: Update this test when Robin implements the Upgrading status handler (CONFIG SET propagation).
-			// Currently Robin logs "Cluster is upgrading (operation not yet implemented)" and never applies config changes.
-			Skip("Blocked: Robin does not yet implement the Upgrading operation for Redis config changes")
-
 			By("creating a cluster with initial redis config")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Config = `maxmemory 90mb
@@ -178,11 +174,6 @@ hz 20`
 		})
 
 		It("should update custom labels on existing pods when spec changes", func() {
-			// TODO: Update this test when Robin implements the Upgrading status handler.
-			// Label updates trigger a new RedkeyClusterConfig with HasKubernetesChanges=true → Upgrading status,
-			// which Robin does not yet handle.
-			Skip("Blocked: Robin does not yet implement the Upgrading operation for label changes")
-
 			By("updating custom labels")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			cluster := &redkeyv1beta1.RedkeyCluster{}
@@ -264,11 +255,6 @@ hz 20`
 		})
 
 		It("should update custom annotations on existing pods when spec changes", func() {
-			// TODO: Update this test when Robin implements the Upgrading status handler.
-			// Annotation updates trigger a new RedkeyClusterConfig with HasKubernetesChanges=true → Upgrading status,
-			// which Robin does not yet handle.
-			Skip("Blocked: Robin does not yet implement the Upgrading operation for annotation changes")
-
 			By("updating custom annotations")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			cluster := &redkeyv1beta1.RedkeyCluster{}
@@ -342,11 +328,6 @@ hz 20`
 		})
 
 		It("should update PDB when configuration changes and remove when disabled", func() {
-			// TODO: Update this test when Robin implements the Upgrading status handler.
-			// PDB changes trigger a new RedkeyClusterConfig with HasKubernetesChanges=true → Upgrading status,
-			// which Robin does not yet handle.
-			Skip("Blocked: Robin does not yet implement the Upgrading operation for PDB changes")
-
 			By("updating PDB maxUnavailable to 2")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			cluster := &redkeyv1beta1.RedkeyCluster{}

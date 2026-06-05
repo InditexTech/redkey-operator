@@ -30,6 +30,7 @@ var (
 	DefaultPollInterval = envDurationSeconds("E2E_POLL_INTERVAL", 3)
 	CreationTimeout     = envDurationSeconds("E2E_CREATION_TIMEOUT", 180)
 	HealthTimeout       = envDurationSeconds("E2E_HEALTH_TIMEOUT", 600)
+	UpgradeTimeout      = envDurationSeconds("E2E_UPGRADE_TIMEOUT", 1800)
 )
 
 func envDurationSeconds(key string, defaultSeconds int) time.Duration {

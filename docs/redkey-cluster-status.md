@@ -23,7 +23,7 @@ The Redkey Operator tracks the lifecycle of each `RedkeyCluster` resource throug
   - [Redkey Cluster Scaling Down (Slow scaling)](#redkey-cluster-scaling-down-slow-scaling)
   - [Redkey Cluster Scaling to Zero](#redkey-cluster-scaling-to-zero)
   - [Redkey Cluster Upgrading (Fast upgrading)](#redkey-cluster-upgrading-fast-upgrading)
-  - [Redkey Cluster Upgrading (Slow upgrading)](#redkey-cluster-upgrading-slow-upgrading)
+  - [Redkey Cluster Upgrading (Rolling N+1)](#redkey-cluster-upgrading-rolling-n1)
 
 ---
 
@@ -240,60 +240,54 @@ redis-cluster-ephemeral   0           0          true        true        redis:8
 
 ### Redkey Cluster Upgrading (Fast upgrading)
 
-> **Note:** Upgrade substatus values are planned for a future implementation. The values below are from the previous architecture and may change when the upgrade flow is implemented in Robin.
-
 Two Substatus are defined:
 
 * **FastUpgrading**: The StatefulSet is recreated and we wait for the new Redkey Cluster pods to be ready.
-* **EndingFastUpgrading**: The Operator asks Robin to recreate the cluster and waits for confirmation that it has been recreated correctly, covering all slots and remaining balanced.
+* **FormingCluster**: Robin forms a fresh cluster and waits for confirmation that it has been recreated correctly, covering all slots and remaining balanced.
 
 ![Redkey Cluster Upgrading Fast](./images/redkey-cluster-substatus-upgrading-fast.png)
 
 This is an example of the Status and SubStatus changes when upgrading the sample Redkey Cluster:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS   SUBSTATUS
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   FastUpgrading
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   EndingFastUpgrading
+redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   FormingCluster
 redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready  
 ```
 
-### Redkey Cluster Upgrading (Slow upgrading)
+### Redkey Cluster Upgrading (Rolling N+1)
 
 These SubStatus have been defined:
 
-* **ScalingUp**: The Operator add one pod that is added as a Primary node to the Redkey Cluster. This node will be used to move slots from the existing nodes before recreating them.
-* **Resharding**: A node is being resharded, moving all its slots (and keys) to another node.
-* **RollingUpdate**: The resharded node is being recreated, recreating its pod and asking to Robin to refresh the cluster.
-* **EndingSlowUpgrading**: Move the slots (and keys) from the extra node.
-* **ScalingDown**: The extra node added to the cluster is removed.
+* **AddingExtraNode**: Robin scales the StatefulSet by 1 primary (+ replicas if configured), waits for the extra pods to be Ready, meets them into the cluster, and attaches extra replicas.
+* **DrainingNode**: Slots are being migrated from the current victim node (at the current partition ordinal) to the destination node (the extra primary on first iteration, or the previously recycled primary on subsequent iterations).
+* **RollingUpdate**: The drained node is being recreated via the StatefulSet partition mechanism. Once the new pod is Ready with the new image, it is met back into the cluster and dead nodes are cleaned up. If replicas are configured, they are also recycled and re-attached.
+* **MovingLastSlots**: Slots are moved from the extra primary back to node 0 (which was just recycled and is empty).
+* **RemovingExtraNode**: The extra node (and its replicas) are forgotten from the cluster, the StatefulSet is scaled back to its original size, and a cluster health check is performed.
 
-When Slow upgrading a Redkey Cluster the upgrade is executed from partition to partition, applying the **Resharding** and **RollingUpdate** SubStatus to each partition.
+When performing a Rolling N+1 upgrade, Robin iterates from the last partition to partition 0, applying **DrainingNode** and **RollingUpdate** to each partition in sequence.
 
-Current partition can be shown using `kubectl get rkcl -o wide`.
+Current partition can be shown using `kubectl get rkcc -o wide`.
 
 ![Redkey Cluster Upgrading Slow](./images/redkey-cluster-substatus-upgrading-slow.png)
 
-This is an example of the Status and SubStatus changes when upgrading the sample Redkey Cluster, having previously changed the `purgeKeysOnRebalance` parameter to **false**:
+This is an example of the Status and SubStatus changes when upgrading the sample Redkey Cluster:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STORAGECLASSNAME   DELETEPVC   STATUS   SUBSTATUS   PARTITION
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Ready                
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Ready                
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading               
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   ScalingUp   
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   Resharding   
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   Resharding   3
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   RollingUpdate   3
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   Resharding   2
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   RollingUpdate   2
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   Resharding   1
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   RollingUpdate   1
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   Resharding   0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   RollingUpdate   0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   EndingSlowUpgrading   0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Upgrading   ScalingDown           0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm                                            Ready    
+NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS         PARTITION
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready                
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading               
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   AddingExtraNode   
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       2
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      2
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       1
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      1
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       0
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      0
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   MovingLastSlots    0
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RemovingExtraNode  0
+redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
 ```

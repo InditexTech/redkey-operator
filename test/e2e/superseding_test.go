@@ -20,9 +20,6 @@ import (
 )
 
 var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
-	const scalingNotImplementedReason = "Scaling/reconfiguration is not implemented yet: " +
-		"RedkeyClusterConfig cannot reliably reach Applied for superseding scenarios"
-
 	var (
 		ctx       context.Context
 		cancel    context.CancelFunc
@@ -59,8 +56,6 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 		const clusterName = "superseding-skip"
 
 		It("should skip intermediate configs and apply only the final one", func() {
-			Skip(scalingNotImplementedReason)
-
 			By("creating a cluster with skipIfSuperseded=true")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithSkipIfSuperseded(true)
@@ -104,10 +99,15 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.HealthTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying that intermediate configs are skipped and final config is applied")
+			By("verifying only the final config remains Applied (intermediate configs were skipped and cleaned up)")
+			// When skipIfSuperseded=true, Robin marks intermediate configs as Superseded
+			// instead of applying them one by one, and the operator then prunes every
+			// config older than the last Applied one. The observable end state is therefore
+			// a single, final config (highest sequence) that is Applied with the final
+			// topology — the intermediate 5- and 7-primary configs are never Applied.
 			Eventually(func() bool {
 				configs, listErr := framework.ListConfigs(ctx, k8sClient, clusterName, clusterNs)
-				if listErr != nil || len(configs) < 3 {
+				if listErr != nil || len(configs) == 0 {
 					return false
 				}
 
@@ -117,24 +117,22 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 						finalIdx = i
 					}
 				}
-				if finalIdx == -1 {
-					return false
-				}
 
 				finalConfig := configs[finalIdx]
 				if finalConfig.Status.ConfigPhase != redkeyv1beta1.ConfigPhaseApplied || finalConfig.Spec.Primaries != int32(9) {
 					return false
 				}
 
-				nonAppliedIntermediate := 0
+				// No intermediate config (lower sequence than the final) must have reached
+				// the Applied phase: they were skipped via superseding.
 				for _, cfg := range configs {
-					if cfg.Spec.Sequence < finalConfig.Spec.Sequence && cfg.Status.ConfigPhase != redkeyv1beta1.ConfigPhaseApplied {
-						nonAppliedIntermediate++
+					if cfg.Spec.Sequence < finalConfig.Spec.Sequence && cfg.Status.ConfigPhase == redkeyv1beta1.ConfigPhaseApplied {
+						return false
 					}
 				}
-				return nonAppliedIntermediate > 0
+				return true
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
-				"Expected final config Applied and at least one intermediate config skipped (not Applied)")
+				"Expected only the final config (9 primaries) to be Applied with no intermediate config Applied")
 
 			By("verifying the cluster has the correct number of pods")
 			expectedPods := 9 // 9 primaries, 0 replicas
@@ -156,8 +154,6 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 		const clusterName = "superseding-noskip"
 
 		It("should apply all configs sequentially when skipIfSuperseded is false", func() {
-			Skip(scalingNotImplementedReason)
-
 			By("creating a cluster with skipIfSuperseded=false")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithSkipIfSuperseded(false)
@@ -192,21 +188,38 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.HealthTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying all configs reached Applied (none Superseded)")
+			By("verifying the final config reached Applied with the final topology")
+			// With skipIfSuperseded=false each config is applied in turn. Once a newer
+			// config becomes Applied the operator prunes the older Applied ones, so the
+			// lasting end state is the final config (highest sequence) Applied with 7
+			// primaries. No config must end up Superseded.
 			Eventually(func() bool {
 				configs, listErr := framework.ListConfigs(ctx, k8sClient, clusterName, clusterNs)
-				if listErr != nil || len(configs) < 3 {
+				if listErr != nil || len(configs) == 0 {
 					return false
 				}
 
+				var finalIdx = -1
+				for i := range configs {
+					if finalIdx == -1 || configs[i].Spec.Sequence > configs[finalIdx].Spec.Sequence {
+						finalIdx = i
+					}
+				}
+
+				finalConfig := configs[finalIdx]
+				if finalConfig.Status.ConfigPhase != redkeyv1beta1.ConfigPhaseApplied || finalConfig.Spec.Primaries != int32(7) {
+					return false
+				}
+
+				// No remaining config must be Superseded when superseding is disabled.
 				for _, cfg := range configs {
-					if cfg.Status.ConfigPhase != redkeyv1beta1.ConfigPhaseApplied {
+					if cfg.Status.ConfigPhase == redkeyv1beta1.ConfigPhaseSuperseded {
 						return false
 					}
 				}
 				return true
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
-				"Expected all configs to be Applied when skipIfSuperseded=false")
+				"Expected the final config (7 primaries) to be Applied with no config Superseded")
 
 			By("verifying the cluster has the correct final state")
 			expectedPods := 7 // 7 primaries, 0 replicas

@@ -44,7 +44,7 @@ type RedkeyClusterReconciler struct {
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusterconfigs,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusterconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=list;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
