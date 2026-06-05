@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Upgrade (Rolling Config)
 
 This document describes the Redis image/configuration upgrade mechanism implemented by Robin (the sidecar controller). The upgrade process handles all four topologies (ephemeral/persistent, with/without replicas).
