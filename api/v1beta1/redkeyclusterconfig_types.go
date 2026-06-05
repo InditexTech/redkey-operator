@@ -34,27 +34,27 @@ const (
 // Substatus constants for scaling operations (informational only — not used for control flow).
 const (
 	// Common substatus values shared across scaling operations.
-	SubstatusWaitingForPods    = "WaitingForPods"
-	SubstatusRebalancing       = "Rebalancing"
-	SubstatusAttachingReplicas = "AttachingReplicas"
-	SubstatusVerifying         = "Verifying"
+	SubstatusWaitingForPods    = "WaitingForPods"    // Waiting for the StatefulSet pods to be scheduled and Ready.
+	SubstatusRebalancing       = "Rebalancing"       // Redistributing hash slots across the cluster primaries.
+	SubstatusAttachingReplicas = "AttachingReplicas" // Associating replica nodes to their assigned primaries.
+	SubstatusVerifying         = "Verifying"         // Checking cluster health and slot coverage before completion.
 
 	// ScaleUp specific.
-	SubstatusInitializingNodes = "InitializingNodes"
+	SubstatusInitializingNodes = "InitializingNodes" // Meeting the new nodes into the cluster before rebalancing.
 
 	// ScaleDown specific.
-	SubstatusDrainingPrimaries    = "DrainingPrimaries"
-	SubstatusRemovingNodes        = "RemovingNodes"
-	SubstatusShrinkingStatefulSet = "ShrinkingStatefulSet"
+	SubstatusDrainingPrimaries    = "DrainingPrimaries"    // Migrating slots off the primaries that will be removed.
+	SubstatusRemovingNodes        = "RemovingNodes"        // Forgetting the drained nodes from the cluster topology.
+	SubstatusShrinkingStatefulSet = "ShrinkingStatefulSet" // Scaling the StatefulSet down to the new node count.
 
 	// FastScaling specific.
-	SubstatusDeletingStatefulSet = "DeletingStatefulSet"
-	SubstatusRecreatingCluster   = "RecreatingCluster"
-	SubstatusFormingCluster      = "FormingCluster"
+	SubstatusDeletingStatefulSet = "DeletingStatefulSet" // Removing the existing StatefulSet to recreate it from scratch.
+	SubstatusRecreatingCluster   = "RecreatingCluster"   // Recreating the StatefulSet with the new topology.
+	SubstatusFormingCluster      = "FormingCluster"      // Forming the cluster from the freshly created nodes.
 
 	// ScaleToZero specific.
-	SubstatusDeletingResources = "DeletingResources"
-	SubstatusDeletingPVCs      = "DeletingPVCs"
+	SubstatusDeletingResources = "DeletingResources" // Tearing down the StatefulSet and related resources.
+	SubstatusDeletingPVCs      = "DeletingPVCs"      // Removing the PersistentVolumeClaims for the cluster.
 
 	// Upgrade — Rolling N+1 substatus values.
 	SubstatusUpgradeScalingUp     = "AddingExtraNode"   // Scaling StatefulSet +1 (or +replicas) and meeting extra node(s).
@@ -64,9 +64,8 @@ const (
 	SubstatusUpgradeScalingDown   = "RemovingExtraNode" // Scaling StatefulSet back to original size.
 
 	// Upgrade — Fast Upgrade substatus values.
-	SubstatusFastUpgrading      = "FastUpgrading"      // StatefulSet updated and pods deleted for fast upgrade.
-	SubstatusEndingFastUpgrade  = "FormingCluster"     // Waiting for pods to restart and cluster to reform.
-	SubstatusFastUpgradeForming = "FastUpgradeForming" // Stale state cleared once; forming the new cluster idempotently.
+	SubstatusFastUpgrading     = "FastUpgrading"  // StatefulSet updated and pods deleted for fast upgrade.
+	SubstatusEndingFastUpgrade = "FormingCluster" // Waiting for pods to restart and cluster to reform.
 )
 
 // RedkeyClusterConfigSpec defines the desired state of RedkeyClusterConfig.
