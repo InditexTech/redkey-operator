@@ -221,97 +221,58 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 		})
 	})
 
-	// --- Rolling N+1 Upgrade (purgeKeysOnRebalance=false, no replicas) ---
+	// --- Rolling N+1 Upgrade (purgeKeysOnRebalance=false) ---
 
-	Context("Rolling N+1 upgrade (ephemeral, no replicas)", func() {
-		const clusterName = "upgrade-rolling-noreplica"
+	// rollingUpgradeContext defines a Context that verifies a rolling N+1 upgrade
+	// preserves all data (zero data loss) for the given topology.
+	rollingUpgradeContext := func(description, clusterName string, replicasPerPrimary int32, totalNodes, keyCount int) {
+		Context(description, func() {
+			It("creates the cluster and inserts data", func() {
+				opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+				opts.Primaries = 3
+				opts.ReplicasPerPrimary = replicasPerPrimary
+				opts.PurgeKeysOnRebalance = ptr.To(false) // rolling upgrade
 
-		It("creates a 3-primary cluster and inserts data", func() {
-			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			opts.Primaries = 3
-			opts.ReplicasPerPrimary = 0
-			opts.PurgeKeysOnRebalance = ptr.To(false) // rolling upgrade
+				_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+				Expect(err).NotTo(HaveOccurred())
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
-			Expect(err).NotTo(HaveOccurred())
+				podNames := waitForUpgradeComplete(clusterName, totalNodes)
 
-			podNames := waitForUpgradeComplete(clusterName, 3)
+				By("inserting keys that must survive the upgrade")
+				Expect(framework.InsertKeys(clusterNs, podNames[0], keyCount)).To(Succeed())
 
-			By("inserting keys that must survive the upgrade")
-			Expect(framework.InsertKeys(clusterNs, podNames[0], 100)).To(Succeed())
+				By("recording key count before upgrade")
+				dbSize, err := framework.GetDBSize(clusterNs, podNames)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(dbSize).To(BeNumerically(">=", keyCount))
+				_, _ = fmt.Fprintf(GinkgoWriter, "Keys before rolling upgrade (%s): %d\n", clusterName, dbSize)
+			})
 
-			By("recording key count before upgrade")
-			dbSize, err := framework.GetDBSize(clusterNs, podNames)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(dbSize).To(BeNumerically(">=", 100))
-			_, _ = fmt.Fprintf(GinkgoWriter, "Keys before rolling upgrade: %d\n", dbSize)
+			It("upgrades the Redis image preserving all data", func() {
+				newImage := getRedisUpgradeImage()
+
+				By(fmt.Sprintf("updating cluster image to %s", newImage))
+				updateClusterImage(clusterName, newImage)
+
+				By("waiting for rolling upgrade to complete")
+				podNames := waitForUpgradeComplete(clusterName, totalNodes, framework.UpgradeTimeout)
+
+				By("verifying all pods run the new image")
+				verifyAllPodsRunImage(clusterName, newImage, totalNodes)
+
+				By("verifying data was preserved (zero data loss)")
+				dbSize, err := framework.GetDBSize(clusterNs, podNames)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(dbSize).To(BeNumerically(">=", keyCount),
+					"Rolling N+1 upgrade must preserve all data")
+				_, _ = fmt.Fprintf(GinkgoWriter, "Keys after rolling upgrade (%s): %d\n", clusterName, dbSize)
+			})
 		})
+	}
 
-		It("upgrades the Redis image preserving all data", func() {
-			newImage := getRedisUpgradeImage()
+	rollingUpgradeContext("Rolling N+1 upgrade (ephemeral, no replicas)",
+		"upgrade-rolling-noreplica", 0, 3, 100)
 
-			By(fmt.Sprintf("updating cluster image to %s", newImage))
-			updateClusterImage(clusterName, newImage)
-
-			By("waiting for rolling upgrade to complete")
-			podNames := waitForUpgradeComplete(clusterName, 3, framework.UpgradeTimeout)
-
-			By("verifying all pods run the new image")
-			verifyAllPodsRunImage(clusterName, newImage, 3)
-
-			By("verifying data was preserved (zero data loss)")
-			dbSize, err := framework.GetDBSize(clusterNs, podNames)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(dbSize).To(BeNumerically(">=", 100),
-				"Rolling N+1 upgrade must preserve all data")
-			_, _ = fmt.Fprintf(GinkgoWriter, "Keys after rolling upgrade: %d\n", dbSize)
-		})
-	})
-
-	// --- Rolling N+1 Upgrade (with replicas) ---
-
-	Context("Rolling N+1 upgrade (ephemeral, with replicas)", func() {
-		const clusterName = "upgrade-rolling-replicas"
-
-		It("creates a 3-primary 1-replica cluster and inserts data", func() {
-			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			opts.Primaries = 3
-			opts.ReplicasPerPrimary = 1
-			opts.PurgeKeysOnRebalance = ptr.To(false)
-
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
-			Expect(err).NotTo(HaveOccurred())
-
-			podNames := waitForUpgradeComplete(clusterName, 6) // 3 primaries + 3 replicas
-
-			By("inserting keys that must survive the upgrade")
-			Expect(framework.InsertKeys(clusterNs, podNames[0], 50)).To(Succeed())
-
-			By("recording key count before upgrade")
-			dbSize, err := framework.GetDBSize(clusterNs, podNames)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(dbSize).To(BeNumerically(">=", 50))
-			_, _ = fmt.Fprintf(GinkgoWriter, "Keys before rolling upgrade (with replicas): %d\n", dbSize)
-		})
-
-		It("upgrades the Redis image preserving all data with replicas", func() {
-			newImage := getRedisUpgradeImage()
-
-			By(fmt.Sprintf("updating cluster image to %s", newImage))
-			updateClusterImage(clusterName, newImage)
-
-			By("waiting for rolling upgrade to complete")
-			podNames := waitForUpgradeComplete(clusterName, 6, framework.UpgradeTimeout)
-
-			By("verifying all pods run the new image")
-			verifyAllPodsRunImage(clusterName, newImage, 6)
-
-			By("verifying data was preserved")
-			dbSize, err := framework.GetDBSize(clusterNs, podNames)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(dbSize).To(BeNumerically(">=", 50),
-				"Rolling N+1 upgrade with replicas must preserve all data")
-			_, _ = fmt.Fprintf(GinkgoWriter, "Keys after rolling upgrade (with replicas): %d\n", dbSize)
-		})
-	})
+	rollingUpgradeContext("Rolling N+1 upgrade (ephemeral, with replicas)",
+		"upgrade-rolling-replicas", 1, 6, 50)
 })
