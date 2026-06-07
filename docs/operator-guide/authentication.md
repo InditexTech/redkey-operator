@@ -10,12 +10,14 @@ This guide explains how to configure Redis password authentication for a Redkey 
 
 ## Overview
 
-Redkey supports Redis `requirepass` authentication. The password is stored in a Kubernetes Secret and referenced by name in the `RedkeyCluster` spec. The flow is:
+Redkey supports Redis `requirepass` + `masterauth` authentication. The password is stored in a Kubernetes Secret and referenced by name in the `RedkeyCluster` spec. The flow is:
 
 1. The user creates a Secret containing the Redis password.
 2. The user references the Secret name in `spec.auth.secret` of the `RedkeyCluster`.
 3. The Operator propagates the reference to `RedkeyClusterConfig.spec.auth.secret`.
-4. Robin reads the Secret at runtime and uses the password to connect to Redis nodes.
+4. Robin detects the auth change, applies it to all running Redis nodes via `CONFIG SET requirepass` + `CONFIG SET masterauth`, and updates the ConfigMap for future pod restarts.
+
+Auth changes are applied **in-place via hot-reload** — no pods are recycled, no rolling upgrade is triggered, and the cluster remains fully operational throughout.
 
 ```ascii
 ┌────────────┐       ┌──────────────────────┐       ┌─────────────────┐
@@ -23,10 +25,14 @@ Redkey supports Redis `requirepass` authentication. The password is stored in a 
 │ (password) │ read  │   spec.auth.secret   │ copy  │ spec.auth.secret│
 └────────────┘       └──────────────────────┘       └────────────────┘
        ▲
-       │ get
-┌──────┴──────┐
-│    Robin    │──── connects to Redis with password
-└─────────────┘
+       │ get (K8s API)
+┌──────┴──────────────────────────────────────────────────────┐
+│    Robin                                                    │
+│                                                             │
+│  1. CONFIG SET requirepass <password>  →  all running pods  │
+│  2. CONFIG SET masterauth  <password>  →  all running pods  │
+│  3. Update ConfigMap (for future pod restarts)              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Creating the Auth Secret
@@ -74,19 +80,25 @@ spec:
 
 When the Operator reconciles this resource it copies the `auth` reference into each `RedkeyClusterConfig` it creates.
 
-## How Robin Uses the Secret
+## How Robin Applies Auth Changes
 
-Robin does **not** receive the password via CLI flags or environment variables. Instead:
+Auth changes are applied via **hot-reload** — no pod recycling, no rolling upgrade, no downtime.
 
-1. The reconciler reads `RedkeyClusterConfig.spec.auth.secret` and stores the secret name in its internal runtime configuration.
-2. The metrics collector retrieves the password from the Secret using the Kubernetes API (`GET /api/v1/namespaces/{ns}/secrets/{name}`).
-3. The password is cached in-memory. If the secret name changes (e.g. a rotation to a new Secret), Robin automatically invalidates the cache and fetches the new password on the next collection cycle.
+When Robin detects an auth change (`HasAuthChanges = true` in the change report), it calls `applyAuthToAllNodes()` which:
 
-This design means:
+1. Reads the new password from the target config's auth Secret.
+2. Connects to every running Redis pod using the **previous** config's credentials.
+3. Issues `CONFIG SET requirepass <new-password>` on each pod.
+4. Issues `CONFIG SET masterauth <new-password>` on each pod (critical for replication).
+5. Updates the ConfigMap so freshly created pods inherit the new auth.
+6. Updates the internal runtime config's auth secret reference.
 
-- **No restart required** when switching to a different Secret.
-- **No sensitive data** in Pod environment variables or command-line arguments.
-- **RBAC-enforced**: Robin's ServiceAccount only has `get` permission on Secrets in its namespace.
+Auth is applied **before** any cluster operation (upgrade, scaling). This ensures:
+- New pods created during scaling/upgrade start with the correct `requirepass`/`masterauth`.
+- All nodes share the same `masterauth` during the upgrade (replica reconnections work).
+- Auth changes are never blocked by an ongoing cluster operation.
+
+Because auth changes are separated from `HasRedisConfigChanges` in `DetectChanges()`, an **auth-only config change is immediately marked as Applied** — the cluster status remains `Ready`.
 
 ## Disabling Authentication
 
@@ -103,18 +115,24 @@ If a previously authenticated cluster should be switched to no-auth, remove the 
 
 ## Rotating the Password
 
-To rotate the Redis password:
+Robin manages `requirepass` and `masterauth` automatically. There are two ways to rotate:
 
-1. Update the content of the existing Secret (the `password` key) with the new password.
-2. Robin caches the password per collection cycle, so it will pick up the new value after the current cache expires (typically on the next metrics collection tick).
+### In-place Secret update (same Secret, new password)
 
-To rotate to a completely new Secret:
+1. Update the `password` key in the existing Secret with the new value.
+2. Robin detects the change and applies `CONFIG SET requirepass <new>` + `CONFIG SET masterauth <new>` to all running nodes.
+3. No pods are recycled, no downtime occurs.
+4. The old password stops working after Robin completes the CONFIG SET on all nodes.
+
+### New Secret (different name)
 
 1. Create the new Secret with the new password.
 2. Update `spec.auth.secret` in the `RedkeyCluster` to point to the new Secret name.
-3. Robin detects the name change and fetches from the new Secret automatically.
+3. The Operator creates a new `RedkeyClusterConfig` with the updated auth reference.
+4. Robin detects the config change and applies the new password via CONFIG SET to all nodes.
+5. Since auth is the only change, the config is marked as Applied immediately (no cluster operation).
 
-> **Note**: Ensure Redis itself is reconfigured with the new password (via `CONFIG SET requirepass` or a restart) before or in coordination with the Secret update. Redkey does not currently manage the Redis `requirepass` configuration automatically — the password in the Secret must match what Redis expects.
+> **Note**: For combined changes (e.g., auth + image upgrade together), auth is applied via CONFIG SET **before** the upgrade begins. This ensures all nodes share the same `masterauth` throughout the rolling upgrade, preventing replica reconnection failures.
 
 ## RBAC
 

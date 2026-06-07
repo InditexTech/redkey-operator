@@ -147,7 +147,7 @@ help: ## Display this help.
 ##@ CI
 
 .PHONY: verify
-verify: fmt vet lint build test-all ## Run all verification steps (fmt, vet, lint, unit and integration tests).
+verify: tidy fmt vet lint build test-all ## Run all verification steps (fmt, vet, lint, unit and integration tests).
 	@echo "All verification checks passed successfully!"
 
 .PHONY: version
@@ -174,6 +174,10 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: tidy
+tidy: ##	Run go mod tidy
+	go mod tidy
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

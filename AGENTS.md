@@ -330,6 +330,23 @@ E2E tests require:
 
 Upgrade docs live in `docs/operator-guide/upgrade.md` and `docs/redkey-cluster-status.md`. These document the Rolling N+1 pivot pattern, substatus flow, and topology support matrix. Keep them in sync when modifying the upgrade flow.
 
+### Auth Hot-Reload Across Repos
+
+Auth changes are applied via CONFIG SET (hot-reload) by Robin, not via pod recycling:
+
+| Repo | File | Role |
+| ---- | ---- | ---- |
+| Robin | `internal/reconciler/config_changes.go` | `HasAuthChanges` field, `detectRedisConfigChanges()` no longer checks Auth |
+| Robin | `internal/reconciler/cluster_reconciler.go` | `applyAuthToAllNodes()`, modified `handleConfigChange()` |
+| Operator | `test/e2e/framework/redisclient.go` | `CheckAuthRequired()`/`CheckAuthDisabled()` helpers (no false positive from `-a` flag) |
+| Operator | `test/e2e/auth_test.go` | Fixed false positives by using `CheckAuthRequired` for unauthenticated checks |
+| Operator | `test/e2e/auth_and_upgrade_test.go` | Combined auth + upgrade scenarios |
+| Robin | `test/integration/config_changes_test.go` | Auth-only config marked Applied without upgrade transition |
+
+**Key e2e pattern**: Use `CheckAuthRequired(clusterNs, pod)` (no password) instead of `PingRedis(clusterNs, pod, password)` to verify auth enforcement without false positives from `redis-cli -a` behavior.
+
+**Key robin integration pattern**: Auth-only changes must result in `ConfigPhaseApplied` + `ClusterStatusReady` (no `Upgrading`/`InProgress`).
+
 ### Dependency management
 
 - Use `go mod tidy` after adding or removing dependencies.

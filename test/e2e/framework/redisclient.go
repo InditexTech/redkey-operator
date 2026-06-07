@@ -303,6 +303,21 @@ func PingRedis(namespace, podName string, password ...string) bool {
 	return strings.TrimSpace(stdout) == "PONG"
 }
 
+// CheckAuthRequired returns true if the Redis server requires authentication,
+// i.e. PING without a password fails. This is the inverse of CheckAuthDisabled.
+// Unlike PingRedis with a password (which can produce false positives when the
+// -a flag is wrong but redis-cli still sends PING and gets PONG), this check
+// does not pass any password, so AUTH is never attempted by redis-cli.
+func CheckAuthRequired(namespace, podName string) bool {
+	return !PingRedis(namespace, podName)
+}
+
+// CheckAuthDisabled returns true if the Redis server does NOT require
+// authentication, i.e. PING without a password succeeds.
+func CheckAuthDisabled(namespace, podName string) bool {
+	return PingRedis(namespace, podName)
+}
+
 // VerifyClusterHealthy checks that the cluster state is "ok" and all 16384 slots are assigned.
 func VerifyClusterHealthy(namespace, podName string, expectedNodes int, password ...string) error {
 	info, err := GetClusterInfo(namespace, podName, password...)

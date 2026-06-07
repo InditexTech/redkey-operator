@@ -20,6 +20,12 @@ same zero-downtime Rolling N+1 (or Fast Upgrade) flow described below. Pure scal
 changes (`primaries`/`replicasPerPrimary`) are handled by [scaling](scaling.md) instead,
 and Robin-only configuration changes are hot-reloaded without recycling pods.
 
+**Auth changes** (`spec.auth`) are also applied in-place via hot-reload (`CONFIG SET
+requirepass` + `CONFIG SET masterauth`) — no pod recycling, no rolling upgrade. If an auth
+change is combined with an image/configuration upgrade, auth is applied via CONFIG SET
+**before** the upgrade begins, ensuring all nodes share the same `masterauth` throughout
+the process. For details, see [Authentication](authentication.md).
+
 ## Upgrade Strategies
 
 Robin selects the upgrade strategy based on the cluster configuration:
@@ -66,7 +72,7 @@ For a cluster with 3 primaries and 1 replica/primary: pods 0–2 are primaries, 
 
 **Steps:**
 
-1. **Start**: Update ConfigMap + StatefulSet template (using **OnDelete** update strategy — no pods are recreated automatically). Scale StatefulSet up by 1 primary (+ replicas if configured). Extra pods get the new image.
+1. **Start**: If auth changed, apply `CONFIG SET requirepass` + `CONFIG SET masterauth` to all running nodes. Update ConfigMap + StatefulSet template (using **OnDelete** update strategy — no pods are recreated automatically). Scale StatefulSet up by 1 primary (+ replicas if configured). Extra pods get the new image and inherit the correct auth from the ConfigMap.
 
 2. **ScalingUp**: Wait for extra pods to be Ready. Meet all nodes into the cluster via `CLUSTER MEET`. If replicas configured: run `CLUSTER REPLICATE` on extra replica(s) to attach them to the extra primary. Set initial partition = (primaries - 1).
 

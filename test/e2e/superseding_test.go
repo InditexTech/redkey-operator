@@ -17,7 +17,22 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 )
+
+// updatePrimaries refetches the cluster and updates its primary count, retrying
+// on optimistic-concurrency conflicts caused by the operator mutating the object
+// concurrently.
+func updatePrimaries(ctx context.Context, key types.NamespacedName, primaries int32) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cluster := &redkeyv1beta1.RedkeyCluster{}
+		if err := k8sClient.Get(ctx, key, cluster); err != nil {
+			return err
+		}
+		cluster.Spec.Primaries = primaries
+		return k8sClient.Update(ctx, cluster)
+	})
+}
 
 var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 	var (
@@ -74,26 +89,13 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
 			// Change to 5 primaries
-			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err = k8sClient.Get(ctx, key, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Primaries = 5
-			err = k8sClient.Update(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(updatePrimaries(ctx, key, 5)).NotTo(HaveOccurred())
 
 			// Immediately change to 7 primaries
-			err = k8sClient.Get(ctx, key, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Primaries = 7
-			err = k8sClient.Update(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(updatePrimaries(ctx, key, 7)).NotTo(HaveOccurred())
 
 			// Immediately change to 9 primaries
-			err = k8sClient.Get(ctx, key, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Primaries = 9
-			err = k8sClient.Update(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(updatePrimaries(ctx, key, 9)).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready with final config applied")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.HealthTimeout)
@@ -168,12 +170,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("applying two changes (primaries 3→5→7)")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
-			err = k8sClient.Get(ctx, key, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Primaries = 5
-			err = k8sClient.Update(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(updatePrimaries(ctx, key, 5)).NotTo(HaveOccurred())
 
 			// Ensure the operator created the config for primaries=5 before applying the
 			// next change, so the two configs are applied sequentially.
@@ -190,11 +187,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 				return false
 			}, framework.CreationTimeout, framework.DefaultPollInterval).Should(BeTrue())
 
-			err = k8sClient.Get(ctx, key, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Primaries = 7
-			err = k8sClient.Update(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(updatePrimaries(ctx, key, 7)).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready with all configs applied")
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.HealthTimeout)

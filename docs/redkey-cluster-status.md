@@ -86,7 +86,8 @@ Robin compares the previous (Applied) spec with the target (new) spec field by f
 | **Robin config** | `RobinConfig.*` (reconciler intervals, metrics, cluster connection, profiling) | No — hot-reloaded at runtime |
 | **Topology** | `Primaries`, `ReplicasPerPrimary` | Yes — scaling |
 | **Kubernetes** | `Image`, `Labels`, `Resources`, `Override`, `PodDisruptionBudget`, `Storage` | Yes — upgrade |
-| **Redis config** | `RedisConfig`, `Version`, `Auth` | Yes — upgrade |
+| **Redis config** | `RedisConfig`, `Version` | Yes — upgrade |
+| **Auth** | `Auth` | No — hot-reloaded via CONFIG SET |
 | **PurgeKeysOnRebalance** | `PurgeKeysOnRebalance` | Only if combined with topology changes |
 
 Control fields (`Sequence`, `SkipIfSuperseded`, `Ephemeral`) are intentionally **ignored** — they do not affect the running cluster.
@@ -95,7 +96,7 @@ Control fields (`Sequence`, `SkipIfSuperseded`, `Ephemeral`) are intentionally *
 
 Once changes are categorized, the status transition is determined by priority:
 
-1. **No changes / Robin-only changes** → Config is marked as **Applied** immediately. The cluster stays in its current status (typically Ready). No cluster operation is triggered.
+1. **No changes / Robin-only changes / Auth-only changes** → Config is marked as **Applied** immediately. The cluster stays in its current status (typically Ready). No cluster operation is triggered. Auth changes are applied to all running nodes via `CONFIG SET requirepass` + `CONFIG SET masterauth` before the status is updated.
 2. **Topology changes (scaling)** → Takes priority over all other changes.
    - If primaries increased OR (primaries unchanged AND replicas increased) → **ScalingUp**
    - If primaries decreased OR (primaries unchanged AND replicas decreased) → **ScalingDown**

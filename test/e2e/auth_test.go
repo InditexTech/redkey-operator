@@ -92,6 +92,8 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			for _, pod := range podNames {
 				Expect(framework.PingRedis(clusterNs, pod, password)).To(BeTrue(),
 					"Pod %s should respond to authenticated PING", pod)
+				Expect(framework.CheckAuthRequired(clusterNs, pod)).To(BeTrue(),
+					"Pod %s should require authentication for unauthenticated PING", pod)
 			}
 
 			By("verifying auth secret is propagated to the active config")
@@ -165,6 +167,12 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			Eventually(func() bool {
 				return framework.PingRedis(clusterNs, podNames[0], password)
 			}, 2*time.Minute, 5*time.Second).Should(BeTrue())
+
+			By("verifying unauthenticated access is rejected after enabling auth")
+			Eventually(func() bool {
+				return framework.CheckAuthRequired(clusterNs, podNames[0])
+			}, 1*time.Minute, 5*time.Second).Should(BeTrue(),
+				"Unauthenticated PING should fail after auth is enabled")
 
 			By("verifying data integrity after auth change")
 			readPassword := resolveDataPassword(clusterNs, podNames[0], password)
@@ -272,9 +280,9 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
 				"Redis should accept the new password after rotation")
 
-			By("verifying cluster remains reachable after password rotation")
-			Expect(framework.PingRedis(clusterNs, podNames[0])).To(BeTrue(),
-				"Redis should remain reachable after rotating the secret")
+			By("verifying unauthenticated access still fails after password rotation")
+			Expect(framework.CheckAuthRequired(clusterNs, podNames[0])).To(BeTrue(),
+				"Redis should still require authentication after password rotation")
 
 			By("verifying data integrity after password rotation")
 			readPassword := resolveDataPassword(clusterNs, podNames[0], newPassword)
@@ -346,6 +354,17 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 				return true
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
 				"All nodes should accept authenticated PING")
+
+			By("verifying unauthenticated access is rejected on all nodes")
+			Eventually(func() bool {
+				for _, pod := range podNames {
+					if !framework.CheckAuthRequired(clusterNs, pod) {
+						return false
+					}
+				}
+				return true
+			}, 1*time.Minute, 5*time.Second).Should(BeTrue(),
+				"All nodes should reject unauthenticated PING after auth is enabled")
 
 			By("verifying replication is working (replicas connected to primaries)")
 			readPassword := resolveDataPassword(clusterNs, podNames[0], password)

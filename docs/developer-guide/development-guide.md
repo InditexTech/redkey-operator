@@ -395,7 +395,8 @@ Each test file has a Ginkgo label for selective execution:
 | `robin-changes` | `robin_changes_test.go` | Robin image and resources updates |
 | `superseding` | `superseding_test.go` | Config superseding behavior |
 | `validation` | `validation_test.go` | Webhook/admission validations |
-| `auth` | `auth_test.go` | Authentication scenarios (with and without replicas) |
+| `auth` | `auth_test.go` | Authentication scenarios (with and without replicas, password rotation) |
+| `auth+upgrade` | `auth_and_upgrade_test.go` | Combined auth + rolling/fast upgrade scenarios |
 
 ### Chaos tests
 

@@ -14,6 +14,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [Redkey Cluster Metrics](cluster-metrics.md)
 * [How to deploy a Redis Cluster](redis-deployment.md)
 * [Cluster Configuration Defaults](cluster-configuration.md)
+* [Authentication (requirepass / masterauth)](authentication.md)
+* [Upgrade (Rolling N+1 / Fast Upgrade)](upgrade.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)
 * [Primary-Replica Clusters](primary-replica-cluster.md)
 * [Scaling a Redkey Cluster](scaling.md)

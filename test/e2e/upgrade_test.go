@@ -71,6 +71,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	// updateClusterImage updates the cluster's Redis image with conflict-retry.
 	// After the update, it waits for the operator to create a new config (higher sequence)
 	// to avoid race conditions where waitForUpgradeComplete would pass on the old config.
+	//nolint:dupl // shared utility closure, cannot extract from Describe block
 	updateClusterImage := func(clusterName, newImage string) {
 		key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
@@ -143,6 +144,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	}
 
 	// verifyAllPodsRunImage asserts that all Redis pods run the expected image.
+	//nolint:dupl // shared utility closure, cannot extract from Describe block
 	verifyAllPodsRunImage := func(clusterName string, expectedImage string, expectedNodes int) {
 		By(fmt.Sprintf("verifying all pods run image %s", expectedImage))
 		Eventually(func() bool {
