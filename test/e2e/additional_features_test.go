@@ -58,6 +58,10 @@ var _ = Describe("Additional Features", Ordered, Label("features"), func() {
 	Context("Redis config change propagation", func() {
 		const clusterName = "additional-redis-config"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should propagate Redis config changes to all nodes via new RedkeyClusterConfig", func() {
 			By("creating a cluster with initial redis config")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -135,6 +139,10 @@ hz 20`
 
 	Context("Custom labels propagation", func() { //nolint:dupl
 		const clusterName = "additional-labels"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should propagate custom labels to StatefulSet pods on creation", func() {
 			By("creating a cluster with custom labels")
@@ -217,6 +225,10 @@ hz 20`
 	Context("Custom annotations propagation", func() { //nolint:dupl
 		const clusterName = "additional-annotations"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should propagate custom annotations to StatefulSet pods on creation", func() {
 			By("creating a cluster with custom annotations")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -297,6 +309,10 @@ hz 20`
 
 	Context("PDB configuration change", func() {
 		const clusterName = "additional-pdb-change"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create PDB with correct configuration on cluster creation", func() {
 			By("creating a cluster with PDB enabled")
@@ -380,6 +396,10 @@ hz 20`
 
 	Context("purgeKeysOnRebalance=false preserves data", func() {
 		const clusterName = "additional-purge-false"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should preserve keys during rebalance when purgeKeysOnRebalance is false", func() {
 			By("creating an ephemeral cluster with purgeKeysOnRebalance=false")

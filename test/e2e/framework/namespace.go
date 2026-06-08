@@ -121,3 +121,58 @@ func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace)
 	}
 	return nil
 }
+
+// DeleteRedkeyCluster removes a single RedkeyCluster CR and its associated configs from a
+// namespace, stripping finalizers so deletion is not stalled, and waits for the cluster CR to
+// disappear. It is intended for per-Context cleanup in Ordered specs that share a namespace, so
+// that clusters do not accumulate (and starve node CPU) until the whole Describe finishes.
+func DeleteRedkeyCluster(ctx context.Context, c client.Client, name, namespace string) error {
+	// Strip finalizers from the cluster's configs first so they don't block CR deletion.
+	var configList redkeyv1beta1.RedkeyClusterConfigList
+	if err := c.List(ctx, &configList,
+		client.InNamespace(namespace),
+		client.MatchingLabels{"redkey.inditex.dev/cluster": name},
+	); err == nil {
+		for i := range configList.Items {
+			cfgName := configList.Items[i].Name
+			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				cfg := &redkeyv1beta1.RedkeyClusterConfig{}
+				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: cfgName}, cfg); err != nil {
+					return err
+				}
+				cfg.Finalizers = nil
+				return c.Update(ctx, cfg)
+			})
+			_ = c.Delete(ctx, &redkeyv1beta1.RedkeyClusterConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: cfgName, Namespace: namespace},
+			})
+		}
+	}
+
+	// Strip the cluster CR's own finalizers, then delete it.
+	_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		rc := &redkeyv1beta1.RedkeyCluster{}
+		if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rc); err != nil {
+			return err
+		}
+		rc.Finalizers = nil
+		return c.Update(ctx, rc)
+	})
+	_ = c.Delete(ctx, &redkeyv1beta1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+	})
+
+	// Wait for the cluster CR to disappear so its pods are released before the next Context starts.
+	err := wait.PollUntilContextTimeout(ctx, namespacePollInterval, namespaceWaitTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &redkeyv1beta1.RedkeyCluster{})
+			if err != nil {
+				return true, nil // gone
+			}
+			return false, nil
+		})
+	if err != nil {
+		return fmt.Errorf("redkeycluster %s/%s still exists after timeout: %w", namespace, name, err)
+	}
+	return nil
+}

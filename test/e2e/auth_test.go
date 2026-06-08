@@ -68,6 +68,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			password    = "test-password-123"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a cluster with auth and propagate the auth secret to active config", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -124,6 +128,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			secretName  = "auth-transition-on-secret"
 			password    = "new-password-456"
 		)
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should add authentication to a running cluster without auth", func() {
 			By("creating a cluster without authentication")
@@ -189,6 +197,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			password    = "remove-me-789"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should remove authentication from a running cluster with auth", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -247,6 +259,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			newPassword = "new-password-bbb"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should detect password change in Secret and update Redis nodes", func() {
 			By("creating the auth secret with old password")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, oldPassword)
@@ -304,6 +320,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			secretName  = "auth-replicas-add-secret"
 			password    = "replicas-password-123"
 		)
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should add authentication to a replica cluster applying requirepass and masterauth", func() {
 			By("creating a cluster with replicas but no auth")
@@ -398,6 +418,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			password    = "replicas-remove-pass"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should remove authentication from a replica cluster and maintain replication", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -475,6 +499,10 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			oldPassword = "old-replicas-pass"
 			newPassword = "new-replicas-pass"
 		)
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should rotate password in a replica cluster maintaining replication", func() {
 			By("creating the auth secret")

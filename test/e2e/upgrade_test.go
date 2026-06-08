@@ -186,6 +186,10 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	Context("Fast upgrade (ephemeral, no replicas, purgeKeysOnRebalance=true)", func() {
 		const clusterName = "upgrade-fast-ephemeral"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
@@ -233,6 +237,10 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 		description, clusterName string, replicasPerPrimary int32, totalNodes, keyCount int, persistent bool,
 	) {
 		Context(description, func() {
+			AfterAll(func() {
+				_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			})
+
 			It("creates the cluster and inserts data", func() {
 				opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 				if persistent {
