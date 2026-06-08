@@ -133,7 +133,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 					}
 				}
 				return true
-			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
+			}, framework.HealthTimeout, framework.DefaultPollInterval).Should(BeTrue(),
 				"Expected only the final config (9 primaries) to be Applied with no intermediate config Applied")
 
 			By("verifying the cluster has the correct number of pods")
@@ -223,7 +223,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 					}
 				}
 				return true
-			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
+			}, framework.HealthTimeout, framework.DefaultPollInterval).Should(BeTrue(),
 				"Expected the final config (7 primaries) to be Applied with no config Superseded")
 
 			By("verifying the cluster has the correct final state")
