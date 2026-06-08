@@ -288,10 +288,13 @@ TEST_PARALLEL_PROCESS ?= 1
 #   Increase if tests timeout during cluster creation on slow environments.
 # E2E_HEALTH_TIMEOUT: Maximum seconds to wait for health-related operations (remediation, node recovery).
 #   Increase for tests that involve pod restarts or network disruptions.
+# E2E_UPGRADE_TIMEOUT: Maximum seconds to wait for a full rolling N+1 upgrade to complete.
+#   Increase for heavy topologies (e.g. multiple replicas per primary) on slow runners.
 E2E_RECONCILE_INTERVAL ?=
 E2E_POLL_INTERVAL ?=
 E2E_CREATION_TIMEOUT ?=
 E2E_HEALTH_TIMEOUT ?=
+E2E_UPGRADE_TIMEOUT ?=
 
 # E2E_ENV collects all E2E_* env vars that are set, to forward them to the test process.
 E2E_ENV = KIND_CLUSTER=$(KIND_CLUSTER_E2E) IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN)
@@ -299,6 +302,7 @@ E2E_ENV += $(if $(E2E_RECONCILE_INTERVAL),E2E_RECONCILE_INTERVAL=$(E2E_RECONCILE
 E2E_ENV += $(if $(E2E_POLL_INTERVAL),E2E_POLL_INTERVAL=$(E2E_POLL_INTERVAL),)
 E2E_ENV += $(if $(E2E_CREATION_TIMEOUT),E2E_CREATION_TIMEOUT=$(E2E_CREATION_TIMEOUT),)
 E2E_ENV += $(if $(E2E_HEALTH_TIMEOUT),E2E_HEALTH_TIMEOUT=$(E2E_HEALTH_TIMEOUT),)
+E2E_ENV += $(if $(E2E_UPGRADE_TIMEOUT),E2E_UPGRADE_TIMEOUT=$(E2E_UPGRADE_TIMEOUT),)
 
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up the Kind cluster used by E2E tests.
