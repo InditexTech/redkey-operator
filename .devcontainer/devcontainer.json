@@ -4,7 +4,7 @@
 
 {
   "name": "Redkey Operator DevContainer",
-  "image": "golang:1.26.3-trixie",
+  "image": "golang:1.26.4-trixie",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "moby": false,

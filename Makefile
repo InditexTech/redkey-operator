@@ -23,7 +23,7 @@ ROBIN_VERSION ?= 0.2.0
 ## Tool Versions and Configuration
 
 # GOLANG_VERSION defines the Go version used in the Dockerfile for building the manager image.
-GOLANG_VERSION := 1.26.3
+GOLANG_VERSION := 1.26.4
 
 # KUSTOMIZE_VERSION defines the version of kustomize to use for generating the install manifests and bundle manifests.
 KUSTOMIZE_VERSION ?= v5.6.0

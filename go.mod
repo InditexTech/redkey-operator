@@ -4,7 +4,7 @@
 
 module github.com/inditextech/redkeyoperator
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/onsi/ginkgo/v2 v2.22.0

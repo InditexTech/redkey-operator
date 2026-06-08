@@ -5,7 +5,7 @@
 ### Build stage
 
 # Define the desired Golang version
-ARG GOLANG_VERSION=1.26.3
+ARG GOLANG_VERSION=1.26.4
 
 # Use an official Golang image with a specific version based on Debian
 FROM golang:${GOLANG_VERSION}-trixie AS builder
