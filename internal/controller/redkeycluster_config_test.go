@@ -591,6 +591,57 @@ func TestRedkeyClusterReconciler_AggregateStatus_PatchErrorIsReturned(t *testing
 	assert.True(t, k8serrors.IsConflict(err))
 }
 
+// TestRedkeyClusterReconciler_AggregateStatus_ObservedGenerationUsesSnapshot guards against a
+// regression where aggregateStatus stamped ObservedGeneration with the live object's generation
+// instead of the reconcile-start snapshot generation. During rapid spec changes (e.g. a
+// superseding scale-up 3→5→7→9) the live object can be several generations ahead of the config
+// we just created; claiming to have observed it would make needsNewConfig skip the intermediate
+// configs and stall the cluster at an intermediate topology.
+func TestRedkeyClusterReconciler_AggregateStatus_ObservedGenerationUsesSnapshot(t *testing.T) {
+	s := getScheme()
+
+	// The live object stored in the API server is already at generation 4 (the final spec),
+	// while the reconcile-start snapshot we pass to aggregateStatus is still at generation 2.
+	liveCluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 4,
+		},
+		Spec: redisv1.RedkeyClusterSpec{Primaries: 9},
+	}
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(liveCluster).
+		WithStatusSubresource(liveCluster).
+		Build()
+	r := &RedkeyClusterReconciler{Client: fakeClient, Scheme: s}
+
+	snapshot := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 2,
+		},
+		Spec: redisv1.RedkeyClusterSpec{Primaries: 5},
+	}
+	configs := []redisv1.RedkeyClusterConfig{{
+		Spec:   redisv1.RedkeyClusterConfigSpec{Sequence: 2},
+		Status: redisv1.RedkeyClusterConfigStatus{ConfigPhase: redisv1.ConfigPhaseApplied},
+	}}
+
+	err := r.aggregateStatus(context.TODO(), snapshot, configs)
+	require.NoError(t, err)
+
+	var updated redisv1.RedkeyCluster
+	require.NoError(t, fakeClient.Get(context.TODO(),
+		types.NamespacedName{Name: "test-cluster", Namespace: "default"}, &updated))
+
+	// ObservedGeneration must reflect the snapshot (2), not the live generation (4), so that
+	// needsNewConfig still triggers creation of the configs for generations 3 and 4.
+	assert.Equal(t, int64(2), updated.Status.ObservedGeneration)
+}
+
 func TestAggregateConditions_PreserveUnchangedTransitionTimes(t *testing.T) {
 	initialTransitionTime := metav1.NewTime(time.Date(2024, time.January, 1, 10, 0, 0, 0, time.UTC))
 	conditions := []metav1.Condition{

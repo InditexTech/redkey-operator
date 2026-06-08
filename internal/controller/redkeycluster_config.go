@@ -135,6 +135,14 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 
 	activeConfig := selectActiveConfig(configs)
 
+	// Capture the generation from the reconcile-start snapshot. ObservedGeneration must reflect
+	// the generation whose config we have actually created/aggregated in this reconcile, not the
+	// (possibly newer) generation re-fetched below: during rapid spec changes the live object may
+	// already be several generations ahead, and claiming to have observed it would make
+	// needsNewConfig skip creating the configs for those newer generations, stalling convergence
+	// (e.g. superseding scale-ups stuck at an intermediate topology).
+	observedGeneration := cluster.Generation
+
 	// Retry on conflict: the cluster object we were handed was fetched at the start of the
 	// reconcile, but owned-resource events and rapid resyncs can mutate it concurrently. Without
 	// a refresh-and-retry, every conflicting Status().Update fails the whole reconcile and backs
@@ -154,7 +162,7 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 		latest.Status.Conditions = aggregateConditions(latest.Status.Conditions, activeConfig)
 		latest.Status.Phase = computePhaseFromConditions(latest.Status.Conditions)
 		latest.Status.LastUpdatedAt = &now
-		latest.Status.ObservedGeneration = latest.Generation
+		latest.Status.ObservedGeneration = observedGeneration
 
 		lastStatus, lastPhase = latest.Status.Status, latest.Status.Phase
 		if err := r.Status().Update(ctx, &latest); err != nil {
