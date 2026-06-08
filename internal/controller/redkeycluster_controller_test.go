@@ -342,3 +342,22 @@ func TestRedkeyClusterReconciler_AggregateStatusError(t *testing.T) {
 	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: "status-error-robin", Namespace: "default"}, &roleBinding)
 	require.NoError(t, err)
 }
+
+func TestRedkeyClusterReconciler_ControllerOptions(t *testing.T) {
+	t.Run("positive value is propagated", func(t *testing.T) {
+		r := &RedkeyClusterReconciler{MaxConcurrentReconciles: 10}
+		assert.Equal(t, 10, r.controllerOptions().MaxConcurrentReconciles)
+	})
+
+	t.Run("zero falls back to controller-runtime default", func(t *testing.T) {
+		r := &RedkeyClusterReconciler{MaxConcurrentReconciles: 0}
+		// Leaving it at 0 lets controller-runtime apply its own default (1).
+		assert.Equal(t, 0, r.controllerOptions().MaxConcurrentReconciles)
+	})
+
+	t.Run("negative falls back to controller-runtime default", func(t *testing.T) {
+		r := &RedkeyClusterReconciler{MaxConcurrentReconciles: -5}
+		assert.Equal(t, 0, r.controllerOptions().MaxConcurrentReconciles)
+	})
+}
+

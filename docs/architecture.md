@@ -445,6 +445,8 @@ Robin is explicitly **denied** write access to the `RedkeyClusterConfig` main re
 
 The Operator is event-driven via watches on `RedkeyCluster` and its owned resources (`RedkeyClusterConfig`, `Deployment`, `ServiceAccount`, `Role`, `RoleBinding`). A periodic resync (configurable via `--resync-interval`, default 5 minutes) acts as a safety net.
 
+The controller processes its work queue with multiple concurrent workers (configurable via `--max-concurrent-reconciles`, default 10) so a single slow or backing-off cluster cannot starve reconciliation of the others.
+
 On each reconciliation:
 
 ```ascii

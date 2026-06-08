@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	redisv1 "github.com/inditextech/redkeyoperator/api/v1beta1"
@@ -35,6 +36,9 @@ type RedkeyClusterReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
 	ResyncInterval time.Duration
+	// MaxConcurrentReconciles is the number of reconciles that may run in parallel.
+	// Values <= 0 fall back to controller-runtime's default of 1.
+	MaxConcurrentReconciles int
 }
 
 // +kubebuilder:rbac:groups=redkey.inditex.dev,resources=redkeyclusters,verbs=get;list;watch;create;update;patch;delete
@@ -146,5 +150,18 @@ func (r *RedkeyClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Named("redkeycluster").
+		WithOptions(r.controllerOptions()).
 		Complete(r)
+}
+
+// controllerOptions builds the controller-runtime options for this reconciler.
+// A single worker processes the work queue for every RedkeyCluster across all watched
+// namespaces, so allowing concurrent reconciles prevents one slow or backing-off cluster
+// from starving the others. Values <= 0 keep controller-runtime's default of 1.
+func (r *RedkeyClusterReconciler) controllerOptions() controller.Options {
+	opts := controller.Options{}
+	if r.MaxConcurrentReconciles > 0 {
+		opts.MaxConcurrentReconciles = r.MaxConcurrentReconciles
+	}
+	return opts
 }

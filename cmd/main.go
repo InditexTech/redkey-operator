@@ -40,6 +40,11 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+const (
+	USER_AGENT_NAME    = "redkey-cluster-operator"
+	USER_AGENT_VERSION = "0.2.0"
+)
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -63,6 +68,7 @@ func main() {
 	var enableHTTP2 bool
 	var watchNamespaces string
 	var resyncInterval time.Duration
+	var maxConcurrentReconciles int
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -91,6 +97,9 @@ func main() {
 		"The address the pprof endpoint binds to (only used when --enable-pprof is set).")
 	flag.DurationVar(&resyncInterval, "resync-interval", 5*time.Minute,
 		"Periodic resync interval for the RedkeyCluster controller as a safety net (e.g. 5m, 10m).")
+	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 10,
+		"Maximum number of RedkeyCluster reconciles to run concurrently. "+
+			"Higher values prevent a slow or backing-off cluster from starving the others.")
 
 	// Keep console logs as the default output while preserving production log levels
 	// unless the user explicitly opts into debug or development mode via flags.
@@ -213,7 +222,12 @@ func main() {
 		setupLog.Info("Watching specific namespaces", "namespaces", watchNamespaces)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	// Identify the operator in requests to the Kubernetes API server so its
+	// traffic can be distinguished from other clients in audit logs and metrics.
+	restConfig := ctrl.GetConfigOrDie()
+	restConfig.UserAgent = USER_AGENT_NAME + "/" + USER_AGENT_VERSION
+
+	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
@@ -239,9 +253,10 @@ func main() {
 	}
 
 	if err := (&controller.RedkeyClusterReconciler{
-		Client:         mgr.GetClient(),
-		Scheme:         mgr.GetScheme(),
-		ResyncInterval: resyncInterval,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		ResyncInterval:          resyncInterval,
+		MaxConcurrentReconciles: maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RedkeyCluster")
 		os.Exit(1)
