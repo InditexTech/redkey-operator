@@ -26,6 +26,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [Primary-Replica Clusters](operator-guide/primary-replica-cluster.md)
 * [Scaling a Redkey Cluster](operator-guide/scaling.md)
 * [Deleting PVCs on ScaleDown and Deletion](operator-guide/delete-pvc.md)
+* [Object Overrides (StatefulSet & Service)](operator-guide/object-overrides.md)
 * [Backup Configuration](operator-guide/backup-configuration.md)
 * [Troubleshooting](operator-guide/troubleshooting.md)
 

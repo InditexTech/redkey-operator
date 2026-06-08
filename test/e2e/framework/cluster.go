@@ -69,6 +69,8 @@ type ClusterOptions struct {
 	Labels               *map[string]string
 	Annotations          *map[string]string
 	Pdb                  redkeyv1beta1.Pdb
+	StatefulSetOverride  *redkeyv1beta1.PartialStatefulSet
+	ServiceOverride      *redkeyv1beta1.PartialService
 }
 
 // DefaultClusterOptions returns a basic ephemeral cluster configuration optimized for E2E tests.
@@ -129,6 +131,18 @@ func (o ClusterOptions) WithSkipIfSuperseded(skip bool) ClusterOptions {
 	return o
 }
 
+// WithStatefulSetOverride sets a StatefulSet override applied to the Redis StatefulSet.
+func (o ClusterOptions) WithStatefulSetOverride(override *redkeyv1beta1.PartialStatefulSet) ClusterOptions {
+	o.StatefulSetOverride = override
+	return o
+}
+
+// WithServiceOverride sets a Service override applied to the headless Redis Service.
+func (o ClusterOptions) WithServiceOverride(override *redkeyv1beta1.PartialService) ClusterOptions {
+	o.ServiceOverride = override
+	return o
+}
+
 // BuildRedkeyCluster creates a RedkeyCluster object from the options.
 func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 	cluster := &redkeyv1beta1.RedkeyCluster{
@@ -176,6 +190,13 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 
 	if o.RobinConfig != nil {
 		cluster.Spec.Robin.Config = o.RobinConfig
+	}
+
+	if o.StatefulSetOverride != nil || o.ServiceOverride != nil {
+		cluster.Spec.Override = &redkeyv1beta1.RedkeyClusterOverrideSpec{
+			StatefulSet: o.StatefulSetOverride,
+			Service:     o.ServiceOverride,
+		}
 	}
 
 	cluster.Spec.Pdb = o.Pdb
