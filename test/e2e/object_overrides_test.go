@@ -23,6 +23,8 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+const tolerationValueRedis = "redis"
+
 var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 	var (
 		ctx       context.Context
@@ -77,7 +79,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 								{
 									Key:      "dedicated",
 									Operator: corev1.TolerationOpEqual,
-									Value:    "redis",
+									Value:    tolerationValueRedis,
 									Effect:   corev1.TaintEffectNoSchedule,
 								},
 							},
@@ -104,7 +106,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 
 			tolerationFound := false
 			for _, t := range sts.Spec.Template.Spec.Tolerations {
-				if t.Key == "dedicated" && t.Value == "redis" {
+				if t.Key == "dedicated" && t.Value == tolerationValueRedis {
 					tolerationFound = true
 					break
 				}
@@ -209,7 +211,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 									{
 										Key:      "dedicated",
 										Operator: corev1.TolerationOpEqual,
-										Value:    "redis",
+										Value:    tolerationValueRedis,
 										Effect:   corev1.TaintEffectNoSchedule,
 									},
 								},

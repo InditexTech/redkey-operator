@@ -360,4 +360,3 @@ func TestRedkeyClusterReconciler_ControllerOptions(t *testing.T) {
 		assert.Equal(t, 0, r.controllerOptions().MaxConcurrentReconciles)
 	})
 }
-
