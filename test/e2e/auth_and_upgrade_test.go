@@ -148,7 +148,10 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			pass = password[0]
 		}
 
-		t := framework.HealthTimeout * 2
+		// Rolling upgrades recycle pods one at a time and wait for cluster health
+		// agreement between steps, so they need a longer budget than HealthTimeout.
+		// Use the dedicated UpgradeTimeout (consistent with upgrade_test.go).
+		t := framework.UpgradeTimeout
 
 		By("waiting for the active config to be Applied")
 		_, err := framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, t)
