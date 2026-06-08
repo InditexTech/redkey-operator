@@ -59,6 +59,10 @@ var _ = Describe("Resilience", Ordered, Label("resilience"), func() {
 	Context("Robin pod restart", func() {
 		const clusterName = "resilience-robin-restart"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should resume reconciliation after Robin pod is deleted and recreated", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -139,6 +143,10 @@ var _ = Describe("Resilience", Ordered, Label("resilience"), func() {
 	Context("Operator pod restart", func() {
 		const clusterName = "resilience-operator-restart"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should resume management without duplicate configs after operator restart", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -194,6 +202,10 @@ var _ = Describe("Resilience", Ordered, Label("resilience"), func() {
 
 	Context("Robin deployment recreation", func() {
 		const clusterName = "resilience-robin-deploy"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should recreate the Robin Deployment if manually deleted", func() {
 			By("creating a cluster")

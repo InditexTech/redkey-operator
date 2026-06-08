@@ -223,6 +223,10 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			password    = "rolling-pass-123"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create an authenticated cluster and insert data", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -285,6 +289,10 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			password    = "fast-pass-456"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create an authenticated ephemeral cluster", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -344,6 +352,10 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			password    = "simultaneous-pass"
 		)
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a cluster without auth and insert data", func() {
 			By("creating the auth secret")
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
@@ -400,6 +412,10 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			secretName  = "auth-upgrade-replicas-secret"
 			password    = "replicas-auth-pass"
 		)
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create an authenticated cluster with replicas and insert data", func() {
 			By("creating the auth secret")

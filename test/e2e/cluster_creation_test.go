@@ -56,6 +56,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 	Context("Ephemeral cluster without replicas", func() {
 		const clusterName = "ephemeral-noreplica"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a cluster with 3 primaries and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
@@ -112,6 +116,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 
 	Context("Ephemeral cluster with replicas", func() {
 		const clusterName = "ephemeral-replica"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create a cluster with 3 primaries and 1 replica each and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
@@ -171,6 +179,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 	Context("PVC cluster without replicas", func() {
 		const clusterName = "pvc-noreplica"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a cluster with persistent storage and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 
@@ -210,6 +222,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 
 	Context("PVC cluster with replicas", func() {
 		const clusterName = "pvc-replica"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create a cluster with PVC storage and replicas and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
@@ -268,6 +284,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 	Context("Replica spread verification", func() {
 		const clusterName = "replica-spread"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should distribute replicas across different primaries", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 
@@ -316,6 +336,10 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 
 	Context("Large cluster with 5 primaries", func() {
 		const clusterName = "large-cluster"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create a cluster with 5 primaries and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)

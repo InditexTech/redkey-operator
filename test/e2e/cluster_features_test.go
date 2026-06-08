@@ -60,6 +60,10 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 	Context("PodDisruptionBudget", func() {
 		const clusterName = "features-pdb"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a PDB when configured in the cluster spec", func() {
 			By("creating a cluster with PDB enabled")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -118,6 +122,10 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 	Context("Custom Redis configuration", func() {
 		const clusterName = "features-redis-config"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply custom redis.conf parameters to all nodes", func() {
 			By("creating a cluster with custom Redis config")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -175,6 +183,10 @@ hz 20`
 
 	Context("Data integrity during health remediation", func() {
 		const clusterName = "features-data-integrity"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should preserve data during meet/forget and slot fix remediation", func() {
 			By("creating an ephemeral cluster")
@@ -251,6 +263,10 @@ hz 20`
 	Context("Robin Prometheus metrics", func() {
 		const clusterName = "features-robin-metrics"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should expose Redis cluster metrics via Robin's /metrics endpoint", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -308,6 +324,10 @@ hz 20`
 
 	Context("Profiling toggle", func() {
 		const clusterName = "features-profiling"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should enable and disable pprof endpoints at runtime via RobinConfig", func() {
 			By("creating a cluster with profiling disabled")
@@ -387,6 +407,10 @@ hz 20`
 	Context("Profiling disable without restart", func() {
 		const clusterName = "features-profiling-disable"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should disable pprof at runtime without restarting Robin", func() {
 			By("creating a cluster with profiling enabled")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -461,6 +485,10 @@ hz 20`
 
 	Context("Profiling persists across Robin restart", func() {
 		const clusterName = "features-profiling-restart"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should re-enable pprof after Robin pod is recreated", func() {
 			By("creating a cluster with profiling enabled")

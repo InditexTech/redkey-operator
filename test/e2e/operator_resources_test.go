@@ -59,6 +59,10 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 	Context("Robin Deployment and RBAC", func() {
 		const clusterName = "resources-robin"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create Robin Deployment with correct labels and RBAC resources", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -173,6 +177,10 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 	Context("Config generation on spec change", func() {
 		const clusterName = "resources-config-gen"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should create a new RedkeyClusterConfig when the cluster spec changes", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -230,6 +238,10 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 	Context("Config cleanup", func() {
 		const clusterName = "resources-config-cleanup"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should clean up old superseded configs keeping only the last Applied and newer", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -283,6 +295,10 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 
 	Context("Multi-config queue processing", func() {
 		const clusterName = "resources-multiconfig"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should create configs with monotonically increasing sequences for rapid spec changes", func() {
 			By("creating a cluster")

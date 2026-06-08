@@ -58,6 +58,10 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 	Context("Robin image change", func() {
 		const clusterName = "robin-image-change"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should update the Robin Deployment when spec.robin.image changes", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -119,6 +123,10 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 
 	Context("Robin resources change", func() {
 		const clusterName = "robin-resources-change"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should update Robin Deployment resources when spec.robin.resources changes", func() {
 			By("creating a cluster with default Robin resources")

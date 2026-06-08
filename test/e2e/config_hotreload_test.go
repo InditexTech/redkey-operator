@@ -68,6 +68,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Reconciler intervalSeconds change", func() {
 		const clusterName = "hotreload-reconciler-interval"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply the new reconciler interval without restarting Robin", func() {
 			By("creating a cluster with explicit reconciler config")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -114,6 +118,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Reconciler intervalOnErrorSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-reconciler-error"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply the new intervalOnErrorSeconds without restarting Robin", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -152,6 +160,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	Context("Reconciler intervalOnWaitSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-reconciler-wait"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply the new intervalOnWaitSeconds without restarting Robin", func() {
 			By("creating a cluster")
@@ -194,6 +206,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Cluster connectionMaxRetries change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-retries"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply new connectionMaxRetries without restarting Robin", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -232,6 +248,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	Context("Cluster connectionBackOffSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-backoff"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply new connectionBackOffSeconds without restarting Robin", func() {
 			By("creating a cluster")
@@ -272,6 +292,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Cluster clusterCommandTimeoutSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-cmd-timeout"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply new clusterCommandTimeoutSeconds without restarting Robin", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -311,6 +335,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Cluster clusterMeetWaitSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-meet-wait"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply new clusterMeetWaitSeconds without restarting Robin", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -349,6 +377,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	Context("Cluster rebalanceTimeoutSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-cluster-rebalance-to"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply new rebalanceTimeoutSeconds without restarting Robin", func() {
 			By("creating a cluster")
@@ -391,6 +423,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 	Context("Metrics collectionIntervalSeconds change", func() { //nolint:dupl
 		const clusterName = "hotreload-metrics-interval"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should apply new collectionIntervalSeconds without restarting Robin", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -429,6 +465,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	Context("Metrics redisInfoKeys change", func() {
 		const clusterName = "hotreload-metrics-keys"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply new redisInfoKeys without restarting Robin", func() {
 			By("creating a cluster with specific redis info keys")
@@ -473,6 +513,10 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 
 	Context("Metrics metricsLabels change", func() {
 		const clusterName = "hotreload-metrics-labels"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply new metricsLabels and reflect them in /metrics endpoint", func() {
 			By("creating a cluster without custom metrics labels")

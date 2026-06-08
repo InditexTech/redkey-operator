@@ -130,6 +130,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 	Context("Creation with 0 primaries - ephemeral", func() {
 		const clusterName = "create-zero-ephemeral"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a cluster with 0 primaries and stays empty", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 0
@@ -145,6 +149,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 	Context("Creation with 0 primaries - ephemeral with replicas", func() {
 		const clusterName = "create-zero-ephemeral-rep"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a cluster with 0 primaries (replicas configured) and stays empty", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 0
@@ -159,6 +167,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 	Context("Creation with 0 primaries - storage with deletePVC=true", func() {
 		const clusterName = "create-zero-storage-del"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a cluster with 0 primaries (storage mode, deletePVC=true) and stays empty", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 0
@@ -172,6 +184,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 
 	Context("Creation with 0 primaries - storage with deletePVC=false", func() {
 		const clusterName = "create-zero-storage-keep"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a cluster with 0 primaries (storage mode, deletePVC=false) and stays empty", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
@@ -192,6 +208,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a cluster with 0 primaries", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -217,6 +237,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a cluster with 0 primaries and configured replicas", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
@@ -244,6 +268,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a cluster with 0 primaries (storage, deletePVC=true)", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 0
@@ -268,6 +296,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a cluster with 0 primaries (storage, deletePVC=false)", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
@@ -296,6 +328,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary ephemeral cluster", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
@@ -322,6 +358,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica ephemeral cluster", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
@@ -346,6 +386,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a 3-primary cluster with persistent storage", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
@@ -382,6 +426,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary cluster with persistent storage (deletePVC=false)", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 3
@@ -415,6 +463,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica cluster with storage", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
 			opts.Primaries = 3
@@ -441,6 +493,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a cluster with 0 primaries", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -478,6 +534,10 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a 3-primary cluster", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)

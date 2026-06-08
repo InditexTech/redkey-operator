@@ -120,6 +120,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
@@ -168,6 +172,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
@@ -212,6 +220,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary persistent cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 3
@@ -254,6 +266,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a 3-primary/1-replica persistent cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
@@ -299,6 +315,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
@@ -372,6 +392,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica persistent cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
 			opts.Primaries = 3
@@ -419,6 +443,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica cluster with purgeKeysOnRebalance=true", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
@@ -455,6 +483,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
@@ -490,6 +522,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("creates a 3-primary cluster eligible for fast scaling", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)

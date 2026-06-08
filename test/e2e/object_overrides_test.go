@@ -61,6 +61,10 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 	Context("StatefulSet override", func() {
 		const clusterName = "overrides-sts"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("applies pod template and metadata overrides while preserving identity", func() {
 			By("creating a cluster with a StatefulSet override")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -130,6 +134,10 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 	Context("Service override", func() {
 		const clusterName = "overrides-svc"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("applies extra ports and annotations while remaining headless", func() {
 			By("creating a cluster with a Service override")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
@@ -180,6 +188,10 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 
 	Context("Override transitions", func() {
 		const clusterName = "overrides-transition"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("adds overrides on update and reverts cleanly when removed", func() {
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}

@@ -70,6 +70,10 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 	Context("With skipIfSuperseded enabled", func() {
 		const clusterName = "superseding-skip"
 
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
 		It("should skip intermediate configs and apply only the final one", func() {
 			By("creating a cluster with skipIfSuperseded=true")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
@@ -154,6 +158,10 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 
 	Context("Without skipIfSuperseded", func() {
 		const clusterName = "superseding-noskip"
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
 
 		It("should apply all configs sequentially when skipIfSuperseded is false", func() {
 			By("creating a cluster with skipIfSuperseded=false")
