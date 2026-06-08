@@ -555,9 +555,21 @@ func TestRedkeyClusterReconciler_AggregateStatus_EmptyConfigs(t *testing.T) {
 
 func TestRedkeyClusterReconciler_AggregateStatus_PatchErrorIsReturned(t *testing.T) {
 	s := getScheme()
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster",
+			Namespace:  "default",
+			Generation: 1,
+		},
+	}
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(cluster).
+		WithStatusSubresource(cluster).
+		Build()
 	r := &RedkeyClusterReconciler{
 		Client: &statusUpdateErrClient{
-			Client: fake.NewClientBuilder().WithScheme(s).Build(),
+			Client: fakeClient,
 			updateErr: k8serrors.NewConflict(
 				schema.GroupResource{Group: "redkey.inditex.dev", Resource: "redkeyclusters"},
 				"test-cluster",
@@ -567,19 +579,13 @@ func TestRedkeyClusterReconciler_AggregateStatus_PatchErrorIsReturned(t *testing
 		Scheme: s,
 	}
 
-	cluster := &redisv1.RedkeyCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "test-cluster",
-			Namespace:  "default",
-			Generation: 1,
-		},
-	}
 	configs := []redisv1.RedkeyClusterConfig{{
 		Status: redisv1.RedkeyClusterConfigStatus{
 			ConfigPhase: redisv1.ConfigPhasePending,
 		},
 	}}
 
+	// A persistent conflict should be retried and ultimately propagated to the caller.
 	err := r.aggregateStatus(context.TODO(), cluster, configs)
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsConflict(err))

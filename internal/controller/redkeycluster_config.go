@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -105,11 +107,20 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 		return err
 	}
 
+	log := logf.FromContext(ctx)
+
 	if err := r.Create(ctx, config); err != nil {
+		// AlreadyExists happens when a rapid follow-up reconcile runs before the informer
+		// cache has observed a config we just created: listConfigs returns a stale (empty or
+		// outdated) list, leading us to recompute the same sequence. The config is already
+		// present, so treat this as a no-op rather than failing and backing off the reconcile.
+		if errors.IsAlreadyExists(err) {
+			log.V(1).Info("RedkeyClusterConfig already exists, skipping creation (stale cache)", "config", config.Name)
+			return nil
+		}
 		return err
 	}
 
-	log := logf.FromContext(ctx)
 	log.Info("Created new RedkeyClusterConfig", "config", config.Name)
 	return nil
 }
@@ -124,23 +135,40 @@ func (r *RedkeyClusterReconciler) aggregateStatus(ctx context.Context, cluster *
 
 	activeConfig := selectActiveConfig(configs)
 
-	now := metav1.Now()
+	// Retry on conflict: the cluster object we were handed was fetched at the start of the
+	// reconcile, but owned-resource events and rapid resyncs can mutate it concurrently. Without
+	// a refresh-and-retry, every conflicting Status().Update fails the whole reconcile and backs
+	// off, which under CI churn can stall convergence (cluster stuck in Configuring/Initializing).
+	var lastStatus, lastPhase string
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var latest redisv1.RedkeyCluster
+		if err := r.Get(ctx, types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace}, &latest); err != nil {
+			return err
+		}
 
-	cluster.Status.Replicas = cluster.Spec.Primaries
-	cluster.Status.Status = activeConfig.Status.Status
-	cluster.Status.Substatus = activeConfig.Status.Substatus
-	cluster.Status.Nodes = emptyNodesIfNil(activeConfig.Status.Nodes)
-	cluster.Status.Conditions = aggregateConditions(cluster.Status.Conditions, activeConfig)
-	cluster.Status.Phase = computePhaseFromConditions(cluster.Status.Conditions)
-	cluster.Status.LastUpdatedAt = &now
-	cluster.Status.ObservedGeneration = cluster.Generation
+		now := metav1.Now()
+		latest.Status.Replicas = latest.Spec.Primaries
+		latest.Status.Status = activeConfig.Status.Status
+		latest.Status.Substatus = activeConfig.Status.Substatus
+		latest.Status.Nodes = emptyNodesIfNil(activeConfig.Status.Nodes)
+		latest.Status.Conditions = aggregateConditions(latest.Status.Conditions, activeConfig)
+		latest.Status.Phase = computePhaseFromConditions(latest.Status.Conditions)
+		latest.Status.LastUpdatedAt = &now
+		latest.Status.ObservedGeneration = latest.Generation
 
-	err := r.Status().Update(ctx, cluster)
+		lastStatus, lastPhase = latest.Status.Status, latest.Status.Phase
+		if err := r.Status().Update(ctx, &latest); err != nil {
+			return err
+		}
+		// Keep the caller's copy in sync with what we persisted.
+		latest.Status.DeepCopyInto(&cluster.Status)
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 	log := logf.FromContext(ctx)
-	log.Info("Updated RedkeyCluster status from config", "config", activeConfig.Name, "status", cluster.Status.Status, "phase", cluster.Status.Phase)
+	log.Info("Updated RedkeyCluster status from config", "config", activeConfig.Name, "status", lastStatus, "phase", lastPhase)
 	return nil
 }
 
