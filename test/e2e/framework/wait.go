@@ -25,13 +25,17 @@ import (
 //   - E2E_POLL_INTERVAL: poll interval in seconds (default: 3)
 //   - E2E_CREATION_TIMEOUT: creation timeout in seconds (default: 180)
 //   - E2E_HEALTH_TIMEOUT: health timeout in seconds (default: 180)
-//   - E2E_UPGRADE_TIMEOUT: upgrade timeout in seconds (default: 600)
+//   - E2E_UPGRADE_TIMEOUT: upgrade timeout in seconds (default: 900)
 var (
 	DefaultTimeout      = 10 * time.Minute
 	DefaultPollInterval = envDurationSeconds("E2E_POLL_INTERVAL", 3)
 	CreationTimeout     = envDurationSeconds("E2E_CREATION_TIMEOUT", 180)
 	HealthTimeout       = envDurationSeconds("E2E_HEALTH_TIMEOUT", 180)
-	UpgradeTimeout      = envDurationSeconds("E2E_UPGRADE_TIMEOUT", 600)
+	// UpgradeTimeout covers a full rolling N+1 upgrade. The heaviest topology
+	// (3 primaries x 2 replicas = 9 nodes) recycles every pod one at a time and
+	// then migrates all slots back from the extra node in the ending phase, which
+	// can exceed 10 minutes on loaded runners. Default to 15 minutes.
+	UpgradeTimeout = envDurationSeconds("E2E_UPGRADE_TIMEOUT", 900)
 )
 
 func envDurationSeconds(key string, defaultSeconds int) time.Duration {

@@ -498,7 +498,7 @@ hz 20`
 					return false
 				}
 				return containsString(stdout, "Types of profiles available") || containsString(stdout, "pprof")
-			}, 3*time.Minute, 10*time.Second).Should(BeTrue())
+			}, framework.HealthTimeout, 10*time.Second).Should(BeTrue())
 
 			By("force-deleting the Robin pod")
 			err = k8sClient.Delete(ctx, &robinPods.Items[0])
@@ -520,7 +520,7 @@ hz 20`
 					}
 				}
 				return false
-			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
+			}, framework.HealthTimeout, 5*time.Second).Should(BeTrue(),
 				"New Robin pod should be running after deletion")
 
 			By("verifying pprof is still available on the new Robin pod")
@@ -546,7 +546,7 @@ hz 20`
 					return containsString(stdout, "Types of profiles available") || containsString(stdout, "pprof")
 				}
 				return false
-			}, 3*time.Minute, 10*time.Second).Should(BeTrue(),
+			}, framework.HealthTimeout, 10*time.Second).Should(BeTrue(),
 				"pprof should remain enabled after Robin pod restart (config from CRD)")
 		})
 	})
