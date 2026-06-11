@@ -55,8 +55,8 @@ type ClusterInfo struct {
 // ParseClusterInfo parses the output of CLUSTER INFO into a struct.
 func ParseClusterInfo(output string) ClusterInfo {
 	info := ClusterInfo{}
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
@@ -225,7 +225,7 @@ func DelSlots(namespace, podName string, slots []int, password ...string) error 
 
 // InsertKeys inserts `count` random key-value pairs into the cluster via the given pod.
 func InsertKeys(namespace, podName string, count int, password ...string) error {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		key := fmt.Sprintf("e2e-key-%d-%d", i, time.Now().UnixNano())
 		value := fmt.Sprintf("value-%d", i)
 		cmd := fmt.Sprintf("redis-cli -c set %s %s", key, value)

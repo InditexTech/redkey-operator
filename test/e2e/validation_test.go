@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Validation", Ordered, Label("validation"), func() {
@@ -70,8 +69,8 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 					Storage:              "100Mi",
 					Image:                framework.GetRedisImage(),
 					Robin:                redkeyv1beta1.RobinSpec{Image: framework.GetRobinImage()},
-					PurgeKeysOnRebalance: ptr.To(true),
-					DeletePVC:            ptr.To(false),
+					PurgeKeysOnRebalance: new(true),
+					DeletePVC:            new(false),
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -100,7 +99,7 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 					Ephemeral:          false,
 					Image:              framework.GetRedisImage(),
 					Robin:              redkeyv1beta1.RobinSpec{Image: framework.GetRobinImage()},
-					DeletePVC:          ptr.To(false),
+					DeletePVC:          new(false),
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -129,10 +128,10 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 					Ephemeral:            false,
 					Storage:              "100Mi",
 					AccessModes:          []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					PurgeKeysOnRebalance: ptr.To(true),
+					PurgeKeysOnRebalance: new(true),
 					Image:                framework.GetRedisImage(),
 					Robin:                redkeyv1beta1.RobinSpec{Image: framework.GetRobinImage()},
-					DeletePVC:            ptr.To(false),
+					DeletePVC:            new(false),
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("100m"),
@@ -166,8 +165,8 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 					AccessModes:          []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 					Image:                framework.GetRedisImage(),
 					Robin:                redkeyv1beta1.RobinSpec{Image: framework.GetRobinImage()},
-					DeletePVC:            ptr.To(true),
-					PurgeKeysOnRebalance: ptr.To(false),
+					DeletePVC:            new(true),
+					PurgeKeysOnRebalance: new(false),
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("100m"),

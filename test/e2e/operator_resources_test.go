@@ -7,6 +7,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -257,7 +258,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 			By("applying multiple spec changes to generate configs")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					cluster := &redkeyv1beta1.RedkeyCluster{}
 					if getErr := k8sClient.Get(ctx, key, cluster); getErr != nil {
@@ -319,7 +320,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 
 			By("applying 3 rapid spec changes without waiting between them")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				cluster := &redkeyv1beta1.RedkeyCluster{}
 				err = k8sClient.Get(ctx, key, cluster)
 				Expect(err).NotTo(HaveOccurred())
@@ -368,10 +369,5 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 
 // contains checks if a string slice contains a given string.
 func contains(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, s)
 }

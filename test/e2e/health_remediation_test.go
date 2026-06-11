@@ -145,7 +145,7 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 			By("removing some slots from a node via CLUSTER DELSLOTS")
 			// Remove slots 0-9 from the first pod
 			slotsToRemove := make([]int, 10)
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				slotsToRemove[i] = i
 			}
 			err = framework.DelSlots(clusterNs, podNames[0], slotsToRemove)

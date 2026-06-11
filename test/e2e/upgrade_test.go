@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -194,7 +193,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
-			opts.PurgeKeysOnRebalance = ptr.To(true)
+			opts.PurgeKeysOnRebalance = new(true)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -248,7 +247,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 				}
 				opts.Primaries = 3
 				opts.ReplicasPerPrimary = replicasPerPrimary
-				opts.PurgeKeysOnRebalance = ptr.To(false) // rolling upgrade
+				opts.PurgeKeysOnRebalance = new(false) // rolling upgrade
 
 				_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 				Expect(err).NotTo(HaveOccurred())

@@ -19,7 +19,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -404,7 +403,7 @@ hz 20`
 		It("should preserve keys during rebalance when purgeKeysOnRebalance is false", func() {
 			By("creating an ephemeral cluster with purgeKeysOnRebalance=false")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			opts.PurgeKeysOnRebalance = ptr.To(false)
+			opts.PurgeKeysOnRebalance = new(false)
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 

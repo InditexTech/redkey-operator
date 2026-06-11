@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -194,7 +193,7 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			opts.Primaries = 0
 			// Override deletePVC to false
 			cluster := opts.BuildRedkeyCluster()
-			cluster.Spec.DeletePVC = ptr.To(false)
+			cluster.Spec.DeletePVC = new(false)
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			waitForScaledToZero(ctx, clusterName, clusterNs)
@@ -305,7 +304,7 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 0
 			cluster := opts.BuildRedkeyCluster()
-			cluster.Spec.DeletePVC = ptr.To(false)
+			cluster.Spec.DeletePVC = new(false)
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			waitForScaledToZero(ctx, clusterName, clusterNs)
@@ -434,7 +433,7 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 			opts.Primaries = 3
 			cluster := opts.BuildRedkeyCluster()
-			cluster.Spec.DeletePVC = ptr.To(false)
+			cluster.Spec.DeletePVC = new(false)
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
 			waitForScaledCluster(ctx, clusterName, clusterNs, 3)

@@ -18,7 +18,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -77,7 +76,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
-					IntervalSeconds: ptr.To(30),
+					IntervalSeconds: new(30),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -95,7 +94,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Reconciler.IntervalSeconds = ptr.To(15)
+			cluster.Spec.Robin.Config.Reconciler.IntervalSeconds = new(15)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -127,7 +126,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
-					IntervalOnErrorSeconds: ptr.To(10),
+					IntervalOnErrorSeconds: new(10),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -143,7 +142,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Reconciler.IntervalOnErrorSeconds = ptr.To(5)
+			cluster.Spec.Robin.Config.Reconciler.IntervalOnErrorSeconds = new(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -170,7 +169,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Reconciler: &redkeyv1beta1.RobinConfigReconciler{
-					IntervalOnWaitSeconds: ptr.To(10),
+					IntervalOnWaitSeconds: new(10),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -186,7 +185,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Reconciler.IntervalOnWaitSeconds = ptr.To(5)
+			cluster.Spec.Robin.Config.Reconciler.IntervalOnWaitSeconds = new(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -215,7 +214,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Cluster: &redkeyv1beta1.RobinConfigCluster{
-					ConnectionMaxRetries: ptr.To(10),
+					ConnectionMaxRetries: new(10),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -231,7 +230,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Cluster.ConnectionMaxRetries = ptr.To(5)
+			cluster.Spec.Robin.Config.Cluster.ConnectionMaxRetries = new(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -258,7 +257,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Cluster: &redkeyv1beta1.RobinConfigCluster{
-					ConnectionBackOffSeconds: ptr.To(10),
+					ConnectionBackOffSeconds: new(10),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -274,7 +273,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Cluster.ConnectionBackOffSeconds = ptr.To(5)
+			cluster.Spec.Robin.Config.Cluster.ConnectionBackOffSeconds = new(5)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -301,7 +300,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Cluster: &redkeyv1beta1.RobinConfigCluster{
-					ClusterCommandTimeoutSeconds: ptr.To(24),
+					ClusterCommandTimeoutSeconds: new(24),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -317,7 +316,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Cluster.ClusterCommandTimeoutSeconds = ptr.To(60)
+			cluster.Spec.Robin.Config.Cluster.ClusterCommandTimeoutSeconds = new(60)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -344,7 +343,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Cluster: &redkeyv1beta1.RobinConfigCluster{
-					ClusterMeetWaitSeconds: ptr.To(5),
+					ClusterMeetWaitSeconds: new(5),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -360,7 +359,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Cluster.ClusterMeetWaitSeconds = ptr.To(10)
+			cluster.Spec.Robin.Config.Cluster.ClusterMeetWaitSeconds = new(10)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -387,7 +386,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Cluster: &redkeyv1beta1.RobinConfigCluster{
-					RebalanceTimeoutSeconds: ptr.To(120),
+					RebalanceTimeoutSeconds: new(120),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -403,7 +402,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Cluster.RebalanceTimeoutSeconds = ptr.To(60)
+			cluster.Spec.Robin.Config.Cluster.RebalanceTimeoutSeconds = new(60)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -432,7 +431,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Metrics: &redkeyv1beta1.RobinConfigMetrics{
-					CollectionIntervalSeconds: ptr.To(60),
+					CollectionIntervalSeconds: new(60),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -448,7 +447,7 @@ var _ = Describe("Configuration Hot-Reload", Ordered, Label("hotreload"), func()
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Metrics.CollectionIntervalSeconds = ptr.To(30)
+			cluster.Spec.Robin.Config.Metrics.CollectionIntervalSeconds = new(30)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 

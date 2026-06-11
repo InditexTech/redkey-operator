@@ -326,7 +326,7 @@ func ListConfigs(
 
 	// Sort by sequence
 	items := configs.Items
-	for i := 0; i < len(items); i++ {
+	for i := range items {
 		for j := i + 1; j < len(items); j++ {
 			if items[j].Spec.Sequence < items[i].Spec.Sequence {
 				items[i], items[j] = items[j], items[i]

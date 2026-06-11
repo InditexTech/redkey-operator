@@ -20,7 +20,6 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -334,7 +333,7 @@ hz 20`
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Profiling: &redkeyv1beta1.RobinConfigProfiling{
-					Enabled: ptr.To(false),
+					Enabled: new(false),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -382,7 +381,7 @@ hz 20`
 			if cluster.Spec.Robin.Config.Profiling == nil {
 				cluster.Spec.Robin.Config.Profiling = &redkeyv1beta1.RobinConfigProfiling{}
 			}
-			cluster.Spec.Robin.Config.Profiling.Enabled = ptr.To(true)
+			cluster.Spec.Robin.Config.Profiling.Enabled = new(true)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -416,7 +415,7 @@ hz 20`
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Profiling: &redkeyv1beta1.RobinConfigProfiling{
-					Enabled: ptr.To(true),
+					Enabled: new(true),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -456,7 +455,7 @@ hz 20`
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			cluster.Spec.Robin.Config.Profiling.Enabled = ptr.To(false)
+			cluster.Spec.Robin.Config.Profiling.Enabled = new(false)
 			err = k8sClient.Update(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -495,7 +494,7 @@ hz 20`
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.RobinConfig = &redkeyv1beta1.RobinConfig{
 				Profiling: &redkeyv1beta1.RobinConfigProfiling{
-					Enabled: ptr.To(true),
+					Enabled: new(true),
 				},
 			}
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)

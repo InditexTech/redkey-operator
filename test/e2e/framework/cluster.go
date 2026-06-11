@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
@@ -82,7 +81,7 @@ func DefaultClusterOptions(name, namespace string) ClusterOptions {
 		Primaries:            3,
 		ReplicasPerPrimary:   0,
 		Ephemeral:            true,
-		PurgeKeysOnRebalance: ptr.To(true),
+		PurgeKeysOnRebalance: new(true),
 		SkipIfSuperseded:     true,
 		RedisImage:           GetRedisImage(),
 		RobinImage:           GetRobinImage(),
@@ -103,7 +102,7 @@ func (o ClusterOptions) WithReplicas(replicas int32) ClusterOptions {
 func (o ClusterOptions) WithPVC(storage string) ClusterOptions {
 	o.Ephemeral = false
 	o.Storage = storage
-	o.PurgeKeysOnRebalance = ptr.To(false)
+	o.PurgeKeysOnRebalance = new(false)
 	return o
 }
 
@@ -162,7 +161,7 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 			Config:               o.Config,
 			SkipIfSuperseded:     o.SkipIfSuperseded,
 			PurgeKeysOnRebalance: o.PurgeKeysOnRebalance,
-			DeletePVC:            ptr.To(true),
+			DeletePVC:            new(true),
 			Resources:            o.Resources,
 		},
 	}

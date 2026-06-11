@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 )
 
 // updateClusterTopology mutates a RedkeyCluster's spec with conflict-retry, used to
@@ -128,7 +127,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
-			opts.PurgeKeysOnRebalance = ptr.To(false) // force normal rebalance
+			opts.PurgeKeysOnRebalance = new(false) // force normal rebalance
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -179,7 +178,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
-			opts.PurgeKeysOnRebalance = ptr.To(false)
+			opts.PurgeKeysOnRebalance = new(false)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -323,7 +322,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
-			opts.PurgeKeysOnRebalance = ptr.To(false)
+			opts.PurgeKeysOnRebalance = new(false)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -450,7 +449,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		It("creates a 3-primary/1-replica cluster with purgeKeysOnRebalance=true", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
-			opts.PurgeKeysOnRebalance = ptr.To(true)
+			opts.PurgeKeysOnRebalance = new(true)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -490,7 +489,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 			opts.Primaries = 3
-			opts.PurgeKeysOnRebalance = ptr.To(false)
+			opts.PurgeKeysOnRebalance = new(false)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
@@ -531,7 +530,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
-			opts.PurgeKeysOnRebalance = ptr.To(true)
+			opts.PurgeKeysOnRebalance = new(true)
 
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
