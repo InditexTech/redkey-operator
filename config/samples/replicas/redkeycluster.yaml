@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: redkey-cluster-replicas
 spec:
+  mode: cluster
   primaries: 3
   replicasPerPrimary: 1
   ephemeral: true

@@ -4,6 +4,10 @@
 # RedkeyCluster name (defaults to release name)
 nameOverride: ""
 
+# Deployment mode: "cluster" (Redis Cluster, default) or "standalone" (single instance).
+# Standalone is immutable and limited to a single primary with no replicas.
+mode: cluster
+
 primaries: 3
 replicasPerPrimary: 0
 ephemeral: true

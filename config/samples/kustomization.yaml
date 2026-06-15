@@ -7,4 +7,5 @@ resources:
 - storage
 - replicas
 - auth
+- standalone
 # +kubebuilder:scaffold:manifestskustomizesamples

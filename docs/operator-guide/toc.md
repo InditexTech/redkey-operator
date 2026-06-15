@@ -17,6 +17,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [Authentication (requirepass / masterauth)](authentication.md)
 * [Upgrade (Rolling N+1 / Fast Upgrade)](upgrade.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)
+* [Standalone Mode (Single-Node Redkey)](standalone-cluster.md)
 * [Primary-Replica Clusters](primary-replica-cluster.md)
 * [Scaling a Redkey Cluster](scaling.md)
 * [Deleting PVCs on ScaleDown and Deletion](delete-pvc.md)

@@ -155,8 +155,8 @@ and then check the status of the `RedkeyCluster`:
 
 ```shell
 $ kubectl get rkcl
-NAME                   PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   PHASE         STATUS   SUBSTATUS
-redkey-cluster-sample   3           0          true        true        redis:8-bookworm             Configuring
+NAME                    MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   PHASE
+redkey-cluster-sample   cluster   3           0          true        true        Configuring
 ```
 
 To **clean up** the cluster:
@@ -310,13 +310,13 @@ You can check the status of the `RedkeyCluster` to see if it is being created co
 
 ```shell
 $ kubectl get rkcl -o wide -w
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STORAGECLASSNAME   DELETEPVC   STATUS   SUBSTATUS   PARTITION
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Initializing               
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Ready
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS         SUBSTATUS   PARTITION
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Initializing
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```

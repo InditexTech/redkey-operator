@@ -78,6 +78,7 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 		Spec: redisv1.RedkeyClusterConfigSpec{
 			Sequence:             seq,
 			SkipIfSuperseded:     cluster.Spec.SkipIfSuperseded,
+			Mode:                 cluster.Spec.Mode,
 			Primaries:            cluster.Spec.Primaries,
 			ReplicasPerPrimary:   cluster.Spec.ReplicasPerPrimary,
 			Ephemeral:            cluster.Spec.Ephemeral,

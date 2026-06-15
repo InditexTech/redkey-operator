@@ -7,17 +7,21 @@ metadata:
   labels:
     app.kubernetes.io/name: redkey-operator
     app.kubernetes.io/managed-by: kustomize
-  name: redkey-cluster-auth
+  name: redkey-cluster-standalone
 spec:
-  mode: cluster
-  primaries: 3
-  ephemeral: true
+  # Standalone mode deploys a single, non-clustered Redis instance
+  # (cluster-enabled no). It is immutable once set and restricts the
+  # cluster to at most one primary (primaries: 0 or 1) with no replicas.
+  mode: standalone
+  primaries: 1
+  replicasPerPrimary: 0
+  ephemeral: false
+  storage: "1Gi"
+  storageClassName: ""
   accessModes:
     - ReadWriteOnce
   image: redis:8-bookworm
-  purgeKeysOnRebalance: true
-  auth:
-    secret: redkey-auth-sample
+  purgeKeysOnRebalance: false
   labels:
     team: a-team
   config: |
@@ -25,8 +29,11 @@ spec:
     maxmemory-samples 5
     maxmemory-policy allkeys-lru
     protected-mode no
-    appendonly no
-    save ""
+    appendonly yes
+    appendfsync everysec
+    save 3600 1
+    save 300 100
+    save 60 10000
   resources:
     limits:
       cpu: 100m
@@ -53,3 +60,24 @@ spec:
         clusterMeetWaitSeconds: 5
       metrics:
         collectionIntervalSeconds: 60
+        redisInfoKeys:
+          - keyspace_hits
+          - evicted_keys
+          - connected_clients
+          - total_commands_processed
+          - keyspace_misses
+          - expired_keys
+          - redis_version
+          - used_memory_rss
+          - maxmemory
+          - used_cpu_sys
+          - used_cpu_sys_children
+          - used_cpu_user
+          - used_cpu_user_children
+          - total_net_input_bytes
+          - total_net_output_bytes
+          - aof_base_size
+          - aof_current_size
+          - mem_aof_buffer
+      profiling:
+        enabled: true

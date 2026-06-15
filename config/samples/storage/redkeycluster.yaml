@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: redkey-cluster-storage
 spec:
+  mode: cluster
   primaries: 3
   ephemeral: false
   storage: "1Gi"

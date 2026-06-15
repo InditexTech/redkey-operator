@@ -100,6 +100,15 @@ spec:
                   type: string
                 description: Labels are additional pod labels.
                 type: object
+              mode:
+                default: cluster
+                description: |-
+                  Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
+                  (a single, non-clustered Redis instance).
+                enum:
+                - cluster
+                - standalone
+                type: string
               override:
                 description: Override provides ability to override generated child
                   resources.

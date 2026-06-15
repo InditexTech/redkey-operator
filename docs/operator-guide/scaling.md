@@ -282,5 +282,6 @@ status:
 * [Key purge (purgeKeysOnRebalance)](../purge-keys-on-rebalance.md)
 * [Primary-Replica Clusters](primary-replica-cluster.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](ephemeral-cluster.md)
+* [Standalone Mode (Single-Node Redkey)](standalone-cluster.md)
 * [Deleting PVCs on ScaleDown and Deletion](delete-pvc.md)
 * [Cluster Health Checks and Remediation](../cluster-health-checks.md)

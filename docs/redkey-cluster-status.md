@@ -58,16 +58,18 @@ The status flow in creating a new Redkey Cluster is as simple as this:
 
 ![Redkey Cluster Initialization](./images/redkey-cluster-initialization.png)
 
-The following is an example of the sequence of states that we can see when deploying the sample Redkey Cluster* (command `kubectl get rkcl -w`):
+The following is an example of the sequence of states that we can see when deploying the sample Redkey Cluster* (command `kubectl get rkcl -o wide -w`):
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS       SUBSTATUS
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                      
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Initializing   
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Configuring    
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Configuring    
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready 
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS         SUBSTATUS
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Initializing
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```
+
+> **Note:** the `STATUS`, `SUBSTATUS` and `PARTITION` columns (along with `STORAGE` and `DELETEPVC`) are only shown with `-o wide`. The default `kubectl get rkcl` view shows the `MODE`, `PRIMARIES`, `REPLICAS`, `EPHEMERAL`, `PURGEKEYS` and `PHASE` columns.
 
 \* The sample Redkey Cluster can be deployed from the project code by executing `make deploy-sample-ephemeral`.
 
@@ -156,15 +158,15 @@ When the cluster qualifies for fast scaling (ephemeral, no replicas, purgeKeysOn
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 3 to 5 primaries:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   DeletingStatefulSet
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   RecreatingCluster
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   WaitingForPods
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             ScalingUp   FormingCluster
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready 
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS      SUBSTATUS
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Configuring   ScalingUp
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Configuring   ScalingUp   DeletingStatefulSet
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Configuring   ScalingUp   RecreatingCluster
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Configuring   ScalingUp   WaitingForPods
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Configuring   ScalingUp   FormingCluster
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Ready         Ready
 ```
 
 ### Redkey Cluster Scaling Up (Slow scaling)
@@ -178,16 +180,16 @@ When using slot-migration scaling (purgeKeysOnRebalance=false or cluster has rep
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 3 to 5 primaries, having previously changed the `purgeKeysOnRebalance` parameter to **false**:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready    
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   WaitingForPods
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   InitializingNodes
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   Rebalancing
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   AttachingReplicas
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             ScalingUp   Verifying
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready 
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS      SUBSTATUS
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Ready         Ready
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Ready         Ready
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp   WaitingForPods
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp   InitializingNodes
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp   Rebalancing
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp   AttachingReplicas
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Configuring   ScalingUp   Verifying
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Ready         Ready
 ```
 
 ### Redkey Cluster Scaling Down (Fast scaling)
@@ -201,15 +203,15 @@ In this case, the same substatus flow applies as for the Fast Scaling Up operati
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 5 to 3 primaries:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS        SUBSTATUS
-redis-cluster-ephemeral   5           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   DeletingStatefulSet
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   RecreatingCluster
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   WaitingForPods
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             ScalingDown   FormingCluster
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready 
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS        SUBSTATUS
+redis-cluster-ephemeral   cluster   5           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   ScalingDown
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   ScalingDown   DeletingStatefulSet
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   ScalingDown   RecreatingCluster
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   ScalingDown   WaitingForPods
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   ScalingDown   FormingCluster
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```
 
 ### Redkey Cluster Scaling Down (Slow scaling)
@@ -225,15 +227,15 @@ Note: `AttachingReplicas` only appears if the cluster has replicas configured.
 This is an example of the Status and SubStatus changes when scaling the sample Redkey Cluster from 5 to 3 primaries, having previously changed the `purgeKeysOnRebalance` parameter to **false**:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS        SUBSTATUS
-redis-cluster-ephemeral   5           0          true        false       redis:8-bookworm             Ready    
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   DrainingPrimaries
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   RemovingNodes
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   ShrinkingStatefulSet
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             ScalingDown   Verifying
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready  
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS        SUBSTATUS
+redis-cluster-ephemeral   cluster   5           0          true        false                 false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   ScalingDown
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   ScalingDown   DrainingPrimaries
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   ScalingDown   RemovingNodes
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   ScalingDown   ShrinkingStatefulSet
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   ScalingDown   Verifying
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Ready         Ready
 ```
 
 ### Redkey Cluster Scaling to Zero
@@ -243,12 +245,12 @@ When scaling to zero primaries, all cluster infrastructure is removed:
 **Substatus flow:** `DeletingResources` → `DeletingPVCs` (if deletePVC=true) → *(cleared)*
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS          SUBSTATUS
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   
-redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   DeletingResources
-redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             ScalingToZero   DeletingPVCs
-redis-cluster-ephemeral   0           0          true        true        redis:8-bookworm             Ready    
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS          SUBSTATUS
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   0           0          true        true                  false       Configuring   ScalingToZero
+redis-cluster-ephemeral   cluster   0           0          true        true                  false       Configuring   ScalingToZero   DeletingResources
+redis-cluster-ephemeral   cluster   0           0          true        true                  false       Configuring   ScalingToZero   DeletingPVCs
+redis-cluster-ephemeral   cluster   0           0          true        true                  false       Ready         Ready
 ```
 
 ### Redkey Cluster Upgrading (Fast upgrading)
@@ -263,12 +265,12 @@ Two Substatus are defined:
 This is an example of the Status and SubStatus changes when upgrading the sample Redkey Cluster:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready    
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   FastUpgrading
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Upgrading   FormingCluster
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm             Ready  
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS      SUBSTATUS
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Upgrading
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Upgrading   FastUpgrading
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Upgrading   FormingCluster
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```
 
 ### Redkey Cluster Upgrading (Rolling N+1)
@@ -290,17 +292,17 @@ Current partition can be shown using `kubectl get rkcc -o wide`.
 This is an example of the Status and SubStatus changes when upgrading the sample Redkey Cluster:
 
 ```
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STATUS      SUBSTATUS         PARTITION
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready                
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading               
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   AddingExtraNode   
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       2
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      2
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       1
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      1
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   DrainingNode       0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RollingUpdate      0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   MovingLastSlots    0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Upgrading   RemovingExtraNode  0
-redis-cluster-ephemeral   3           0          true        false       redis:8-bookworm             Ready    
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS      SUBSTATUS           PARTITION
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Ready         Ready
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   AddingExtraNode
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   DrainingNode        2
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   RollingUpdate       2
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   DrainingNode        1
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   RollingUpdate       1
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   DrainingNode        0
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   RollingUpdate       0
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   MovingLastSlots     0
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Configuring   Upgrading   RemovingExtraNode   0
+redis-cluster-ephemeral   cluster   3           0          true        false                 false       Ready         Ready
 ```

@@ -17,6 +17,10 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: 'Deployment mode: cluster or standalone'
+      jsonPath: .spec.mode
+      name: Mode
+      type: string
     - description: Amount of Redis primary nodes
       jsonPath: .spec.primaries
       name: Primaries
@@ -33,23 +37,15 @@ spec:
       jsonPath: .spec.purgeKeysOnRebalance
       name: PurgeKeys
       type: boolean
-    - description: Source image for Redis instance
-      jsonPath: .spec.image
-      name: Image
-      type: string
     - description: Amount of storage for Redis
       jsonPath: .spec.storage
       name: Storage
-      type: string
-    - description: Storage Class to be used by the PVC
-      jsonPath: .spec.storageClassName
-      name: StorageClassName
-      priority: 10
+      priority: 1
       type: string
     - description: Deleve PVC
       jsonPath: .spec.deletePVC
       name: DeletePVC
-      priority: 5
+      priority: 1
       type: boolean
     - description: 'The cluster phase: Ready, Configuring, or Error'
       jsonPath: .status.phase
@@ -58,15 +54,17 @@ spec:
     - description: The cluster status
       jsonPath: .status.status
       name: Status
+      priority: 1
       type: string
     - description: The cluster substatus
       jsonPath: .status.substatus.status
       name: Substatus
+      priority: 1
       type: string
     - description: Upgrading partition
       jsonPath: .status.substatus.upgradingPartition
       name: Partition
-      priority: 5
+      priority: 1
       type: string
     name: v1beta1
     schema:
@@ -146,6 +144,16 @@ spec:
                   type: string
                 description: Labels is the labels to add to the RedkeyCluster.
                 type: object
+              mode:
+                default: cluster
+                description: |-
+                  Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
+                  (a single, non-clustered Redis instance). Standalone is immutable once set and
+                  restricts the cluster to at most one primary with no replicas.
+                enum:
+                - cluster
+                - standalone
+                type: string
               override:
                 description: RedkeyClusterOverrideSpec provides the ability to override
                   the generated manifest of several child resources.
@@ -16472,6 +16480,13 @@ spec:
               rule: '!(self.ephemeral && has(self.storage))'
             - message: Cannot set purgeKeysOnRebalance to true for non-ephemeral clusters
               rule: '!(!self.ephemeral && self.purgeKeysOnRebalance == true)'
+            - message: Changing the mode field is not allowed
+              rule: self.mode == oldSelf.mode
+            - message: Standalone mode allows at most 1 primary (0 to scale to zero)
+              rule: self.mode != 'standalone' || self.primaries <= 1
+            - message: Standalone mode does not allow replicas (replicasPerPrimary
+                must be 0)
+              rule: self.mode != 'standalone' || self.replicasPerPrimary == 0
           status:
             description: |-
               RedkeyClusterStatus defines the observed state of RedkeyCluster.

@@ -23,6 +23,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 * [Dynamic Configuration (Hot Reload)](operator-guide/dynamic-configuration.md)
 * [How to deploy a Redkey Cluster](operator-guide/redis-deployment.md)
 * [Ephemeral Mode / Zero Persistent Volume Claims](operator-guide/ephemeral-cluster.md)
+* [Standalone Mode (Single-Node Redkey)](operator-guide/standalone-cluster.md)
 * [Primary-Replica Clusters](operator-guide/primary-replica-cluster.md)
 * [Scaling a Redkey Cluster](operator-guide/scaling.md)
 * [Deleting PVCs on ScaleDown and Deletion](operator-guide/delete-pvc.md)

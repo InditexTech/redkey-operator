@@ -8,6 +8,9 @@ metadata:
   labels:
     {{- include "redkey-cluster.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.mode }}
+  mode: {{ .Values.mode }}
+  {{- end }}
   primaries: {{ .Values.primaries }}
   replicasPerPrimary: {{ .Values.replicasPerPrimary }}
   ephemeral: {{ .Values.ephemeral }}

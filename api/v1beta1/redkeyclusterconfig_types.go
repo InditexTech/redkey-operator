@@ -80,6 +80,13 @@ type RedkeyClusterConfigSpec struct {
 	// +kubebuilder:default=false
 	SkipIfSuperseded bool `json:"skipIfSuperseded"`
 
+	// Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
+	// (a single, non-clustered Redis instance).
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=cluster
+	// +kubebuilder:validation:Enum=cluster;standalone
+	Mode string `json:"mode,omitempty"`
+
 	// Primaries specifies the number of Redis primary nodes in the cluster.
 	// +kubebuilder:validation:Required
 	Primaries int32 `json:"primaries"`
@@ -148,6 +155,11 @@ type RedkeyClusterConfigSpec struct {
 	// RobinConfig provides Robin's operational settings overrides.
 	// +kubebuilder:validation:Optional
 	RobinConfig *RobinConfig `json:"robinConfig,omitempty"`
+}
+
+// IsStandalone reports whether the config targets a standalone (single-node) deployment.
+func (s RedkeyClusterConfigSpec) IsStandalone() bool {
+	return s.Mode == ModeStandalone
 }
 
 // RedkeyClusterConfigStatus defines the observed state of RedkeyClusterConfig.

@@ -443,6 +443,14 @@ deploy-sample-auth: kustomize ## Deploy auth sample cluster (3 primaries with Re
 undeploy-sample-auth: kustomize ## Undeploy auth sample cluster.
 	$(KUSTOMIZE) build config/samples/auth | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: deploy-sample-standalone
+deploy-sample-standalone: kustomize ## Deploy standalone sample (single non-clustered Redis instance with persistent storage).
+	$(KUSTOMIZE) build config/samples/standalone | sed 's|image: ghcr.io/inditextech/redkey-robin:latest|image: $(IMG_ROBIN)|g' | $(KUBECTL) apply --server-side -f -
+
+.PHONY: undeploy-sample-standalone
+undeploy-sample-standalone: kustomize ## Undeploy standalone sample.
+	$(KUSTOMIZE) build config/samples/standalone | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
 
 ##@ Dependencies
 

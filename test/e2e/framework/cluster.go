@@ -51,6 +51,7 @@ func GetRobinImage() string {
 type ClusterOptions struct {
 	Name                 string
 	Namespace            string
+	Mode                 string
 	Primaries            int32
 	ReplicasPerPrimary   int32
 	Ephemeral            bool
@@ -95,6 +96,12 @@ func DefaultClusterOptions(name, namespace string) ClusterOptions {
 // WithReplicas sets the replicas per primary.
 func (o ClusterOptions) WithReplicas(replicas int32) ClusterOptions {
 	o.ReplicasPerPrimary = replicas
+	return o
+}
+
+// WithMode sets the deployment mode (cluster or standalone).
+func (o ClusterOptions) WithMode(mode string) ClusterOptions {
+	o.Mode = mode
 	return o
 }
 
@@ -169,6 +176,10 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 	if o.Storage != "" {
 		cluster.Spec.Storage = o.Storage
 		cluster.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	}
+
+	if o.Mode != "" {
+		cluster.Spec.Mode = o.Mode
 	}
 
 	if o.StorageClassName != "" {

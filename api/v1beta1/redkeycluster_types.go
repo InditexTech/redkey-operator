@@ -16,6 +16,9 @@ import (
 // +kubebuilder:validation:XValidation:rule="self.ephemeral || has(self.storage)", message="Ephemeral or storage must be set"
 // +kubebuilder:validation:XValidation:rule="!(self.ephemeral && has(self.storage))", message="Ephemeral and storage cannot be combined"
 // +kubebuilder:validation:XValidation:rule="!(!self.ephemeral && self.purgeKeysOnRebalance == true)", message="Cannot set purgeKeysOnRebalance to true for non-ephemeral clusters"
+// +kubebuilder:validation:XValidation:rule="self.mode == oldSelf.mode", message="Changing the mode field is not allowed"
+// +kubebuilder:validation:XValidation:rule="self.mode != 'standalone' || self.primaries <= 1", message="Standalone mode allows at most 1 primary (0 to scale to zero)"
+// +kubebuilder:validation:XValidation:rule="self.mode != 'standalone' || self.replicasPerPrimary == 0", message="Standalone mode does not allow replicas (replicasPerPrimary must be 0)"
 type RedkeyClusterSpec struct {
 	// +kubebuilder:validation:Optional
 	// RedisAuth
@@ -24,6 +27,14 @@ type RedkeyClusterSpec struct {
 	// +kubebuilder:validation:Optional
 	// Redis version
 	Version string `json:"version,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=cluster
+	// +kubebuilder:validation:Enum=cluster;standalone
+	// Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
+	// (a single, non-clustered Redis instance). Standalone is immutable once set and
+	// restricts the cluster to at most one primary with no replicas.
+	Mode string `json:"mode,omitempty"`
 
 	// Primaries specifies the number of Redis primary nodes in the cluster.
 	// A value of 0 means the cluster is scaled to zero — no Kubernetes objects will be created.
@@ -116,6 +127,19 @@ func (s RedkeyClusterSpec) NodesNeeded() int {
 	return int(s.Primaries + (s.Primaries * s.ReplicasPerPrimary))
 }
 
+// Deployment mode constants.
+const (
+	// ModeCluster deploys a Redis Cluster (the default).
+	ModeCluster = "cluster"
+	// ModeStandalone deploys a single, non-clustered Redis instance.
+	ModeStandalone = "standalone"
+)
+
+// IsStandalone reports whether the cluster is configured in standalone mode.
+func (s RedkeyClusterSpec) IsStandalone() bool {
+	return s.Mode == ModeStandalone
+}
+
 // RedkeyCluster phase constants.
 const (
 	PhaseReady       = "Ready"
@@ -157,18 +181,17 @@ type RedkeyClusterStatus struct {
 // +kubebuilder:subresource:scale:specpath=.spec.primaries,statuspath=.status.replicas
 // +kubebuilder:resource:shortName=rkcl
 // +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Mode",type="string",priority=0,JSONPath=".spec.mode",description="Deployment mode: cluster or standalone"
 // +kubebuilder:printcolumn:name="Primaries",type="integer",priority=0,JSONPath=".spec.primaries",description="Amount of Redis primary nodes"
 // +kubebuilder:printcolumn:name="Replicas",type="integer",priority=0,JSONPath=".spec.replicasPerPrimary",description="Amount of replicas per primary node"
 // +kubebuilder:printcolumn:name="Ephemeral",type="boolean",priority=0,JSONPath=".spec.ephemeral",description="Cluster ephemeral"
 // +kubebuilder:printcolumn:name="PurgeKeys",type="boolean",priority=0,JSONPath=".spec.purgeKeysOnRebalance",description="Purge keys on rebalance"
-// +kubebuilder:printcolumn:name="Image",type="string",priority=0,JSONPath=".spec.image",description="Source image for Redis instance"
-// +kubebuilder:printcolumn:name="Storage",type="string",priority=0,JSONPath=".spec.storage",description="Amount of storage for Redis"
-// +kubebuilder:printcolumn:name="StorageClassName",type="string",priority=10,JSONPath=".spec.storageClassName",description="Storage Class to be used by the PVC"
-// +kubebuilder:printcolumn:name="DeletePVC",type="boolean",priority=5,JSONPath=".spec.deletePVC",description="Deleve PVC"
+// +kubebuilder:printcolumn:name="Storage",type="string",priority=1,JSONPath=".spec.storage",description="Amount of storage for Redis"
+// +kubebuilder:printcolumn:name="DeletePVC",type="boolean",priority=1,JSONPath=".spec.deletePVC",description="Deleve PVC"
 // +kubebuilder:printcolumn:name="Phase",type="string",priority=0,JSONPath=".status.phase",description="The cluster phase: Ready, Configuring, or Error"
-// +kubebuilder:printcolumn:name="Status",type="string",priority=0,JSONPath=".status.status",description="The cluster status"
-// +kubebuilder:printcolumn:name="Substatus",type="string",priority=0,JSONPath=".status.substatus.status",description="The cluster substatus"
-// +kubebuilder:printcolumn:name="Partition",type="string",priority=5,JSONPath=".status.substatus.upgradingPartition",description="Upgrading partition"
+// +kubebuilder:printcolumn:name="Status",type="string",priority=1,JSONPath=".status.status",description="The cluster status"
+// +kubebuilder:printcolumn:name="Substatus",type="string",priority=1,JSONPath=".status.substatus.status",description="The cluster substatus"
+// +kubebuilder:printcolumn:name="Partition",type="string",priority=1,JSONPath=".status.substatus.upgradingPartition",description="Upgrading partition"
 
 // RedkeyCluster is the Schema for the redkeyclusters API.
 type RedkeyCluster struct {
