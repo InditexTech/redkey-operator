@@ -216,8 +216,16 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 			By("updating the cluster to add StatefulSet and Service overrides")
 			Expect(updateOverride(ctx, key, &redkeyv1beta1.RedkeyClusterOverrideSpec{
 				StatefulSet: &redkeyv1beta1.PartialStatefulSet{
+					Metadata: metav1.ObjectMeta{
+						Annotations: map[string]string{"backup.io/enabled": "true"},
+						Labels:      map[string]string{"tier": "cache"},
+					},
 					Spec: &redkeyv1beta1.PartialStatefulSetSpec{
 						Template: &redkeyv1beta1.PartialPodTemplateSpec{
+							Metadata: metav1.ObjectMeta{
+								Annotations: map[string]string{"sidecar.io/inject": "false"},
+								Labels:      map[string]string{"pod-tier": "cache"},
+							},
 							Spec: redkeyv1beta1.PartialPodSpec{
 								Tolerations: []corev1.Toleration{
 									{
@@ -253,10 +261,21 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 				g.Expect(hasServicePort(current, "metrics")).To(BeTrue())
 			}, framework.DefaultTimeout, 5*time.Second).Should(Succeed())
 
-			By("verifying identity is still preserved and the cluster stays healthy")
+			By("verifying top-level StatefulSet metadata is applied on update (the regression)")
 			Expect(k8sClient.Get(ctx, key, sts)).To(Succeed())
+			Expect(sts.Annotations).To(HaveKeyWithValue("backup.io/enabled", "true"))
+			Expect(sts.Labels).To(HaveKeyWithValue("tier", "cache"))
+			Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("sidecar.io/inject", "false"))
+
+			By("verifying pod-template metadata is merged, not replaced")
+			Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("pod-tier", "cache"))
+			Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("redkey.inditex.dev/cluster", clusterName),
+				"the cluster selector label must survive the pod-template metadata merge")
+
+			By("verifying identity is still preserved and the cluster stays healthy")
 			Expect(*sts.Spec.Replicas).To(Equal(int32(3)))
 			Expect(sts.Spec.ServiceName).To(Equal(clusterName))
+			Expect(sts.Labels).To(HaveKeyWithValue("redkey.inditex.dev/cluster", clusterName))
 			Expect(k8sClient.Get(ctx, key, svc)).To(Succeed())
 			Expect(svc.Spec.ClusterIP).To(Equal("None"))
 
@@ -277,6 +296,14 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 				g.Expect(k8sClient.Get(ctx, key, current)).To(Succeed())
 				g.Expect(hasServicePort(current, "metrics")).To(BeFalse())
 			}, framework.DefaultTimeout, 5*time.Second).Should(Succeed())
+
+			By("verifying top-level StatefulSet metadata reverts while the cluster label survives")
+			Expect(k8sClient.Get(ctx, key, sts)).To(Succeed())
+			Expect(sts.Annotations).NotTo(HaveKey("backup.io/enabled"))
+			Expect(sts.Labels).NotTo(HaveKey("tier"))
+			Expect(sts.Labels).To(HaveKeyWithValue("redkey.inditex.dev/cluster", clusterName))
+			Expect(sts.Spec.Template.Labels).NotTo(HaveKey("pod-tier"))
+			Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("redkey.inditex.dev/cluster", clusterName))
 
 			By("verifying the default ports survive the revert and the cluster stays healthy")
 			Expect(k8sClient.Get(ctx, key, svc)).To(Succeed())
