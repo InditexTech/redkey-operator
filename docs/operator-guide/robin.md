@@ -80,30 +80,30 @@ The template supports the following overrides:
 
 ## How to configure Robin
 
-Robin configuration can be included in `spec.robin.config`. This field is an string whose content is included in the key `application-configmap.yml` of the ConfigMap `<RedkeyClusterName>-robin`.
-The content is expected to be a valid YAML with several fields which can be seen in [Configuration fields](#configuration-fields) section
+Robin's operational settings are configured through the structured object `spec.robin.config`. Unlike `image`, `resources` and `template` (which are part of the Robin Deployment's pod template), the values under `spec.robin.config` are propagated by the Operator into the `RedkeyClusterConfig` resource and **hot-reloaded by Robin at runtime without recreating the Pod** — see the [Dynamic Configuration](#dynamic-configuration) section below.
 
-The Redkey Operator applies the MD5 algorithm to the `spec.robin.config` content and adds the result in the `checksum/config` annotation of the Robin Deployment template. This way, any change in the configuration content will trigger a Robin POD recreation, which will have always the latest content applied to the RedkeyCluster object.
+All subfields are optional. Any value omitted from the CR keeps Robin's built-in (or CLI-provided) startup default.
 
 ### Configuration fields
 
-The expected fields of the `spec.robin.config` YAML are:
+`spec.robin.config` accepts the following groups:
 
-- `metadata`: object with the labels that will be added to the Prometheus metrics
-- `redis`: object with the cluster configuration:
-  - `operator`:
-    - `collection_interval_seconds` (int): sleep time in seconds between two consecutive metrics polling iterations.
-  - `cluster`:
-    - `replicas` (int): number of nodes of the Redkey Cluster. Used to infer the Redis node domain name.
-    - `name` (string): Redkey Cluster name.
-    - `namespace` (string): K8s namespace of the Redkey Cluster.
-    - `health_probe_interval_seconds` (int):
-    - `healing_time_seconds` (int):
-    - `max_retries` (int): maximum retries to connect to a Redis node.
-    - `back_off` (time.Duration): sleep time between two consecutive attempts to connect to a Redis node.
-  - `metrics`:
-    - `version`: Redis metrics version.
-    - `redis_info_keys`: Redis info keys that are asked to each Redis node and are exported in the Prometheus metrics.
+- `reconciler`: controls Robin's adaptive polling loop intervals.
+  - `intervalSeconds` (int): idle interval between reconciliation cycles when there is no pending work.
+  - `intervalOnErrorSeconds` (int): retry interval after a reconciliation error.
+  - `intervalOnWaitSeconds` (int): interval used while waiting for readiness or convergence.
+- `cluster`: controls how Robin connects to and operates on the Redis cluster.
+  - `connectionMaxRetries` (int): maximum retries to connect to a Redis node.
+  - `connectionBackOffSeconds` (int): back-off time in seconds between two consecutive connection attempts.
+  - `clusterCommandTimeoutSeconds` (int): timeout in seconds for cluster commands.
+  - `clusterMeetWaitSeconds` (int): wait time in seconds after a `CLUSTER MEET` before continuing.
+  - `rebalanceTimeoutSeconds` (int): timeout in seconds for a rebalance operation.
+- `metrics`: controls Prometheus metrics collection.
+  - `collectionIntervalSeconds` (int): sleep time in seconds between two consecutive metrics polling iterations.
+  - `redisInfoKeys` ([]string): Redis INFO keys requested from each Redis node and exported as Prometheus metrics.
+  - `metricsLabels` (map[string]string): additional labels added to the exported Prometheus metrics.
+- `profiling`: controls Go pprof endpoints (served on the metrics port). See the [Profiling Guide](profiling.md).
+  - `enabled` (bool): activates pprof profiling endpoints at runtime. Defaults to `false`.
 
 ### Example
 
@@ -115,50 +115,43 @@ spec:
   ...
   robin:
     ...
-    config: |
-      metadata:
-        application: showpaas
-        version: "7.2.4"
-        environment: des
-        tenant: global
-        domain: swdelivery
-        slot: sample
-        layer: middleware-redis
-        namespace: redkey-operator
-        platformid: "meccanoarteixo2"
-        service: "showpaas"
-      redis:
-        operator:
-          collection_interval_seconds: 60
-        cluster:
-          replicas: 1
-          name: "redkey-cluster-sample"
-          namespace: redkey-operator
-          health_probe_interval_seconds: 60
-          healing_time_seconds: 60
-          max_retries: 2
-          back_off: 10s
-        metrics:
-          version: 0.10.2.0
-          redis_info_keys:
-            - keyspace_hits
-            - evicted_keys
-            - connected_clients
-            - total_commands_processed
-            - keyspace_misses
-            - expired_keys
-            - redis_version
-            - used_memory_rss
-            - maxmemory
-            - used_cpu_sys
-            - used_cpu_sys_children
-            - used_cpu_user
-            - used_cpu_user_children
-            - total_net_input_bytes
-            - total_net_output_bytes
-            - aof_base_size
-            - aof_current_size
-            - mem_aof_buffer
+    config:
+      reconciler:
+        intervalSeconds: 30
+        intervalOnErrorSeconds: 10
+        intervalOnWaitSeconds: 10
+      cluster:
+        connectionMaxRetries: 10
+        connectionBackOffSeconds: 10
+        clusterCommandTimeoutSeconds: 24
+        rebalanceTimeoutSeconds: 600
+        clusterMeetWaitSeconds: 5
+      metrics:
+        collectionIntervalSeconds: 60
+        metricsLabels:
+          application: showpaas
+          environment: des
+        redisInfoKeys:
+          - keyspace_hits
+          - evicted_keys
+          - connected_clients
+          - total_commands_processed
+          - keyspace_misses
+          - expired_keys
+          - redis_version
+          - used_memory_rss
+          - maxmemory
+          - used_cpu_sys
+          - used_cpu_sys_children
+          - used_cpu_user
+          - used_cpu_user_children
+          - total_net_input_bytes
+          - total_net_output_bytes
+          - aof_base_size
+          - aof_current_size
+          - mem_aof_buffer
+      profiling:
+        enabled: false
 ```
 
 ## How to develop Robin
