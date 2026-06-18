@@ -4,8 +4,12 @@
 apiVersion: redkey.inditex.dev/v1beta1
 kind: RedkeyCluster
 metadata:
+  annotations:
+    inditex.dev/description: "Ephemeral Redis Cluster for development purposes"
   labels:
-    app.kubernetes.io/name: redkey-operator
+    inditex.dev/name: redkey-cluster-ephemeral
+    inditex.dev/owner: a-team
+    inditex.dev/environment: development
     app.kubernetes.io/managed-by: kustomize
   name: redkey-cluster-ephemeral
 spec:
@@ -18,10 +22,10 @@ spec:
   image: redis:8-bookworm
   purgeKeysOnRebalance: true
   labels:
-    team: a-team
-    custom: custom-label
+    inditex.dev/team: a-team
+    inditex.dev/custom-label: custom-label
   annotations:
-    custom-annotation: custom-value
+    inditex.dev/custom-annotation: custom-value
   config: |
     maxmemory 90mb
     maxmemory-samples 5
@@ -76,23 +80,28 @@ spec:
           - mem_aof_buffer
       profiling:
         enabled: true
-    # template:
-    #   spec:
-    #     containers:
-    #       - image: ghcr.io/inditextech/redkey-robin:latest
-    #         name: robin
-    #         imagePullPolicy: Always
-    #         ports:
-    #           - containerPort: 8080
-    #             name: prometheus
-    #             protocol: TCP
-    #         resources:
-    #           requests:
-    #             cpu: 500m
-    #             memory: 100Mi
-    #           limits:
-    #             cpu: 1
-    #             memory: 200Mi
+  #   template:
+  #     metadata:
+  #       labels:
+  #         inditex.dev/test-label-override: "true"
+  #       annotations:
+  #         inditex.dev/test-annotation-override: "true"
+  #     spec:
+  #       containers:
+  #         - image: ghcr.io/inditextech/redkey-robin:latest
+  #           name: robin
+  #           imagePullPolicy: Always
+  #           ports:
+  #             - containerPort: 8080
+  #               name: prometheus
+  #               protocol: TCP
+  #           resources:
+  #             requests:
+  #               cpu: 500m
+  #               memory: 100Mi
+  #             limits:
+  #               cpu: 1
+  #               memory: 200Mi
   # override:
   #   service:
   #     metadata:
@@ -114,29 +123,20 @@ spec:
   #         inditex.dev/test: "test"
   #     spec:
   #       template:
-  #         metadata:
-  #           labels:
-  #             inditex.dev/test: "test"
   #         spec:
+  #           containers:
+  #             - name: nginx
+  #               image: nginx
   #           tolerations:
   #             - key: "test"
   #               operator: "Equal"
   #               value: "test"
   #               effect: "NoSchedule"
   #           topologySpreadConstraints:
-  #           - maxSkew: 1
-  #             topologyKey: kubernetes.io/hostname
-  #             whenUnsatisfiable: DoNotSchedule
-  #             labelSelector:
-  #               matchLabels:
-  #                 app: foo
-  #             matchLabelKeys:
-  #               - pod-template-hash
-  #           containers:
-  #           - name: nginx
-  #             image: nginx
-  #           - name: redis
-  #             env:
-  #              - name: test
-  #                value: test
+  #             - maxSkew: 1
+  #               topologyKey: kubernetes.io/hostname
+  #               whenUnsatisfiable: DoNotSchedule
+  #               labelSelector:
+  #                 matchLabels:
+  #                   redkey.inditex.dev/cluster: redkey-cluster-ephemeral
   #           terminationGracePeriodSeconds: 10

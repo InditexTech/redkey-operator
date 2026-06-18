@@ -18,8 +18,59 @@ fields, such as pod scheduling constraints (`nodeSelector`, `tolerations`,
 containers, additional volumes, or extra service ports for metrics exporters.
 
 > **Scope.** Only the Redis `StatefulSet` and the headless `Service` can be
-> overridden. The generated `ConfigMap`, `PodDisruptionBudget` and the Robin
-> `Deployment` are **not** overridable.
+> overridden with a partial manifest. The generated `ConfigMap`,
+> `PodDisruptionBudget` and the Robin `Deployment` are **not** overridable.
+>
+> Labels and annotations are different: the cluster-wide `spec.labels` and
+> `spec.annotations` (see [Cluster-wide labels and annotations](#cluster-wide-labels-and-annotations))
+> are applied to **all** managed objects, including the ones that cannot be
+> overridden.
+
+## Cluster-wide labels and annotations
+
+`spec.labels` and `spec.annotations` on the `RedkeyCluster` are propagated to
+**every** Kubernetes object Redkey manages for the cluster:
+
+- the `RedkeyClusterConfig`,
+- the Robin `Deployment` and its RBAC objects (`ServiceAccount`, `Role`,
+  `RoleBinding`),
+- the Redis `StatefulSet` (and its pod template), the headless `Service`, the
+  `ConfigMap` and the `PodDisruptionBudget`.
+
+```yaml
+apiVersion: redkey.inditex.dev/v1beta1
+kind: RedkeyCluster
+metadata:
+  name: my-cluster
+spec:
+  primaries: 3
+  labels:
+    team: platform
+    cost-center: "1234"
+  annotations:
+    prometheus.io/scrape: "true"
+```
+
+### Precedence
+
+Labels and annotations on any managed object are resolved with a fixed
+precedence (highest priority last):
+
+1. **`spec.labels` / `spec.annotations`** — the cluster-wide values above.
+2. **Object override** — `metadata.labels` / `metadata.annotations` declared in
+   an override block (`spec.override.statefulSet`, `spec.override.service`) or in
+   the Robin pod template (`spec.robin.template.metadata`). When an override
+   declares **any** label (or annotation) for an object, it performs a
+   **block replacement**: the cluster-wide `spec.labels` (or `spec.annotations`)
+   are **discarded for that object** and only the override entries are kept. An
+   empty/absent override leaves the cluster-wide values in place.
+3. **Internal base labels / annotations** — the identifiers Redkey needs for
+   correct operation (cluster identity and selector labels, the config-checksum
+   annotation, the cluster-generation annotation…). These **always win** on a
+   key collision and can never be shadowed by user input.
+
+In short: **base wins over override, and override wins over `spec.labels` /
+`spec.annotations`**.
 
 ## Specifying overrides
 
@@ -84,9 +135,16 @@ underlying types, which means:
   with `name: redis` containing only the fields you want to change — the rest of
   the generated container is preserved. New entries (for example a sidecar
   container or an extra volume) are appended.
-- **Maps** (annotations, labels, `nodeSelector`…) are merged key by key. Keys you
-  do not mention keep their generated value.
+- **Maps** (`nodeSelector`, container env…) are merged key by key. Keys you do
+  not mention keep their generated value.
 - **Scalars** you set replace the generated value.
+
+> **Labels and annotations are special.** `metadata.labels` and
+> `metadata.annotations` in an override are **not** merged key by key with
+> `spec.labels` / `spec.annotations`. As described in
+> [Precedence](#precedence), declaring any label (or annotation) in an override
+> **block-replaces** the cluster-wide values for that object, and the internal
+> base labels/annotations are always re-applied on top.
 
 Removing an override (or one of its fields) reverts the corresponding object back
 to the generated default on the next reconciliation, because Robin always rebuilds

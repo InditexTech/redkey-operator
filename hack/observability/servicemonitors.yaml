@@ -46,7 +46,7 @@ spec:
     any: true
   selector:
     matchLabels:
-      app: redkey-robin
+      redkey.inditex.dev/component: robin
   podMetricsEndpoints:
     - targetPort: 8080
       path: /metrics

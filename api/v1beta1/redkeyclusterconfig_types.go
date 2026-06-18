@@ -128,11 +128,17 @@ type RedkeyClusterConfigSpec struct {
 	// +kubebuilder:validation:Optional
 	Auth RedisAuth `json:"auth,omitempty"`
 
-	// Labels are additional pod labels.
+	// Labels are applied to all Kubernetes objects Robin manages for this config
+	// (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
+	// the pods). Internal labels required for correct operation always win on a key
+	// collision; an object-level override fully replaces these labels for that object.
 	// +kubebuilder:validation:Optional
 	Labels *map[string]string `json:"labels,omitempty"`
 
-	// Annotations are additional pod annotations.
+	// Annotations are applied to all Kubernetes objects Robin manages for this config
+	// (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
+	// the pods). Internal annotations required for correct operation always win on a
+	// key collision; an object-level override fully replaces these for that object.
 	// +kubebuilder:validation:Optional
 	Annotations *map[string]string `json:"annotations,omitempty"`
 

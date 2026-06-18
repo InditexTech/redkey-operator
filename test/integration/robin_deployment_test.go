@@ -100,9 +100,9 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 
 			By("verifying labels")
 			Expect(deploy.Labels[controller.ClusterLabel]).To(Equal(clusterName))
-			Expect(deploy.Labels["app"]).To(Equal("redkey-robin"))
+			Expect(deploy.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 			Expect(deploy.Spec.Template.Labels[controller.ClusterLabel]).To(Equal(clusterName))
-			Expect(deploy.Spec.Template.Labels["app"]).To(Equal("redkey-robin"))
+			Expect(deploy.Spec.Template.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 
 			By("verifying the container image from spec override")
 			Expect(deploy.Spec.Template.Spec.Containers).To(HaveLen(1))
@@ -214,20 +214,20 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 			var deploy appsv1.Deployment
 			Expect(k8sClient.Get(ctx, deployName, &deploy)).To(Succeed())
 			base := deploy.DeepCopy()
-			deploy.Labels["app"] = "tampered"
+			deploy.Labels["redkey.inditex.dev/component"] = "tampered"
 			deploy.Labels["extra"] = "unexpected"
 			Expect(k8sClient.Patch(ctx, &deploy, client.MergeFrom(base))).To(Succeed())
 
 			By("verifying the Deployment labels have been tampered with")
 			Expect(k8sClient.Get(ctx, deployName, &deploy)).To(Succeed())
-			Expect(deploy.Labels["app"]).To(Equal("tampered"))
+			Expect(deploy.Labels["redkey.inditex.dev/component"]).To(Equal("tampered"))
 			Expect(deploy.Labels).To(HaveKey("extra"))
 
 			By("reconciling and verifying Deployment-level labels are restored")
 			reconcileIt()
 			var corrected appsv1.Deployment
 			Expect(k8sClient.Get(ctx, deployName, &corrected)).To(Succeed())
-			Expect(corrected.Labels["app"]).To(Equal("redkey-robin"))
+			Expect(corrected.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 			Expect(corrected.Labels[controller.ClusterLabel]).To(Equal(clusterName))
 		})
 	})

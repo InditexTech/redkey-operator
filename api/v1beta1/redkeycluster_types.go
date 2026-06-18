@@ -83,11 +83,21 @@ type RedkeyClusterSpec struct {
 	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Labels is the labels to add to the RedkeyCluster.
+	// Labels are applied to all Kubernetes objects managed for this RedkeyCluster
+	// (the RedkeyClusterConfig, the Robin Deployment and its RBAC, and the Redis
+	// StatefulSet, Service, ConfigMap and PodDisruptionBudget — including the pods).
+	// Internal labels required for correct operation always take precedence on a
+	// key collision. An object-level override (see Override / Robin.Template) fully
+	// replaces these labels for that object.
 	Labels *map[string]string `json:"labels,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Annotations is the annotations to add to the RedkeyCluster pods.
+	// Annotations are applied to all Kubernetes objects managed for this RedkeyCluster
+	// (the RedkeyClusterConfig, the Robin Deployment and its RBAC, and the Redis
+	// StatefulSet, Service, ConfigMap and PodDisruptionBudget — including the pods).
+	// Internal annotations required for correct operation always take precedence on a
+	// key collision. An object-level override (see Override / Robin.Template) fully
+	// replaces these annotations for that object.
 	Annotations *map[string]string `json:"annotations,omitempty"`
 
 	// +kubebuilder:validation:Optional

@@ -68,12 +68,12 @@ func (r *RedkeyClusterReconciler) createNewConfig(ctx context.Context, cluster *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%d", cluster.Name, seq),
 			Namespace: cluster.Namespace,
-			Labels: map[string]string{
+			Labels: mergeMeta(derefMap(cluster.Spec.Labels), nil, map[string]string{
 				ClusterLabel: cluster.Name,
-			},
-			Annotations: map[string]string{
+			}),
+			Annotations: mergeMeta(derefMap(cluster.Spec.Annotations), nil, map[string]string{
 				"redkey.inditex.dev/cluster-generation": strconv.FormatInt(cluster.Generation, 10),
-			},
+			}),
 		},
 		Spec: redisv1.RedkeyClusterConfigSpec{
 			Sequence:             seq,

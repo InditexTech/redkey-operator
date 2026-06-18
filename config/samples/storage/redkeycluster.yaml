@@ -4,8 +4,12 @@
 apiVersion: redkey.inditex.dev/v1beta1
 kind: RedkeyCluster
 metadata:
+  annotations:
+    inditex.dev/description: "Persistent Redis Cluster for development purposes"
   labels:
-    app.kubernetes.io/name: redkey-operator
+    inditex.dev/name: redkey-cluster-storage
+    inditex.dev/owner: a-team
+    inditex.dev/environment: development
     app.kubernetes.io/managed-by: kustomize
   name: redkey-cluster-storage
 spec:

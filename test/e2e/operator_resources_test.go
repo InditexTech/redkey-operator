@@ -89,8 +89,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 			Expect(deploys.Items).To(HaveLen(1), "Exactly one Robin Deployment should exist")
 
 			deploy := deploys.Items[0]
-			Expect(deploy.Labels["app"]).To(Equal("redkey-robin"))
-			Expect(deploy.Spec.Template.Labels["app"]).To(Equal("redkey-robin"))
+			Expect(deploy.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 			Expect(deploy.Spec.Template.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 			Expect(*deploy.Spec.Replicas).To(Equal(int32(1)))
 

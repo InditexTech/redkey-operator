@@ -15,6 +15,7 @@ import (
 	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
 	"github.com/inditextech/redkeyoperator/test/e2e/framework"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -149,6 +150,8 @@ hz 20`
 			labels := map[string]string{
 				"app.kubernetes.io/team": "platform",
 				"environment":            "e2e-test",
+				// Collides with an internal base label — base must always win.
+				"redkey.inditex.dev/component": "hijacked",
 			}
 			opts.Labels = &labels
 			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
@@ -177,19 +180,31 @@ hz 20`
 					"Pod %s should have custom team label", pod.Name)
 				Expect(pod.Labels).To(HaveKeyWithValue("environment", "e2e-test"),
 					"Pod %s should have custom environment label", pod.Name)
+				// Base label wins over the colliding spec.labels entry.
+				Expect(pod.Labels).To(HaveKeyWithValue("redkey.inditex.dev/component", "redis"),
+					"Pod %s base component label must win over spec.labels", pod.Name)
 			}
+
+			By("verifying labels are present on the StatefulSet object metadata")
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, sts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sts.Labels).To(HaveKeyWithValue("app.kubernetes.io/team", "platform"),
+				"StatefulSet should carry custom team label")
+			Expect(sts.Labels).To(HaveKeyWithValue("redkey.inditex.dev/component", "redis"),
+				"StatefulSet base component label must win over spec.labels")
 		})
 
-		It("should update custom labels on existing pods when spec changes", func() {
+		It("should update custom labels on existing pods when spec changes", func() { //nolint:dupl
 			By("updating custom labels")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			cluster := &redkeyv1beta1.RedkeyCluster{}
 			err := k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
+			// "environment" is removed on purpose to verify pruning of stale keys.
 			updatedLabels := map[string]string{
 				"app.kubernetes.io/team": "infra",
-				"environment":            "staging",
 			}
 			cluster.Spec.Labels = &updatedLabels
 			err = k8sClient.Update(ctx, cluster)
@@ -199,7 +214,7 @@ hz 20`
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying updated labels on pods")
+			By("verifying updated labels (and pruning of removed keys) on pods")
 			Eventually(func() bool {
 				pods := &corev1.PodList{}
 				if err := k8sClient.List(ctx, pods, client.InNamespace(clusterNs),
@@ -210,14 +225,17 @@ hz 20`
 					return false
 				}
 				for _, pod := range pods.Items {
-					if pod.Labels["app.kubernetes.io/team"] != "infra" ||
-						pod.Labels["environment"] != "staging" {
+					if pod.Labels["app.kubernetes.io/team"] != "infra" {
+						return false
+					}
+					// The removed key must be pruned.
+					if _, ok := pod.Labels["environment"]; ok {
 						return false
 					}
 				}
 				return true
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
-				"Updated labels should propagate to pods")
+				"Updated labels should propagate to pods and removed keys should be pruned")
 		})
 	})
 
@@ -265,7 +283,7 @@ hz 20`
 			}
 		})
 
-		It("should update custom annotations on existing pods when spec changes", func() {
+		It("should update custom annotations on existing pods when spec changes", func() { //nolint:dupl
 			By("updating custom annotations")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			cluster := &redkeyv1beta1.RedkeyCluster{}
@@ -274,7 +292,6 @@ hz 20`
 
 			updatedAnnotations := map[string]string{
 				"prometheus.io/scrape": "false",
-				"prometheus.io/port":   "9090",
 			}
 			cluster.Spec.Annotations = &updatedAnnotations
 			err = k8sClient.Update(ctx, cluster)
@@ -284,7 +301,7 @@ hz 20`
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("verifying updated annotations on pods")
+			By("verifying updated annotations (and pruning of removed keys) on pods")
 			Eventually(func() bool {
 				pods := &corev1.PodList{}
 				if err := k8sClient.List(ctx, pods, client.InNamespace(clusterNs),
@@ -295,14 +312,17 @@ hz 20`
 					return false
 				}
 				for _, pod := range pods.Items {
-					if pod.Annotations["prometheus.io/scrape"] != "false" ||
-						pod.Annotations["prometheus.io/port"] != "9090" {
+					if pod.Annotations["prometheus.io/scrape"] != "false" {
+						return false
+					}
+					// The removed key must be pruned.
+					if _, ok := pod.Annotations["prometheus.io/port"]; ok {
 						return false
 					}
 				}
 				return true
 			}, 3*time.Minute, 5*time.Second).Should(BeTrue(),
-				"Updated annotations should propagate to pods")
+				"Updated annotations should propagate to pods and removed keys should be pruned")
 		})
 	})
 

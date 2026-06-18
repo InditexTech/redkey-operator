@@ -232,7 +232,7 @@ podMetricsEndpoints:
     scheme: http
 ```
 
-The PodMonitor selects pods with the label `app: redkey-robin` (applied by the operator when creating Robin Deployments).
+The PodMonitor selects pods with the label `redkey.inditex.dev/component: robin` (applied by the operator when creating Robin Deployments).
 
 Robin exposes metrics with the `redkey_` prefix:
 - **Redis INFO metrics** — `redkey_connected_clients`, `redkey_used_memory_rss`, `redkey_maxmemory`, `redkey_total_commands_processed`, `redkey_used_cpu_sys`, `redkey_used_cpu_user`, `redkey_keyspace_hits`, `redkey_keyspace_misses`, `redkey_evicted_keys`, `redkey_expired_keys`, `redkey_total_net_input_bytes`, `redkey_total_net_output_bytes`, `redkey_mem_aof_buffer`

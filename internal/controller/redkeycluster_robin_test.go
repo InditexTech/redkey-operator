@@ -66,6 +66,56 @@ func TestRedkeyClusterReconciler_EnsureRBAC(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestRedkeyClusterReconciler_EnsureRBAC_LabelsAndAnnotations verifies that
+// spec.labels / spec.annotations are propagated to the Robin RBAC objects
+// (ServiceAccount, Role, RoleBinding), while internal base labels win on collision.
+func TestRedkeyClusterReconciler_EnsureRBAC_LabelsAndAnnotations(t *testing.T) {
+	s := getScheme()
+	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+
+	r := &RedkeyClusterReconciler{Client: fakeClient, Scheme: s}
+	ctx := context.Background()
+
+	labels := map[string]string{
+		"team":                         "platform",
+		"redkey.inditex.dev/component": "hijacked", // collides with base
+	}
+	annotations := map[string]string{"prometheus.io/scrape": "true"}
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster",
+			Namespace: "default",
+			UID:       "some-uid",
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Labels:      &labels,
+			Annotations: &annotations,
+		},
+	}
+
+	require.NoError(t, r.ensureRBAC(ctx, cluster))
+
+	assertMeta := func(objLabels, objAnnotations map[string]string, kind string) {
+		assert.Equal(t, "platform", objLabels["team"], "%s missing spec label", kind)
+		assert.Equal(t, "test-cluster", objLabels[ClusterLabel], "%s missing base cluster label", kind)
+		// Base component label wins on collision.
+		assert.Equal(t, "robin", objLabels["redkey.inditex.dev/component"], "%s base label must win", kind)
+		assert.Equal(t, "true", objAnnotations["prometheus.io/scrape"], "%s missing spec annotation", kind)
+	}
+
+	sa := &corev1.ServiceAccount{}
+	require.NoError(t, fakeClient.Get(ctx, types.NamespacedName{Name: "test-cluster-robin", Namespace: "default"}, sa))
+	assertMeta(sa.Labels, sa.Annotations, "ServiceAccount")
+
+	role := &rbacv1.Role{}
+	require.NoError(t, fakeClient.Get(ctx, types.NamespacedName{Name: "test-cluster-robin", Namespace: "default"}, role))
+	assertMeta(role.Labels, role.Annotations, "Role")
+
+	roleBinding := &rbacv1.RoleBinding{}
+	require.NoError(t, fakeClient.Get(ctx, types.NamespacedName{Name: "test-cluster-robin", Namespace: "default"}, roleBinding))
+	assertMeta(roleBinding.Labels, roleBinding.Annotations, "RoleBinding")
+}
+
 func TestRedkeyClusterReconciler_EnsureRobinDeployment(t *testing.T) {
 	s := getScheme()
 	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
@@ -426,10 +476,8 @@ func TestBuildDesiredRobinDeployment_Defaults(t *testing.T) {
 	assert.Equal(t, "my-cluster-robin", deploy.Spec.Template.Spec.ServiceAccountName)
 
 	assert.Equal(t, "my-cluster", deploy.Labels[ClusterLabel])
-	assert.Equal(t, "redkey-robin", deploy.Labels["app"])
 	assert.Equal(t, "robin", deploy.Labels["redkey.inditex.dev/component"])
 	assert.Equal(t, "my-cluster", deploy.Spec.Template.Labels[ClusterLabel])
-	assert.Equal(t, "redkey-robin", deploy.Spec.Template.Labels["app"])
 	assert.Equal(t, "robin", deploy.Spec.Template.Labels["redkey.inditex.dev/component"])
 
 	require.Len(t, deploy.Spec.Template.Spec.Containers, 1)
@@ -449,6 +497,96 @@ func TestBuildDesiredRobinDeployment_Defaults(t *testing.T) {
 	assert.Equal(t, int32(8080), container.Ports[0].ContainerPort)
 	assert.Equal(t, "metrics", container.Ports[0].Name)
 	assert.Nil(t, deploy.Spec.Template.Annotations)
+}
+
+// TestBuildDesiredRobinDeployment_LabelsAnnotationsBaseWins verifies that
+// spec.labels / spec.annotations are propagated to both the Deployment and the
+// pod template, while internal base labels always win on collision.
+func TestBuildDesiredRobinDeployment_LabelsAnnotationsBaseWins(t *testing.T) {
+	s := getScheme()
+	r := &RedkeyClusterReconciler{Scheme: s}
+
+	labels := map[string]string{
+		"team":                         "platform",
+		"redkey.inditex.dev/component": "hijacked", // collides with base
+	}
+	annotations := map[string]string{"prometheus.io/scrape": "true"}
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-cluster",
+			Namespace: "production",
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Primaries:   3,
+			Ephemeral:   true,
+			Labels:      &labels,
+			Annotations: &annotations,
+			Robin:       redisv1.RobinSpec{Image: "redkey-robin:latest"},
+		},
+	}
+
+	deploy := r.buildDesiredRobinDeployment(cluster)
+
+	// Spec label propagated to Deployment + pod template.
+	assert.Equal(t, "platform", deploy.Labels["team"])
+	assert.Equal(t, "platform", deploy.Spec.Template.Labels["team"])
+	// Base label wins on collision at both levels.
+	assert.Equal(t, "robin", deploy.Labels["redkey.inditex.dev/component"])
+	assert.Equal(t, "robin", deploy.Spec.Template.Labels["redkey.inditex.dev/component"])
+	// Spec annotation propagated to Deployment + pod template.
+	assert.Equal(t, "true", deploy.Annotations["prometheus.io/scrape"])
+	assert.Equal(t, "true", deploy.Spec.Template.Annotations["prometheus.io/scrape"])
+}
+
+// TestBuildDesiredRobinDeployment_PodTemplateOverrideBlockReplaces verifies that
+// spec.robin.template.metadata acts as a block-replacement override for the Robin
+// pod: when it defines labels/annotations, spec.labels/spec.annotations are
+// discarded at the pod level (but still applied to the Deployment), while base
+// labels keep winning.
+func TestBuildDesiredRobinDeployment_PodTemplateOverrideBlockReplaces(t *testing.T) {
+	s := getScheme()
+	r := &RedkeyClusterReconciler{Scheme: s}
+
+	labels := map[string]string{"team": "platform"}
+	annotations := map[string]string{"prometheus.io/scrape": "true"}
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-cluster",
+			Namespace: "production",
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Primaries:   3,
+			Ephemeral:   true,
+			Labels:      &labels,
+			Annotations: &annotations,
+			Robin: redisv1.RobinSpec{
+				Image: "redkey-robin:latest",
+				Template: &redisv1.PartialPodTemplateSpec{
+					Metadata: metav1.ObjectMeta{
+						Labels:      map[string]string{"inditex.dev/override": "yes"},
+						Annotations: map[string]string{"sidecar.io/inject": "true"},
+					},
+				},
+			},
+		},
+	}
+
+	deploy := r.buildDesiredRobinDeployment(cluster)
+
+	// Deployment metadata still carries spec.labels / spec.annotations.
+	assert.Equal(t, "platform", deploy.Labels["team"])
+	assert.Equal(t, "true", deploy.Annotations["prometheus.io/scrape"])
+
+	// Pod template: override entries present, spec entries discarded (block replacement).
+	assert.Equal(t, "yes", deploy.Spec.Template.Labels["inditex.dev/override"])
+	assert.NotContains(t, deploy.Spec.Template.Labels, "team")
+	assert.Equal(t, "true", deploy.Spec.Template.Annotations["sidecar.io/inject"])
+	assert.NotContains(t, deploy.Spec.Template.Annotations, "prometheus.io/scrape")
+	// Base labels still win on the pod.
+	assert.Equal(t, "robin", deploy.Spec.Template.Labels["redkey.inditex.dev/component"])
+	assert.Equal(t, "my-cluster", deploy.Spec.Template.Labels[ClusterLabel])
 }
 
 func TestBuildDesiredRobinDeployment_UsesSpecRobinImage(t *testing.T) {
@@ -581,7 +719,7 @@ func TestBuildDesiredRobinDeployment_WithPodLabelsAndAnnotations(t *testing.T) {
 	// Custom labels merged with defaults
 	assert.Equal(t, "platform", deploy.Spec.Template.Labels["team"])
 	assert.Equal(t, "my-cluster", deploy.Spec.Template.Labels[ClusterLabel])
-	assert.Equal(t, "redkey-robin", deploy.Spec.Template.Labels["app"])
+	assert.Equal(t, "robin", deploy.Spec.Template.Labels["redkey.inditex.dev/component"])
 
 	// Annotations
 	assert.Equal(t, "true", deploy.Spec.Template.Annotations["prometheus.io/scrape"])
@@ -834,8 +972,8 @@ func TestRobinDeploymentNeedsUpdate(t *testing.T) {
 				Name:      "my-cluster-robin",
 				Namespace: "default",
 				Labels: map[string]string{
-					ClusterLabel: "my-cluster",
-					"app":        "redkey-robin",
+					ClusterLabel:                   "my-cluster",
+					"redkey.inditex.dev/component": "robin",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -843,8 +981,8 @@ func TestRobinDeploymentNeedsUpdate(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
-							ClusterLabel: "my-cluster",
-							"app":        "redkey-robin",
+							ClusterLabel:                   "my-cluster",
+							"redkey.inditex.dev/component": "robin",
 						},
 					},
 					Spec: corev1.PodSpec{
@@ -867,6 +1005,15 @@ func TestRobinDeploymentNeedsUpdate(t *testing.T) {
 		assert.False(t, r.robinDeploymentNeedsUpdate(existing, desired))
 	})
 
+	t.Run("kubernetes-managed revision annotation does not trigger update", func(t *testing.T) {
+		existing := baseDeployment()
+		// The Deployment controller stamps this annotation on the live object.
+		// It must be ignored, otherwise the operator patches in an endless loop.
+		existing.Annotations = map[string]string{deploymentRevisionAnnotation: "1"}
+		desired := baseDeployment()
+		assert.False(t, r.robinDeploymentNeedsUpdate(existing, desired))
+	})
+
 	t.Run("nil replicas triggers update", func(t *testing.T) {
 		existing := baseDeployment()
 		existing.Spec.Replicas = nil
@@ -884,14 +1031,14 @@ func TestRobinDeploymentNeedsUpdate(t *testing.T) {
 
 	t.Run("different deployment labels triggers update", func(t *testing.T) {
 		existing := baseDeployment()
-		existing.Labels["app"] = "wrong"
+		existing.Labels["redkey.inditex.dev/component"] = "wrong"
 		desired := baseDeployment()
 		assert.True(t, r.robinDeploymentNeedsUpdate(existing, desired))
 	})
 
 	t.Run("different pod template labels triggers update", func(t *testing.T) {
 		existing := baseDeployment()
-		existing.Spec.Template.Labels["app"] = "wrong"
+		existing.Spec.Template.Labels["redkey.inditex.dev/component"] = "wrong"
 		desired := baseDeployment()
 		assert.True(t, r.robinDeploymentNeedsUpdate(existing, desired))
 	})
@@ -1084,23 +1231,23 @@ func TestEnsureRobinDeployment_PatchesOnDrift(t *testing.T) {
 			Name:      "my-cluster-robin",
 			Namespace: "default",
 			Labels: map[string]string{
-				ClusterLabel: "my-cluster",
-				"app":        "redkey-robin",
+				ClusterLabel:                   "my-cluster",
+				"redkey.inditex.dev/component": "robin",
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &oldReplicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					ClusterLabel: "my-cluster",
-					"app":        "redkey-robin",
+					ClusterLabel:                   "my-cluster",
+					"redkey.inditex.dev/component": "robin",
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						ClusterLabel: "my-cluster",
-						"app":        "redkey-robin",
+						ClusterLabel:                   "my-cluster",
+						"redkey.inditex.dev/component": "robin",
 					},
 				},
 				Spec: corev1.PodSpec{

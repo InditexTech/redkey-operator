@@ -75,7 +75,11 @@ spec:
               annotations:
                 additionalProperties:
                   type: string
-                description: Annotations are additional pod annotations.
+                description: |-
+                  Annotations are applied to all Kubernetes objects Robin manages for this config
+                  (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
+                  the pods). Internal annotations required for correct operation always win on a
+                  key collision; an object-level override fully replaces these for that object.
                 type: object
               auth:
                 description: Auth references the Secret containing Redis authentication
@@ -98,7 +102,11 @@ spec:
               labels:
                 additionalProperties:
                   type: string
-                description: Labels are additional pod labels.
+                description: |-
+                  Labels are applied to all Kubernetes objects Robin manages for this config
+                  (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
+                  the pods). Internal labels required for correct operation always win on a key
+                  collision; an object-level override fully replaces these labels for that object.
                 type: object
               mode:
                 default: cluster

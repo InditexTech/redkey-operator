@@ -188,6 +188,56 @@ func TestRedkeyClusterReconciler_CreateNewConfig_WithLabelsAndAnnotations(t *tes
 	assert.Equal(t, annotations, *stored.Spec.Annotations)
 }
 
+// TestRedkeyClusterReconciler_CreateNewConfig_MetadataBaseWins verifies that
+// spec.labels / spec.annotations are propagated to the RedkeyClusterConfig
+// ObjectMeta, but the internal base labels/annotations (cluster identity and
+// generation) always win on a key collision.
+func TestRedkeyClusterReconciler_CreateNewConfig_MetadataBaseWins(t *testing.T) {
+	s := getScheme()
+
+	// User tries to override the internal cluster + generation keys.
+	labels := map[string]string{
+		"team":       "platform",
+		ClusterLabel: "hijacked",
+	}
+	annotations := map[string]string{
+		"prometheus.io/scrape":                  "true",
+		"redkey.inditex.dev/cluster-generation": "999",
+	}
+
+	cluster := &redisv1.RedkeyCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-cluster-bw",
+			Namespace:  "default",
+			Generation: 7,
+		},
+		Spec: redisv1.RedkeyClusterSpec{
+			Ephemeral:   true,
+			Primaries:   3,
+			Labels:      &labels,
+			Annotations: &annotations,
+			Robin:       redisv1.RobinSpec{Image: "redkey-robin:latest"},
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+	r := &RedkeyClusterReconciler{Client: fakeClient, Scheme: s}
+
+	err := r.createNewConfig(context.TODO(), cluster, nil)
+	require.NoError(t, err)
+
+	var stored redisv1.RedkeyClusterConfig
+	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: "test-cluster-bw-1", Namespace: "default"}, &stored)
+	require.NoError(t, err)
+
+	// User label propagated, but base cluster label wins on collision.
+	assert.Equal(t, "platform", stored.Labels["team"])
+	assert.Equal(t, "test-cluster-bw", stored.Labels[ClusterLabel])
+	// User annotation propagated, but base generation annotation wins on collision.
+	assert.Equal(t, "true", stored.Annotations["prometheus.io/scrape"])
+	assert.Equal(t, "7", stored.Annotations["redkey.inditex.dev/cluster-generation"])
+}
+
 func TestRedkeyClusterReconciler_CreateNewConfig_SetControllerReferenceError(t *testing.T) {
 	r := &RedkeyClusterReconciler{
 		Client: fake.NewClientBuilder().WithScheme(getScheme()).Build(),
