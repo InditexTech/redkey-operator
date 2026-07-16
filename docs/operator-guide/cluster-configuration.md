@@ -19,6 +19,7 @@ The following parameters are applied to **every cluster**, regardless of topolog
 | `cluster-node-timeout` | `5000` | Time in milliseconds before a node is considered unreachable by its peers. Controls failover speed: lower values trigger faster failover but risk false positives under network jitter. |
 | `cluster-require-full-coverage` | `no` | Allows the cluster to continue serving requests even when some hash slots are temporarily uncovered. Without this set to `no`, any slot migration (during upgrade or scaling) causes `CLUSTERDOWN` for the entire cluster, blocking **all** client operations — reads and writes — on every node. |
 | `cluster-allow-reads-when-down` | `yes` | Permits read operations even when the cluster detects partial failure states. Reduces impact on read-intensive workloads during transient conditions such as node restarts, network partition recovery, or upgrade operations. |
+| `cluster-allow-replica-migration` | `no` | Disables Redis' automatic replica migration so the operator/Robin retains full, deterministic control over topology. Prevents drained primaries (zero slots) from auto-converting into replicas during scaling/upgrades and stops replicas from auto-migrating between primaries. |
 
 ### Why `cluster-require-full-coverage no`?
 
@@ -31,6 +32,15 @@ When Redis detects that the cluster state is not healthy (e.g., a node is unreac
 - Node restarts (planned or unplanned)
 - Network partition recovery
 - Rolling upgrades where a primary is temporarily removed from the cluster
+
+### Why `cluster-allow-replica-migration no`?
+
+With Redis' default (`yes`), the cluster performs two automatic reconfigurations that conflict with operator-managed topology:
+
+- A primary that is **drained to zero slots** (for example, the surplus primaries during a scale-down) automatically turns itself into a replica of the node that absorbed its slots. In a cluster configured without replicas this leaves stray replicas behind and triggers unnecessary full-sync/replication traffic before Robin can remove the node.
+- Replicas **migrate between primaries** to cover orphaned masters, drifting away from the placement Robin computed.
+
+Because Robin already manages replica placement explicitly (via `CLUSTER REPLICATE` and the health reconciler), setting this to `no` keeps drained primaries as empty masters that are cleanly removed (`CLUSTER FORGET`) instead of becoming replicas, and keeps replica assignment deterministic.
 
 ## Persistence Parameters
 

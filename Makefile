@@ -202,7 +202,7 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 # We use count=1 to disable test caching and force the tests to run every time.
 .PHONY: test
 test: manifests generate fmt vet ## Run unit tests.
-	go test $$(go list ./... | grep -v /e2e | grep -v /test/integration) -coverprofile cover.out -count=1
+	go test $$(go list ./... | grep -v /e2e | grep -v /test/integration | grep -v /test/chaos) -coverprofile cover.out -count=1
 
 .PHONY: coverage
 coverage: test ## HTML coverage from unit tests only.
@@ -327,6 +327,68 @@ endif
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	$(MAKE) cleanup-kind KIND_CLUSTER=$(KIND_CLUSTER_E2E)
+
+# ---------------------------------------------------------------------------
+# Chaos tests
+# ---------------------------------------------------------------------------
+# Chaos tests deploy a namespace-scoped operator per test namespace (configured with
+# --watch-namespaces) so that parallel scenarios are isolated, then inject faults under k6 load and
+# verify the cluster heals. By default they run in an isolated Kind cluster named $(NAME)-test-chaos.
+# - setting the KIND_CLUSTER_CHAOS environment variable (e.g. export KIND_CLUSTER_CHAOS=my-chaos-cluster)
+# - passing it as an arg to the test-chaos target (e.g. make test-chaos KIND_CLUSTER_CHAOS=my-chaos-cluster)
+KIND_CLUSTER_CHAOS ?= $(NAME)-test-chaos
+
+# K6_IMG specifies the k6 load-generator image used by chaos tests.
+K6_IMG ?= localhost:$(REGISTRY_PORT)/redkey-k6:dev
+
+# Chaos tuning variables (passed as env vars to the test binary).
+# CHAOS_ITERATIONS: number of chaos iterations per scenario (default 3).
+# CHAOS_SEED: fixed RNG seed for reproducible chaos (default: Ginkgo random seed).
+# CHAOS_KEEP_NAMESPACE_ON_FAILED: if set, preserve the namespace of a failed spec for inspection.
+# CHAOS_K6_VUS: number of k6 virtual users for the load deployment (default 10).
+CHAOS_ITERATIONS ?=
+CHAOS_SEED ?=
+CHAOS_KEEP_NAMESPACE_ON_FAILED ?=
+CHAOS_K6_VUS ?=
+
+# CHAOS_ENV collects all chaos env vars that are set, to forward them to the test process.
+CHAOS_ENV = IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN) K6_IMG=$(K6_IMG)
+CHAOS_ENV += $(if $(CHAOS_ITERATIONS),CHAOS_ITERATIONS=$(CHAOS_ITERATIONS),)
+CHAOS_ENV += $(if $(CHAOS_SEED),CHAOS_SEED=$(CHAOS_SEED),)
+CHAOS_ENV += $(if $(CHAOS_KEEP_NAMESPACE_ON_FAILED),CHAOS_KEEP_NAMESPACE_ON_FAILED=$(CHAOS_KEEP_NAMESPACE_ON_FAILED),)
+CHAOS_ENV += $(if $(CHAOS_K6_VUS),CHAOS_K6_VUS=$(CHAOS_K6_VUS),)
+
+.PHONY: k6-build
+k6-build: ## Build the k6 load-generator image used by chaos tests.
+	$(CONTAINER_TOOL) build -f test/chaos/k6.Dockerfile -t $(K6_IMG) --build-arg GOLANG_VERSION=$(GOLANG_VERSION) test/chaos
+
+.PHONY: setup-test-chaos
+setup-test-chaos: ## Set up the Kind cluster used by chaos tests.
+	$(MAKE) setup-kind KIND_CLUSTER=$(KIND_CLUSTER_CHAOS)
+
+.PHONY: test-chaos
+test-chaos: manifests generate fmt vet setup-test-chaos kind kustomize k6-build ## Run chaos tests against prebuilt images loaded into Kind.
+	$(KIND) load docker-image $(IMAGE_OPERATOR) --name $(KIND_CLUSTER_CHAOS)
+	$(KIND) load docker-image $(IMAGE_ROBIN) --name $(KIND_CLUSTER_CHAOS)
+	$(KIND) load docker-image $(K6_IMG) --name $(KIND_CLUSTER_CHAOS)
+	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_CHAOS)
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply --server-side -f -
+ifeq ($(TEST_PARALLEL_PROCESS),1)
+	$(CHAOS_ENV) go test ./test/chaos/ -v -ginkgo.v \
+		$(if $(LABEL),-ginkgo.label-filter='$(LABEL)',) \
+		-ginkgo.timeout=180m \
+		-timeout 180m
+else
+	$(CHAOS_ENV) go run github.com/onsi/ginkgo/v2/ginkgo \
+		-v -procs=$(TEST_PARALLEL_PROCESS) \
+		$(if $(LABEL),--label-filter='$(LABEL)',) \
+		--timeout=120m \
+		./test/chaos/
+endif
+
+.PHONY: cleanup-test-chaos
+cleanup-test-chaos: ## Tear down the Kind cluster used for chaos tests
+	$(MAKE) cleanup-kind KIND_CLUSTER=$(KIND_CLUSTER_CHAOS)
 
 .PHONY: clean
 clean: ## Clean de build artifacts, installed tools, Go cache and generated files.

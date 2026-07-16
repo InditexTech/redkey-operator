@@ -32,8 +32,6 @@ We tried to make it as comprehensive as possible, but if you have any questions 
     - [Resource optimization](#resource-optimization)
     - [Available labels](#available-labels)
   - [Chaos tests](#chaos-tests)
-    - [Chaos test environment variables](#chaos-test-environment-variables)
-    - [Relationship between parallelism and timeouts](#relationship-between-parallelism-and-timeouts)
 
 ---
 
@@ -400,59 +398,27 @@ Each test file has a Ginkgo label for selective execution:
 
 ### Chaos tests
 
-Chaos tests validate operator resilience under disruptive conditions: random pod
+Chaos tests validate cluster resilience under disruptive conditions: random pod
 deletions, scaling, operator restarts, and topology corruption — all while the
-cluster is under k6 write/read load. They live in `test/chaos/` and run via:
+cluster is under continuous k6 write/read load. They live in `test/chaos/` and
+each spec runs in its own namespace with a dedicated, namespace-scoped operator
+(`--watch-namespaces`) so parallel specs stay isolated.
+
+Build the k6 load image once, then run the suite (it creates the Kind cluster,
+loads the operator/Robin/k6 images, installs the CRDs and runs the tests):
 
 ```shell
-make test-chaos
+make k6-build
+make test-chaos IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
 ```
 
-Run a single scenario:
+Run a subset of scenarios with a Ginkgo label filter:
 
 ```shell
-make test-chaos GINKGO_EXTRA_OPTS='--focus="survives continuous scaling"'
+make test-chaos LABEL=topology
 ```
 
-#### Chaos test environment variables
-
-The chaos suite runs multiple Ginkgo processes in parallel, each creating its
-own isolated namespace with an operator, Robin, and a Redis cluster. The
-following variables control test behavior and should be set in your shell or
-`.envrc` before running `make test-chaos`:
-
-```shell
-export TEST_PARALLEL_PROCESS=8
-export GOMAXPROCS=8
-export CHAOS_KEEP_NAMESPACE_ON_FAILED=true
-export IMG_ROBIN=localhost:5001/redkey-robin:0.1.0
-```
-
-| Variable                        | Default                          | Description                                                                                                                                                                                                                                                                                   |
-|---------------------------------|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TEST_PARALLEL_PROCESS`         | `8`                              | Number of parallel Ginkgo processes (`-procs`). Each process runs a separate test spec in its own namespace. Higher values run more specs concurrently but require more cluster resources. This also applies to E2E tests.                                                                     |
-| `GOMAXPROCS`                    | `8`                              | Go runtime parallelism. Should match `TEST_PARALLEL_PROCESS` so each Ginkgo process has a dedicated OS thread. Setting this lower than `TEST_PARALLEL_PROCESS` causes goroutine contention; setting it higher wastes CPU without benefit.                                                      |
-| `CHAOS_ITERATIONS`              | `10`                             | Number of chaos loop iterations per test spec. Each iteration performs disruptive actions (scale, delete pods, etc.) and waits for recovery. More iterations increase coverage but extend the total run time proportionally.                                                                    |
-| `CHAOS_TIMEOUT`                 | `100m`                           | Maximum wall-clock time Ginkgo allows for the entire chaos suite (`--timeout`). Must be large enough to accommodate `CHAOS_ITERATIONS` x recovery time x number of specs / `TEST_PARALLEL_PROCESS`. With 10 iterations and 8 parallel processes, 100 minutes is typically sufficient.          |
-| `CHAOS_SEED`                    | *(auto: Ginkgo random seed)*     | Fixed random seed for reproducibility. When a chaos run fails, the seed is printed in the output so you can replay the exact sequence of random actions.                                                                                                                                      |
-| `CHAOS_KEEP_NAMESPACE_ON_FAILED`| *(unset)*                        | When set to any non-empty value, failed test namespaces are preserved instead of deleted. This allows post-mortem inspection of pods, logs, and cluster state with `kubectl`. Remember to clean up namespaces manually afterwards.                                                             |
-| `IMG_ROBIN`                     | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)` | Robin sidecar image. For local development, point this to your local registry (e.g. `localhost:5001/redkey-robin:0.1.0`). Passed to tests as `ROBIN_IMAGE` via `GINKGO_ENV`.                                                                                              |
-| `K6_IMG`                        | `localhost:5001/redkey-k6:dev`   | k6 load generator image (built with xk6-redis extension). Build it with `make k6-build` before running chaos tests.                                                                                                                                                                          |
-
-#### Relationship between parallelism and timeouts
-
-`TEST_PARALLEL_PROCESS` controls how many test specs run concurrently. The chaos
-suite has 8 specs (4 scenarios x 2 `purgeKeysOnRebalance` modes), so with
-`TEST_PARALLEL_PROCESS=8` all specs run in parallel and the total wall-clock
-time equals roughly the duration of the slowest single spec.
-
-`CHAOS_TIMEOUT` must account for the worst case: if one spec takes longer than
-expected (e.g. slow recovery after a scale-down), the timeout must be generous
-enough to avoid killing a spec mid-recovery. As a rule of thumb:
-
-- With `CHAOS_ITERATIONS=10` and `TEST_PARALLEL_PROCESS=8`: `CHAOS_TIMEOUT=100m`
-- With `CHAOS_ITERATIONS=5` and `TEST_PARALLEL_PROCESS=4`: `CHAOS_TIMEOUT=60m`
-
-`GOMAXPROCS` should always match `TEST_PARALLEL_PROCESS`. Each Ginkgo process
-creates its own Kubernetes clients with independent rate limiters (QPS=5,
-Burst=10), so they don't contend on API access — but they do share CPU.
+The chaos environment variables (`CHAOS_ITERATIONS`, `CHAOS_SEED`,
+`CHAOS_K6_VUS`, `CHAOS_KEEP_NAMESPACE_ON_FAILED`, `K6_IMG`, …), the full list of
+scenarios, and the per-namespace operator isolation model are documented in the
+dedicated [Chaos Testing guide](../chaos-testing.md).

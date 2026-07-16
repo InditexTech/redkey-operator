@@ -10,3 +10,4 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 * [Development Guide](development-guide.md)
 * [Profiling Guide](profiling-guide.md)
+* [Chaos Testing](../chaos-testing.md)

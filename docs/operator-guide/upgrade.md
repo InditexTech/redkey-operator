@@ -77,7 +77,7 @@ For a cluster with 3 primaries and 1 replica/primary: pods 0–2 are primaries, 
 2. **ScalingUp**: Wait for extra pods to be Ready. Meet all nodes into the cluster via `CLUSTER MEET`. If replicas configured: run `CLUSTER REPLICATE` on extra replica(s) to attach them to the extra primary. Set initial partition = (primaries - 1).
 
 3. **Resharding** (per partition, from last to first):
-   - **Verify pivot replica** — ensure the extra primary still has its replica attached (guards against Redis auto-migration via `cluster-allow-replica-migration yes`). If missing, re-attach via `CLUSTER MEET` + `CLUSTER REPLICATE`
+   - **Verify pivot replica** — ensure the extra primary still has its replica attached (safeguard for replica placement drift; Redkey disables Redis auto-migration via `cluster-allow-replica-migration no`). If missing, re-attach via `CLUSTER MEET` + `CLUSTER REPLICATE`
    - Run `redis-cli --cluster fix` to resolve any open/stuck slots from a previous partial reshard
    - Determine destination: first iteration → extra primary (ordinal = primaries + primaries×replicas); subsequent iterations → partition+1 (previously recycled primary)
    - Migrate all slots from the current victim (partition ordinal) to the destination via `redis-cli --cluster reshard`
