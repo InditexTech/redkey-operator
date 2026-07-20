@@ -21,6 +21,12 @@ import (
 func CollectDebugInfo(ctx context.Context, c client.Client, namespace string) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "\n=== DEBUG INFO FOR NAMESPACE %s ===\n\n", namespace)
 
+	// Robin logs first: Robin is the component that drives topology convergence, so its logs
+	// are the primary diagnostic on a scaling/rebalance failure. Collect them before anything
+	// else and by label selector (not by the cached pod name, which can be stale) so they are
+	// captured even while the pod is being torn down during teardown.
+	collectRobinLogs(namespace)
+
 	// Kubernetes events
 	collectEvents(namespace)
 
@@ -60,10 +66,43 @@ func collectPodInfo(namespace, podName string) {
 	output, _ := utils.Run(cmd)
 	_, _ = fmt.Fprintf(GinkgoWriter, "Status: %s\n", output)
 
-	// Pod logs (last 50 lines)
+	// Pod logs (last 50 lines). Fall back to the previous container's logs when the current
+	// logs are empty (e.g. a container that crashed and restarted).
 	cmd = exec.Command("kubectl", "logs", podName, "-n", namespace, "--tail=50", "--all-containers=true")
 	output, _ = utils.Run(cmd)
+	if output == "" {
+		prev := exec.Command("kubectl", "logs", podName, "-n", namespace,
+			"--tail=50", "--all-containers=true", "--previous")
+		if prevOut, err := utils.Run(prev); err == nil && prevOut != "" {
+			output = prevOut
+		}
+	}
 	_, _ = fmt.Fprintf(GinkgoWriter, "Logs (last 50 lines):\n%s\n", output)
+}
+
+// collectRobinLogs prints the Robin deployment's logs for the namespace, selected by label so
+// it does not depend on a specific (possibly already-deleted) pod name. It falls back to the
+// previous container's logs when the current logs are empty, so a crashed/restarted or
+// terminating Robin still yields its last output — the case where the primary diagnostic was
+// previously lost because kubectl logs ran against an already-gone pod.
+func collectRobinLogs(namespace string) {
+	_, _ = fmt.Fprintf(GinkgoWriter, "--- Robin Logs (last 200 lines) ---\n")
+	cmd := exec.Command("kubectl", "logs", "-l", "redkey.inditex.dev/component=robin",
+		"-n", namespace, "--tail=200", "--all-containers=true", "--prefix=true")
+	output, err := utils.Run(cmd)
+	if err != nil || output == "" {
+		prev := exec.Command("kubectl", "logs", "-l", "redkey.inditex.dev/component=robin",
+			"-n", namespace, "--tail=200", "--all-containers=true", "--prefix=true", "--previous")
+		prevOut, prevErr := utils.Run(prev)
+		if prevErr != nil && output == "" {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get robin logs: %v (previous: %v)\n", err, prevErr)
+			return
+		}
+		if prevOut != "" {
+			output = prevOut
+		}
+	}
+	_, _ = fmt.Fprintf(GinkgoWriter, "%s\n", output)
 }
 
 func collectOperatorLogs() {
