@@ -165,6 +165,141 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 	})
 
+	// Regression: a scale-up used to stall forever when a leftover half-migration sat on a non-seed
+	// node. The importing/migrating markers redis-cli writes are local to the node that holds them and
+	// are not gossiped, so the rebalance seed's CLUSTER NODES view could not see the open slot; the
+	// pre-rebalance repair only inspected the seed and skipped the fix, while redis-cli --cluster
+	// rebalance (which checks every node) refused forever, leaving the new primaries empty. Robin now
+	// probes every master's own view before rebalancing and force-repairs after any refused attempt.
+	// This spec reproduces the exact condition deterministically: it injects the open slot on non-seed
+	// nodes only after the scale-up is underway (so Robin is on the scale path and its Ready-state
+	// health remediation, which would otherwise fix the slot, does not run) and asserts convergence.
+	Context("Scale-up with a pre-existing open slot on a non-seed node (regression)", func() {
+		const clusterName = "scale-openslot-regression"
+		key := func() types.NamespacedName {
+			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
+		It("converges when a non-seed node holds a leftover open slot during scale-up", func() {
+			By("creating a 3-primary ephemeral cluster (normal rebalance)")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.Primaries = 3
+			opts.ReplicasPerPrimary = 0
+			opts.PurgeKeysOnRebalance = new(false) // force normal, data-preserving rebalance
+
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			By("inserting keys so the scale-up performs real slot-with-data migration")
+			Expect(framework.InsertKeys(clusterNs, podNames[0], 50)).To(Succeed())
+
+			By("requesting a scale-up to 5 primaries")
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+				c.Spec.Primaries = 5
+			})
+
+			By("waiting until the scale-up is underway so Robin is on the scale path (no Ready-state healing)")
+			_, err = framework.WaitForClusterStatus(ctx, k8sClient, key(),
+				redkeyv1beta1.ClusterStatusScalingUp, framework.HealthTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("injecting a leftover open slot between two non-seed nodes while the new pods are still being added")
+			// The rebalance seed is the lowest-ordinal existing primary (...-0); placing the open slot on
+			// ...-1 -> ...-2 keeps it off the seed, reproducing the seed-blind detection. The new pods
+			// (...-3, ...-4) take real time to start, so this lands well before the rebalance runs.
+			slot, err := framework.SetSlotMigratingBetween(clusterNs, clusterName+"-1", clusterName+"-2")
+			Expect(err).NotTo(HaveOccurred(), "failed to inject the open slot on non-seed nodes")
+			_, _ = fmt.Fprintf(GinkgoWriter, "injected open slot %d: migrating on %s-1, importing on %s-2\n",
+				slot, clusterName, clusterName)
+
+			By("asserting the scale-up still converges to 5 healthy primaries despite the non-seed open slot")
+			// With the old seed-only detection the rebalance refused forever on the invisible open slot
+			// and this wait would time out; the fix lets the scale-up converge.
+			podNames = waitForScaledCluster(ctx, clusterName, clusterNs, 5)
+
+			By("verifying data survived the scale-up")
+			size, err := framework.GetDBSize(clusterNs, podNames)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(size).To(Equal(50), "all keys should survive the scale-up despite the injected open slot")
+		})
+	})
+
+	// Regression: a scale-up whose target primary count is already met by the existing primaries
+	// (futurePrimaries == 0) used to loop forever in Verifying when the cluster had uncovered slots —
+	// e.g. after a primary was killed mid-operation and its slots orphaned. The Phase-2 rebalance,
+	// which repairs open/uncovered slots, is skipped when no new primaries need slots, so nothing
+	// re-covered the keyspace and verifyCluster failed on every pass (observed as
+	// WaitingForPods -> InitializingNodes -> Verifying, never reaching Ready). handleScalingUp now
+	// repairs uncovered slots in that branch too. This reproduces the state deterministically: freeze
+	// Robin (Maintenance), orphan slots with CLUSTER DELSLOTS, then drive Robin through the scale-up
+	// path (ScalingUp) with the primary count already satisfied.
+	Context("Scale-up with orphaned slots and no new primaries (regression)", func() {
+		const clusterName = "scale-orphan-noverify"
+		key := func() types.NamespacedName {
+			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+		})
+
+		It("recovers instead of looping in Verifying when the target is already met", func() {
+			By("creating a 3-primary ephemeral cluster (normal rebalance)")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
+			opts.Primaries = 3
+			opts.ReplicasPerPrimary = 0
+			opts.PurgeKeysOnRebalance = new(false)
+
+			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			By("freezing Robin (Maintenance) so it cannot re-cover the slots we are about to orphan")
+			Expect(framework.SetClusterConfigStatus(ctx, k8sClient, clusterName, clusterNs,
+				redkeyv1beta1.ClusterStatusMaintenance)).To(Succeed())
+			_, err = framework.WaitForClusterStatus(ctx, k8sClient, key(),
+				redkeyv1beta1.ClusterStatusMaintenance, framework.DefaultTimeout)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("orphaning a range of slots via CLUSTER DELSLOTS (leaving the node a non-empty primary)")
+			orphaned := make([]int, 200)
+			for i := range orphaned {
+				orphaned[i] = i
+			}
+			Expect(framework.DelSlots(clusterNs, podNames[0], orphaned)).To(Succeed())
+
+			By("confirming the keyspace is now only partially covered")
+			info, err := framework.GetClusterInfo(clusterNs, podNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.SlotsAssigned).To(BeNumerically("<", 16384),
+				"DELSLOTS should have left the cluster with uncovered slots")
+
+			By("driving Robin through the scale-up path with the primary count already satisfied")
+			// The target (3) already equals the existing slot-owning primaries, so handleScalingUp sees
+			// futurePrimaries == 0 and skips the rebalance — the exact branch that used to loop.
+			Expect(framework.SetClusterConfigStatus(ctx, k8sClient, clusterName, clusterNs,
+				redkeyv1beta1.ClusterStatusScalingUp)).To(Succeed())
+
+			By("asserting Robin repairs the coverage and the cluster reaches Ready instead of looping")
+			// With the old code verifyCluster failed forever on the missing coverage and this would time
+			// out; the fix repairs the uncovered slots and the scale-up completes.
+			waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			By("verifying all slots are covered again")
+			info, err = framework.GetClusterInfo(clusterNs, podNames[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.SlotsAssigned).To(Equal(16384))
+			Expect(info.State).To(Equal("ok"))
+		})
+	})
+
 	Context("Ephemeral cluster with replicas (normal rebalance)", func() {
 		const clusterName = "scale-ephemeral-replica"
 		key := func() types.NamespacedName {

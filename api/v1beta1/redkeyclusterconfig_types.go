@@ -66,6 +66,26 @@ const (
 	// Upgrade — Fast Upgrade substatus values.
 	SubstatusFastUpgrading     = "FastUpgrading"  // StatefulSet updated and pods deleted for fast upgrade.
 	SubstatusEndingFastUpgrade = "FormingCluster" // Waiting for pods to restart and cluster to reform.
+
+	// SubstatusRemediating indicates the health-reconciler is actively remediating an applied
+	// cluster (healing membership, recovering slot coverage or rebalancing). It is informational
+	// and surfaces, alongside Status=Ready, that the data plane is not yet fully quiescent.
+	SubstatusRemediating = "Remediating"
+)
+
+// Health condition types set on RedkeyClusterConfig by Robin from the cluster health report and
+// aggregated onto the RedkeyCluster by the Operator. They expose live data-plane health
+// independently of the Ready/Phase semantics, which only reflect that a config was applied — a
+// cluster can be Ready (config applied) while the health-reconciler is still healing or rebalancing.
+// Status=True always means the positive condition holds (e.g. ConditionSlotsBalanced=True => the
+// slots are balanced).
+const (
+	ConditionHealthy             = "Healthy"             // Rollup: the cluster passed every health check.
+	ConditionMembershipHealthy   = "MembershipHealthy"   // Every node agrees on a consistent membership.
+	ConditionSlotsCovered        = "SlotsCovered"        // All 16384 hash slots are assigned.
+	ConditionSlotsBalanced       = "SlotsBalanced"       // Slots are evenly distributed across primaries.
+	ConditionReplicasBalanced    = "ReplicasBalanced"    // Replicas are correctly spread across primaries.
+	ConditionClusterCheckPassing = "ClusterCheckPassing" // redis-cli --cluster check reports no problems.
 )
 
 // RedkeyClusterConfigSpec defines the desired state of RedkeyClusterConfig.

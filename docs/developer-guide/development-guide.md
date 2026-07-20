@@ -400,9 +400,12 @@ Each test file has a Ginkgo label for selective execution:
 
 Chaos tests validate cluster resilience under disruptive conditions: random pod
 deletions, scaling, operator restarts, and topology corruption — all while the
-cluster is under continuous k6 write/read load. They live in `test/chaos/` and
-each spec runs in its own namespace with a dedicated, namespace-scoped operator
-(`--watch-namespaces`) so parallel specs stay isolated.
+cluster is under continuous k6 write/read load. A background disruptor deletes
+pods **continuously throughout each operation and its recovery** (paused only
+around verification), so faults overlap with the operator/Robin work instead of
+firing once per iteration. They live in `test/chaos/` and each spec runs in its
+own namespace with a dedicated, namespace-scoped operator (`--watch-namespaces`)
+so parallel specs stay isolated.
 
 Build the k6 load image once, then run the suite (it creates the Kind cluster,
 loads the operator/Robin/k6 images, installs the CRDs and runs the tests):
@@ -419,6 +422,7 @@ make test-chaos LABEL=topology
 ```
 
 The chaos environment variables (`CHAOS_ITERATIONS`, `CHAOS_SEED`,
-`CHAOS_K6_VUS`, `CHAOS_KEEP_NAMESPACE_ON_FAILED`, `K6_IMG`, …), the full list of
-scenarios, and the per-namespace operator isolation model are documented in the
-dedicated [Chaos Testing guide](../chaos-testing.md).
+`CHAOS_K6_VUS`, `CHAOS_DISRUPTION_INTERVAL`,
+`CHAOS_KEEP_NAMESPACE_ON_FAILED`, `K6_IMG`, …), the full list of scenarios, the
+continuous disruption model, and the per-namespace operator isolation model are
+documented in the dedicated [Chaos Testing guide](../chaos-testing.md).

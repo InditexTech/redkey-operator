@@ -7,6 +7,7 @@ package chaos
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -21,13 +22,7 @@ const (
 	clusterName      = "redis-cluster"
 	defaultPrimaries = 5
 
-	// chaosStabilizationWindow is the calm period granted after each cluster recovery so the k6
-	// load generator can refresh its view of the topology, reconnect to the new pods and actually
-	// insert keys before the next disruptive action. Without it the scaling and pod-deletion
-	// operations run back-to-back and k6 never gets a stable window to drive traffic, which makes
-	// the scenario unrealistic and leaves the cluster with no keys.
-	chaosStabilizationWindow = 30 * time.Second
-	diagnosticsLogTail       = int64(100)
+	diagnosticsLogTail = int64(100)
 
 	minPrimaries = 3
 	maxPrimaries = 10
@@ -37,6 +32,23 @@ const (
 	// once the cluster has recovered. A frozen generator (e.g. stuck on stale topology) never
 	// advances within this window and fails the spec.
 	k6ProgressTimeout = 60 * time.Second
+
+	// maxActionsPerOperation is the number of pod deletions the disruptor injects per operation before
+	// it goes quiet, so the operation gets a calm window to fully converge. It proves the cluster
+	// survives a bounded burst of disruption AND, given time, reaches a stable Ready state — the
+	// realistic contract, since a large nopurge slot migration cannot complete while pods are deleted
+	// (and lose their data) faster than the migration progresses.
+	maxActionsPerOperation = 5
+
+	// disruptBudgetTimeout bounds how long a scenario waits for the disruptor to spend its
+	// per-operation budget. Under gating the budget is spent during the slot-movement phase, which
+	// recurs as each deletion knocks the cluster back into it; this is only a safety net so a spec
+	// never blocks forever if that phase is never reached.
+	disruptBudgetTimeout = 8 * time.Minute
+
+	// minTotalDisruptions is the floor of disruptions a scenario must accumulate; it proves the
+	// disruptor ran throughout the scenario rather than acting once.
+	minTotalDisruptions = 2
 )
 
 // setupChaosNamespace creates an isolated namespace, deploys a namespace-scoped operator into it,
@@ -112,19 +124,17 @@ func verifyK6Healthy(namespace string) {
 	Expect(framework.WaitForK6Progress(ctx, k8sClientset, namespace, k6ProgressTimeout)).To(Succeed())
 }
 
-// stabilizeUnderLoad grants the k6 load generator a calm window against the freshly recovered
-// cluster before the next disruptive action. It first asserts k6 resumes forward progress (i.e. it
-// refreshed the topology and is inserting keys again) and then holds steady for the stabilization
-// window so a meaningful amount of traffic lands while the cluster is healthy. This spaces out the
-// chaos operations and makes the scenario behave like a real workload instead of firing scaling and
-// pod deletions back-to-back.
-func stabilizeUnderLoad(namespace, phase string) {
-	By(fmt.Sprintf("stabilizing under load (%s)", phase))
-	GinkgoWriter.Printf(
-		"Allowing k6 to refresh topology and insert keys for %s (%s)\n", chaosStabilizationWindow, phase)
+// verifyLoadResumed asserts the k6 load generator resumes forward progress against the freshly
+// recovered cluster — it refreshed the topology and is inserting keys again. Reaching Ready is a
+// server-side signal (Robin's aggregated health conditions); this is the client-side counterpart that
+// proves a real Redis client can route and write after the recovery. The cluster has already fully
+// converged by the time this runs (WaitForChaosReady blocks on convergence beforehand), so this only
+// checks client liveness — it does not wait for or contribute to convergence. The background
+// disruptor is expected to be paused by the caller.
+func verifyLoadResumed(namespace, phase string) {
+	By(fmt.Sprintf("verifying client traffic resumed after recovery (%s)", phase))
 	Expect(framework.WaitForK6Progress(ctx, k8sClientset, namespace, k6ProgressTimeout)).To(Succeed(),
-		"k6 made no progress during stabilization window (%s)", phase)
-	time.Sleep(chaosStabilizationWindow)
+		"k6 made no forward progress after recovery (%s)", phase)
 }
 
 // verifyClusterHealthy runs all cluster health checks.
@@ -133,6 +143,9 @@ func verifyClusterHealthy(namespace, clusterName string) {
 	Expect(framework.WaitForChaosReady(
 		ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
 	)).To(Succeed())
+
+	By("verifying topology is stable (no in-flight resharding)")
+	Expect(framework.AssertTopologyStable(ctx, k8sClientset, namespace, clusterName, chaosReadyTimeout)).To(Succeed())
 
 	By("verifying all slots assigned")
 	Expect(framework.AssertAllSlotsAssigned(ctx, k8sClientset, namespace, clusterName)).To(Succeed())
@@ -154,46 +167,301 @@ func scaleDirection(current, target int32) string {
 	}
 }
 
+// disruptor runs a single long-lived goroutine that repeatedly performs a scenario-specific
+// pod-deletion action against the cluster while it is not paused. It provides continuous chaos
+// throughout an operation and its recovery (the M2 model): it stays active while a scaling/deletion
+// operation is in flight and is only paused around the verification+calm checkpoint so the cluster
+// can reach a stable Ready state (WaitForChaosReady cannot converge while pods keep being deleted).
+//
+// It is designed to be safe inside Ginkgo: the goroutine never calls Expect/Fail — a failure raised
+// from a non-spec goroutine would be lost — so it tolerates transient errors (pods momentarily
+// gone, list churn), logs them via GinkgoWriter and only counts successful actions. The main spec
+// asserts progress through the recorded action count. The goroutine owns its own *rand.Rand because
+// math/rand is not safe for concurrent use with the main loop's generator.
+type disruptor struct {
+	name   string
+	action func(*rand.Rand) (int, error)
+	// baseInterval is the cadence between pod deletions (with jitter). gate, when non-nil, restricts
+	// deletions to the moments it returns true — used to land the bounded burst specifically during
+	// the cluster's slot-movement phase (rebalance/drain/forming).
+	baseInterval time.Duration
+	gate         func() bool
+	rng          *rand.Rand
+
+	mu      sync.Mutex
+	paused  bool
+	budget  int // remaining deletions for the current operation; <=0 means quiet until re-armed
+	actions int
+
+	armCh  chan struct{} // buffered(1): arm() signals run() to fire one immediate ungated disruption
+	stopCh chan struct{}
+	doneCh chan struct{}
+}
+
+// startDisruptor launches a disruptor in the paused state with an empty budget. Callers arm it with a
+// per-operation budget around each operation and pause it before verifying recovery. When gate is
+// non-nil the disruptor only deletes while gate() is true, so its bounded burst lands specifically
+// during the cluster's slot-movement phase; once the budget is spent it goes quiet, giving the
+// operation a calm window to converge.
+func startDisruptor(
+	name string,
+	seed int64,
+	action func(*rand.Rand) (int, error),
+	gate func() bool,
+) *disruptor {
+	d := &disruptor{
+		name:         name,
+		action:       action,
+		baseInterval: framework.GetDisruptionInterval(),
+		gate:         gate,
+		rng:          rand.New(rand.NewSource(seed)),
+		paused:       true,
+		armCh:        make(chan struct{}, 1),
+		stopCh:       make(chan struct{}),
+		doneCh:       make(chan struct{}),
+	}
+	go d.run()
+	return d
+}
+
+func (d *disruptor) run() {
+	defer GinkgoRecover()
+	defer close(d.doneCh)
+
+	for {
+		select {
+		case <-d.stopCh:
+			return
+		case <-ctx.Done():
+			return
+		case <-d.armCh:
+			// Guaranteed per-operation disruption: fire one deletion immediately when armed, ungated,
+			// so every operation is disrupted even when it converges before the gated interval or the
+			// slot-movement window can land a hit (fast purge scaling converges in seconds).
+			d.act(true)
+		case <-time.After(d.jitteredInterval()):
+			d.act(false)
+		}
+	}
+}
+
+// act performs one disruption if the disruptor is armed and still has budget. When ungated is false it
+// also requires the gate (if any) to be open, so the gated burst lands specifically during the target
+// phase. All rng/action use stays on the run() goroutine, so callers must never invoke it directly.
+func (d *disruptor) act(ungated bool) {
+	d.mu.Lock()
+	skip := d.paused || d.budget <= 0
+	d.mu.Unlock()
+	if skip {
+		return
+	}
+	// Gate the deletion to the target phase without consuming budget while waiting for it, so the
+	// whole burst lands where it matters (e.g. during slot movement). The guaranteed on-arm hit
+	// bypasses the gate.
+	if !ungated && d.gate != nil && !d.gate() {
+		return
+	}
+
+	n, err := d.action(d.rng)
+	if err != nil {
+		GinkgoWriter.Printf("[disruptor %s] action error (tolerated): %v\n", d.name, err)
+		return
+	}
+
+	d.mu.Lock()
+	d.actions++
+	d.budget--
+	total := d.actions
+	d.mu.Unlock()
+	GinkgoWriter.Printf("[disruptor %s] deleted %d pod(s) (total actions=%d)\n", d.name, n, total)
+}
+
+// jitteredInterval returns the base interval with +/-25% jitter so deletions are not perfectly
+// periodic.
+func (d *disruptor) jitteredInterval() time.Duration {
+	base := int64(d.baseInterval)
+	jitter := d.rng.Int63n(base/2+1) - base/4
+	return time.Duration(base + jitter)
+}
+
+// arm resumes the disruptor with a fresh per-operation deletion budget (maxActionsPerOperation) and
+// triggers one immediate ungated disruption so the operation is disrupted regardless of how fast it
+// converges. The rest of the budget is spent by the gated ticker during the sensitive phase. Once the
+// budget is spent the disruptor goes quiet on its own, leaving the operation a calm window to converge.
+func (d *disruptor) arm() {
+	d.mu.Lock()
+	d.paused = false
+	d.budget = maxActionsPerOperation
+	d.mu.Unlock()
+	// Signal run() to fire one immediate ungated hit. Non-blocking: the buffered channel already
+	// holds a pending trigger if run() has not consumed the previous one yet, which is enough.
+	select {
+	case d.armCh <- struct{}{}:
+	default:
+	}
+}
+
+func (d *disruptor) pause() {
+	d.mu.Lock()
+	d.paused = true
+	d.mu.Unlock()
+}
+
+func (d *disruptor) count() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.actions
+}
+
+// remainingBudget returns how many deletions of the current operation's budget are still unspent.
+func (d *disruptor) remainingBudget() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.budget
+}
+
+// stop terminates the goroutine and waits for it to exit. Safe to call once.
+func (d *disruptor) stop() {
+	select {
+	case <-d.stopCh:
+	default:
+		close(d.stopCh)
+	}
+	<-d.doneCh
+}
+
+// awaitBudget blocks until the disruptor has spent its per-operation budget (its burst has fully
+// landed), the cluster has converged early, or a safety timeout elapses. Gating means the budget is
+// spent during the slot-movement phase, which recurs as each deletion knocks the cluster back into
+// it; the timeout is only a safeguard so a spec never blocks forever. It never fails: the
+// end-of-scenario minTotalDisruptions assertion is what proves disruption actually happened.
+//
+// converged, when non-nil, is a single-shot convergence check. For a gated disruptor a converged
+// cluster means the slot-movement phase is over and the gate can no longer open, so the remaining
+// budget would never be spent — waiting on it only burns the safety timeout. In that case awaitBudget
+// returns immediately instead of blocking for the full disruptBudgetTimeout. The early exit is
+// deliberately restricted to gated disruptors: an ungated disruptor keeps firing into a steady
+// cluster, so "converged" is its normal between-deletions state and must not cut its burst short.
+func (d *disruptor) awaitBudget(converged func() bool) {
+	deadline := time.Now().Add(disruptBudgetTimeout)
+	for d.remainingBudget() > 0 && time.Now().Before(deadline) {
+		if d.gate != nil && converged != nil && converged() {
+			GinkgoWriter.Printf("[disruptor %s] cluster converged with %d of %d budget unspent; proceeding early\n",
+				d.name, d.remainingBudget(), maxActionsPerOperation)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+		}
+	}
+	if rem := d.remainingBudget(); rem > 0 {
+		GinkgoWriter.Printf("[disruptor %s] budget not fully spent within %s (%d of %d remaining); proceeding\n",
+			d.name, disruptBudgetTimeout, rem, maxActionsPerOperation)
+	}
+}
+
+// redisDisruption returns an action that deletes a single random redis pod per tick.
+func redisDisruption(namespace, clusterName string) func(*rand.Rand) (int, error) {
+	return func(r *rand.Rand) (int, error) {
+		deleted, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 1, r)
+		return len(deleted), err
+	}
+}
+
+// operatorDisruption returns an action that deletes the operator pods and a random redis pod per
+// tick, keeping the scenario focused on operator restarts while still churning the data plane.
+func operatorDisruption(namespace, clusterName string) func(*rand.Rand) (int, error) {
+	return func(r *rand.Rand) (int, error) {
+		if err := framework.DeleteOperatorPods(ctx, k8sClientset, namespace); err != nil {
+			return 0, err
+		}
+		deleted, _ := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 1, r)
+		return 1 + len(deleted), nil
+	}
+}
+
+// robinDisruption returns an action that deletes the robin pods and a random redis pod per tick.
+func robinDisruption(namespace, clusterName string) func(*rand.Rand) (int, error) {
+	return func(r *rand.Rand) (int, error) {
+		if err := framework.DeleteRobinPods(ctx, k8sClientset, namespace, clusterName); err != nil {
+			return 0, err
+		}
+		deleted, _ := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 1, r)
+		return 1 + len(deleted), nil
+	}
+}
+
+// mixedDisruption returns an action that randomly deletes operator, robin or redis pods per tick,
+// used by the full-chaos scenario alongside periodic scaling.
+func mixedDisruption(namespace, clusterName string) func(*rand.Rand) (int, error) {
+	return func(r *rand.Rand) (int, error) {
+		switch r.Intn(3) {
+		case 0:
+			if err := framework.DeleteOperatorPods(ctx, k8sClientset, namespace); err != nil {
+				return 0, err
+			}
+			return 1, nil
+		case 1:
+			if err := framework.DeleteRobinPods(ctx, k8sClientset, namespace, clusterName); err != nil {
+				return 0, err
+			}
+			return 1, nil
+		default:
+			deleted, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 1, r)
+			return len(deleted), err
+		}
+	}
+}
+
 // runScalingChaos runs the continuous-scaling-and-pod-deletion scenario.
 func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnRebalance bool) string {
 	By("starting k6 load deployment")
 	k6DepName := startK6OrFail(namespace, clusterName)
 
+	By("starting background redis-pod disruptor")
+	d := startDisruptor("redis", chaosSeed+1, redisDisruption(namespace, clusterName),
+		func() bool { return framework.IsInSlotMovementPhase(ctx, k8sClient, namespace, clusterName) })
+	defer d.stop()
+
 	By(fmt.Sprintf("executing chaos loop (%d iterations)", chaosIterations))
 
 	currentPrimaries := int32(defaultPrimaries)
+
+	// converged short-circuits awaitBudget: once the scaling operation has fully settled the
+	// slot-movement phase the disruptor gates on can no longer recur, so waiting for the rest of the
+	// budget would only burn the safety timeout.
+	converged := func() bool {
+		return framework.IsChaosConverged(ctx, k8sClient, k8sClientset, namespace, clusterName)
+	}
 
 	for i := 1; i <= chaosIterations; i++ {
 		GinkgoWriter.Printf("=== Chaos iteration %d/%d ===\n", i, chaosIterations)
 
 		newSize := int32(rng.Intn(maxPrimaries-minPrimaries+1) + minPrimaries)
 		scaleDir := scaleDirection(currentPrimaries, newSize)
-		By(fmt.Sprintf("iteration %d/%d: scaling cluster %s", i, chaosIterations, scaleDir))
+		By(fmt.Sprintf("iteration %d/%d: scaling cluster %s under continuous disruption", i, chaosIterations, scaleDir))
 		GinkgoWriter.Printf("Scaling %s: %d -> %d primaries\n", scaleDir, currentPrimaries, newSize)
+		d.arm()
 		Expect(framework.ScaleCluster(ctx, k8sClient, namespace, clusterName, newSize)).To(Succeed(),
 			fmt.Sprintf("iteration %d/%d: failed to scale cluster %s to %d", i, chaosIterations, scaleDir, newSize))
 
 		// With purge enabled the StatefulSet is recreated on scaling, so wait for the new one to
-		// reflect the target replica count before interacting with pods.
+		// reflect the target replica count. The disruptor keeps deleting pods throughout.
 		if purgeKeysOnRebalance {
 			Expect(framework.WaitForScaleAck(ctx, k8sClient, namespace, clusterName, newSize)).To(Succeed(),
 				fmt.Sprintf("iteration %d/%d: StatefulSet did not acknowledge scale to %d", i, chaosIterations, newSize))
 		}
 
-		By(fmt.Sprintf("iteration %d/%d: deleting random redis pods", i, chaosIterations))
-		deleteCount := rng.Intn(int(newSize)/2) + 1
-		deleted, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, deleteCount, rng)
-		Expect(err).NotTo(HaveOccurred(),
-			fmt.Sprintf("iteration %d/%d: failed to delete random redis pods", i, chaosIterations))
-		Expect(deleted).NotTo(BeEmpty(),
-			fmt.Sprintf("iteration %d/%d: expected at least one redis pod deletion", i, chaosIterations))
-		GinkgoWriter.Printf("Deleted pods: %v\n", deleted)
-
-		By(fmt.Sprintf("iteration %d/%d: waiting for cluster recovery", i, chaosIterations))
+		d.awaitBudget(converged)
+		d.pause()
+		By(fmt.Sprintf("iteration %d/%d: waiting for convergence in the calm after the disruption burst", i, chaosIterations))
 		Expect(framework.WaitForChaosReady(
 			ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
 		)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: cluster did not recover after pod deletion", i, chaosIterations))
+			fmt.Sprintf("iteration %d/%d: cluster did not converge after disruption (scale-up)", i, chaosIterations))
+		d.pause()
 
 		cluster, err := framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
 		Expect(err).NotTo(HaveOccurred(),
@@ -203,18 +471,22 @@ func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnR
 				i, chaosIterations, newSize, cluster.Spec.Primaries))
 		currentPrimaries = newSize
 
-		stabilizeUnderLoad(namespace, fmt.Sprintf("iteration %d/%d: after scale-up and pod deletion", i, chaosIterations))
+		verifyLoadResumed(namespace, fmt.Sprintf("iteration %d/%d: after scale-up and pod deletion", i, chaosIterations))
 
-		By(fmt.Sprintf("iteration %d/%d: scaling cluster down", i, chaosIterations))
 		downSize := int32(minPrimaries - rng.Intn(3))
+		By(fmt.Sprintf("iteration %d/%d: scaling cluster down under continuous disruption", i, chaosIterations))
 		GinkgoWriter.Printf("Scaling down: %d -> %d primaries\n", currentPrimaries, downSize)
+		d.arm()
 		Expect(framework.ScaleCluster(ctx, k8sClient, namespace, clusterName, downSize)).To(Succeed(),
 			fmt.Sprintf("iteration %d/%d: failed to scale cluster down to %d", i, chaosIterations, downSize))
 
+		d.awaitBudget(converged)
+		d.pause()
 		Expect(framework.WaitForChaosReady(
 			ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
 		)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: cluster did not become ready after scaling down", i, chaosIterations))
+			fmt.Sprintf("iteration %d/%d: cluster did not converge after disruption (scale-down)", i, chaosIterations))
+		d.pause()
 
 		cluster, err = framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
 		Expect(err).NotTo(HaveOccurred(),
@@ -224,8 +496,13 @@ func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnR
 				i, chaosIterations, downSize, cluster.Spec.Primaries))
 		currentPrimaries = downSize
 
-		stabilizeUnderLoad(namespace, fmt.Sprintf("iteration %d/%d: after scale-down", i, chaosIterations))
+		verifyLoadResumed(namespace, fmt.Sprintf("iteration %d/%d: after scale-down", i, chaosIterations))
 	}
+
+	By("stopping background disruptor")
+	d.stop()
+	Expect(d.count()).To(BeNumerically(">=", minTotalDisruptions),
+		"disruptor performed only %d actions; expected continuous disruption", d.count())
 
 	verifyK6Healthy(namespace)
 
@@ -238,36 +515,47 @@ func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnR
 	return k6DepName
 }
 
-// runOperatorDeletionChaos runs the operator-pod-deletion scenario.
-func runOperatorDeletionChaos(rng *rand.Rand, namespace, clusterName string) string {
+// runPodDeletionChaos runs a pod-deletion scenario driven by a single focused background disruptor
+// (operator+redis or robin+redis). The disruptor deletes pods continuously while the fault is being
+// injected; each iteration it is hammered for a few actions, paused so the cluster can settle, and
+// verified to recover, with a calm window in between.
+func runPodDeletionChaos(
+	namespace, clusterName, disruptorName string,
+	seed int64,
+	action func(*rand.Rand) (int, error),
+	faultDesc string,
+) string {
 	By("starting k6 load deployment")
 	k6DepName := startK6OrFail(namespace, clusterName)
 
-	By(fmt.Sprintf("executing chaos with operator deletion (%d iterations)", chaosIterations))
+	By(fmt.Sprintf("starting background %s disruptor", disruptorName))
+	d := startDisruptor(disruptorName, seed, action, nil)
+	defer d.stop()
+
+	By(fmt.Sprintf("executing chaos with %s (%d iterations)", faultDesc, chaosIterations))
 
 	for i := 1; i <= chaosIterations; i++ {
 		GinkgoWriter.Printf("=== Chaos iteration %d/%d ===\n", i, chaosIterations)
 
-		By(fmt.Sprintf("iteration %d/%d: deleting operator pod", i, chaosIterations))
-		Expect(framework.DeleteOperatorPods(ctx, k8sClientset, namespace)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: failed to delete operator pods", i, chaosIterations))
+		By(fmt.Sprintf("iteration %d/%d: injecting %s (bounded burst)", i, chaosIterations, faultDesc))
+		d.arm()
+		d.awaitBudget(nil)
+		d.pause()
 
-		By(fmt.Sprintf("iteration %d/%d: deleting random redis pods", i, chaosIterations))
-		deleted, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 2, rng)
-		Expect(err).NotTo(HaveOccurred(),
-			fmt.Sprintf("iteration %d/%d: failed to delete random redis pods", i, chaosIterations))
-		Expect(deleted).NotTo(BeEmpty(),
-			fmt.Sprintf("iteration %d/%d: expected at least one redis pod deletion", i, chaosIterations))
-		GinkgoWriter.Printf("Deleted pods: %v\n", deleted)
-
-		By(fmt.Sprintf("iteration %d/%d: waiting for recovery", i, chaosIterations))
+		By(fmt.Sprintf("iteration %d/%d: waiting for convergence in the calm after the disruption burst", i, chaosIterations))
 		Expect(framework.WaitForChaosReady(
 			ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
 		)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: cluster did not recover after operator deletion", i, chaosIterations))
+			fmt.Sprintf("iteration %d/%d: cluster did not converge after %s", i, chaosIterations, faultDesc))
+		// disruptor already quiet (budget spent); explicit pause above keeps it so during recovery.
 
-		stabilizeUnderLoad(namespace, fmt.Sprintf("iteration %d/%d: after operator deletion", i, chaosIterations))
+		verifyLoadResumed(namespace, fmt.Sprintf("iteration %d/%d: after %s", i, chaosIterations, faultDesc))
 	}
+
+	By("stopping background disruptor")
+	d.stop()
+	Expect(d.count()).To(BeNumerically(">=", minTotalDisruptions),
+		"disruptor performed only %d actions; expected continuous disruption", d.count())
 
 	verifyK6Healthy(namespace)
 
@@ -280,92 +568,43 @@ func runOperatorDeletionChaos(rng *rand.Rand, namespace, clusterName string) str
 	)).To(Succeed())
 
 	return k6DepName
+}
+
+// runOperatorDeletionChaos runs the operator-pod-deletion scenario.
+func runOperatorDeletionChaos(namespace, clusterName string) string {
+	return runPodDeletionChaos(namespace, clusterName, "operator",
+		chaosSeed+2, operatorDisruption(namespace, clusterName), "operator deletion")
 }
 
 // runRobinDeletionChaos runs the robin-pod-deletion scenario.
-func runRobinDeletionChaos(rng *rand.Rand, namespace, clusterName string) string {
-	By("starting k6 load deployment")
-	k6DepName := startK6OrFail(namespace, clusterName)
-
-	By(fmt.Sprintf("executing chaos with robin deletion (%d iterations)", chaosIterations))
-
-	for i := 1; i <= chaosIterations; i++ {
-		GinkgoWriter.Printf("=== Chaos iteration %d/%d ===\n", i, chaosIterations)
-
-		By(fmt.Sprintf("iteration %d/%d: deleting robin pods", i, chaosIterations))
-		Expect(framework.DeleteRobinPods(ctx, k8sClientset, namespace, clusterName)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: failed to delete robin pods", i, chaosIterations))
-
-		By(fmt.Sprintf("iteration %d/%d: deleting random redis pods", i, chaosIterations))
-		deletedRedis, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 2, rng)
-		Expect(err).NotTo(HaveOccurred(),
-			fmt.Sprintf("iteration %d/%d: failed to delete random redis pods", i, chaosIterations))
-		Expect(deletedRedis).NotTo(BeEmpty(),
-			fmt.Sprintf("iteration %d/%d: expected at least one redis pod deletion", i, chaosIterations))
-		GinkgoWriter.Printf("Deleted pods: %v\n", deletedRedis)
-
-		By(fmt.Sprintf("iteration %d/%d: waiting for recovery", i, chaosIterations))
-		Expect(framework.WaitForChaosReady(
-			ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
-		)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: cluster did not recover after robin deletion", i, chaosIterations))
-
-		stabilizeUnderLoad(namespace, fmt.Sprintf("iteration %d/%d: after robin deletion", i, chaosIterations))
-	}
-
-	verifyK6Healthy(namespace)
-
-	By("stopping k6 load")
-	stopK6Load(namespace, k6DepName)
-
-	By("verifying final cluster state")
-	Expect(framework.WaitForChaosReady(
-		ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
-	)).To(Succeed())
-
-	return k6DepName
+func runRobinDeletionChaos(namespace, clusterName string) string {
+	return runPodDeletionChaos(namespace, clusterName, "robin",
+		chaosSeed+3, robinDisruption(namespace, clusterName), "robin deletion")
 }
 
-// runFullChaos fires multiple overlapping actions per iteration (operator/robin/redis deletion and
-// scaling) without waiting for recovery between them, testing healing from accumulated failures.
+// runFullChaos runs continuous mixed disruption (operator/robin/redis deletion) alongside periodic
+// scaling, testing the operator's ability to heal from sustained, overlapping failures.
 func runFullChaos(rng *rand.Rand, namespace, clusterName string) string {
 	By("starting k6 load deployment")
 	k6DepName := startK6OrFail(namespace, clusterName)
 
+	By("starting background mixed disruptor")
+	d := startDisruptor("mixed", chaosSeed+4, mixedDisruption(namespace, clusterName), nil)
+	defer d.stop()
+
 	By(fmt.Sprintf("executing full chaos (%d iterations)", chaosIterations))
 
 	currentPrimaries := int32(defaultPrimaries)
-	var scaled bool
 
 	for i := 1; i <= chaosIterations; i++ {
 		GinkgoWriter.Printf("=== Full chaos iteration %d/%d ===\n", i, chaosIterations)
-		scaled = false
 
-		if rng.Intn(2) == 0 {
-			By(fmt.Sprintf("iteration %d/%d: deleting operator pod", i, chaosIterations))
-			Expect(framework.DeleteOperatorPods(ctx, k8sClientset, namespace)).To(Succeed(),
-				fmt.Sprintf("iteration %d/%d: failed to delete operator pods", i, chaosIterations))
-		}
-
-		if rng.Intn(2) == 0 {
-			By(fmt.Sprintf("iteration %d/%d: deleting robin pods", i, chaosIterations))
-			Expect(framework.DeleteRobinPods(ctx, k8sClientset, namespace, clusterName)).To(Succeed(),
-				fmt.Sprintf("iteration %d/%d: failed to delete robin pods", i, chaosIterations))
-		}
-
-		if rng.Intn(2) == 0 {
-			By(fmt.Sprintf("iteration %d/%d: deleting random redis pods", i, chaosIterations))
-			deleted, err := framework.DeleteRandomRedisPods(ctx, k8sClientset, namespace, clusterName, 2, rng)
-			Expect(err).NotTo(HaveOccurred(),
-				fmt.Sprintf("iteration %d/%d: failed to delete random redis pods", i, chaosIterations))
-			Expect(deleted).NotTo(BeEmpty(),
-				fmt.Sprintf("iteration %d/%d: expected at least one redis pod deletion", i, chaosIterations))
-			GinkgoWriter.Printf("Deleted pods: %v\n", deleted)
-		}
+		d.arm()
 
 		var newSize int32
+		scaled := false
 		if rng.Intn(2) == 0 {
-			By(fmt.Sprintf("iteration %d/%d: scaling cluster", i, chaosIterations))
+			By(fmt.Sprintf("iteration %d/%d: scaling cluster under continuous disruption", i, chaosIterations))
 			newSize = int32(rng.Intn(maxPrimaries-minPrimaries+1) + minPrimaries)
 			GinkgoWriter.Printf("Scaling: %d -> %d primaries\n", currentPrimaries, newSize)
 			Expect(framework.ScaleCluster(ctx, k8sClient, namespace, clusterName, newSize)).To(Succeed(),
@@ -373,11 +612,14 @@ func runFullChaos(rng *rand.Rand, namespace, clusterName string) string {
 			scaled = true
 		}
 
-		By(fmt.Sprintf("iteration %d/%d: waiting for recovery", i, chaosIterations))
+		d.awaitBudget(nil)
+		d.pause()
+		By(fmt.Sprintf("iteration %d/%d: waiting for convergence in the calm after the disruption burst", i, chaosIterations))
 		Expect(framework.WaitForChaosReady(
 			ctx, k8sClient, k8sClientset, namespace, clusterName, chaosReadyTimeout,
 		)).To(Succeed(),
-			fmt.Sprintf("iteration %d/%d: cluster did not recover after chaos actions", i, chaosIterations))
+			fmt.Sprintf("iteration %d/%d: cluster did not converge after disruption", i, chaosIterations))
+		d.pause()
 
 		if scaled {
 			cluster, err := framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
@@ -389,8 +631,13 @@ func runFullChaos(rng *rand.Rand, namespace, clusterName string) string {
 			currentPrimaries = newSize
 		}
 
-		stabilizeUnderLoad(namespace, fmt.Sprintf("iteration %d/%d: after chaos actions", i, chaosIterations))
+		verifyLoadResumed(namespace, fmt.Sprintf("iteration %d/%d: after chaos actions", i, chaosIterations))
 	}
+
+	By("stopping background disruptor")
+	d.stop()
+	Expect(d.count()).To(BeNumerically(">=", minTotalDisruptions),
+		"disruptor performed only %d actions; expected continuous disruption", d.count())
 
 	verifyK6Healthy(namespace)
 

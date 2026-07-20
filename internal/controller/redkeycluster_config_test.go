@@ -740,6 +740,63 @@ func TestAggregateConditions_PreserveUnchangedTransitionTimes(t *testing.T) {
 	assert.True(t, errorCondition.LastTransitionTime.Time.Equal(initialTransitionTime.Time))
 }
 
+func TestAggregateConditions_HealthConditions_CopiedWhenSettled(t *testing.T) {
+	config := &redisv1.RedkeyClusterConfig{
+		Status: redisv1.RedkeyClusterConfigStatus{
+			ConfigPhase: redisv1.ConfigPhaseApplied,
+			Status:      redisv1.ClusterStatusReady,
+			Conditions: []metav1.Condition{
+				{Type: redisv1.ConditionHealthy, Status: metav1.ConditionFalse, Reason: "SomeChecksFailed"},
+				{Type: redisv1.ConditionSlotsBalanced, Status: metav1.ConditionFalse, Reason: "SlotsUnbalanced"},
+				{Type: redisv1.ConditionSlotsCovered, Status: metav1.ConditionTrue, Reason: "AllSlotsAssigned"},
+			},
+		},
+	}
+
+	aggregated := aggregateConditions(nil, config)
+
+	healthy := meta.FindStatusCondition(aggregated, redisv1.ConditionHealthy)
+	require.NotNil(t, healthy)
+	assert.Equal(t, metav1.ConditionFalse, healthy.Status)
+	assert.Equal(t, "SomeChecksFailed", healthy.Reason)
+
+	balanced := meta.FindStatusCondition(aggregated, redisv1.ConditionSlotsBalanced)
+	require.NotNil(t, balanced)
+	assert.Equal(t, metav1.ConditionFalse, balanced.Status)
+
+	covered := meta.FindStatusCondition(aggregated, redisv1.ConditionSlotsCovered)
+	require.NotNil(t, covered)
+	assert.Equal(t, metav1.ConditionTrue, covered.Status)
+
+	// A health condition the config did not report is surfaced as Unknown.
+	membership := meta.FindStatusCondition(aggregated, redisv1.ConditionMembershipHealthy)
+	require.NotNil(t, membership)
+	assert.Equal(t, metav1.ConditionUnknown, membership.Status)
+	assert.Equal(t, "Reconciling", membership.Reason)
+}
+
+func TestAggregateConditions_HealthConditions_UnknownWhileReconciling(t *testing.T) {
+	config := &redisv1.RedkeyClusterConfig{
+		Status: redisv1.RedkeyClusterConfigStatus{
+			ConfigPhase: redisv1.ConfigPhaseInProgress,
+			Status:      redisv1.ClusterStatusScalingDown,
+			Conditions: []metav1.Condition{
+				// Stale value from the previous Ready state — must be ignored while reconciling.
+				{Type: redisv1.ConditionHealthy, Status: metav1.ConditionTrue, Reason: "AllChecksPassed"},
+			},
+		},
+	}
+
+	aggregated := aggregateConditions(nil, config)
+
+	for _, condType := range healthConditionTypes {
+		c := meta.FindStatusCondition(aggregated, condType)
+		require.NotNil(t, c, condType)
+		assert.Equal(t, metav1.ConditionUnknown, c.Status, condType)
+		assert.Equal(t, "Reconciling", c.Reason, condType)
+	}
+}
+
 func TestComputePhaseFromConditions(t *testing.T) {
 	tests := []struct {
 		name       string

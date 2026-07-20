@@ -22,6 +22,13 @@ Each reconciliation cycle produces a health report with the following checks:
 
 The cluster is considered **Healthy** only when all five checks pass.
 
+These checks are surfaced on the `RedkeyCluster` as
+[status conditions](redkey-cluster-status.md#cluster-health-conditions) — the `Healthy` rollup plus
+one condition per check (`MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`,
+`ClusterCheckPassing`). They form an **orthogonal health axis**: while Robin remediates, the cluster
+stays in the `Ready` status (surfaced as `Substatus = Remediating`) and `Phase`/`Status` are **not**
+downgraded — see [Phase, Status and Substatus](redkey-cluster-status.md#phase-status-and-substatus).
+
 ## Remediation Pipeline
 
 When the cluster is not healthy, Robin executes remediation steps in order, stopping at the first failure:

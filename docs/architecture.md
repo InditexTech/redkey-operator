@@ -129,7 +129,7 @@ spec:
 | `status` | Operational phase mirrored from the highest-sequence config |
 | `substatus` | Detailed sub-status (e.g. upgrading partition) |
 | `nodes` | Per-node status map (role, IP, replication status) |
-| `conditions` | `Ready`, `ConfigPending`, `Error` |
+| `conditions` | Lifecycle: `Ready`, `ConfigPending`, `Error`; plus the aggregated [health conditions](redkey-cluster-status.md#cluster-health-conditions) (`Healthy`, `MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`, `ClusterCheckPassing`) |
 
 ### RedkeyClusterConfig
 
@@ -162,9 +162,9 @@ spec:
 | ----- | ----------- |
 | `configPhase` | Configuration lifecycle: `Pending`, `InProgress`, `Superseded`, or `Applied` |
 | `status` | Cluster operational status (e.g. `Initializing`, `Ready`, `ScalingUp`) |
-| `substatus` | Detailed sub-status and upgrading partition |
+| `substatus` | Detailed sub-status (scaling/upgrade step, or `Remediating`) and upgrading partition |
 | `nodes` | Per-node status map |
-| `conditions` | `Ready`, `Upgrading`, `ScalingUp`, `ScalingDown` |
+| `conditions` | Data-plane [health conditions](redkey-cluster-status.md#cluster-health-conditions) written by Robin: `Healthy`, `MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`, `ClusterCheckPassing` |
 
 ---
 
@@ -402,6 +402,11 @@ The Operator computes a simplified phase for `RedkeyCluster.status.phase` from t
 | `configPhase: Applied`, `status: Ready` | `Ready` | `False` |
 | `configPhase: Applied`, `status: Error` | `Error` | `False` |
 | `configPhase: Applied`, any other status | `Configuring` | `False` |
+
+> The [health conditions](redkey-cluster-status.md#cluster-health-conditions) (`Healthy`,
+> `SlotsBalanced`, …) are aggregated onto the cluster **in addition** to the table above but do
+> **not** influence `phase`: a cluster stays `Ready` while Robin heals or rebalances an applied
+> cluster. They are an orthogonal health axis.
 
 ---
 

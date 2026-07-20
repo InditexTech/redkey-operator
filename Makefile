@@ -346,10 +346,14 @@ K6_IMG ?= localhost:$(REGISTRY_PORT)/redkey-k6:dev
 # CHAOS_SEED: fixed RNG seed for reproducible chaos (default: Ginkgo random seed).
 # CHAOS_KEEP_NAMESPACE_ON_FAILED: if set, preserve the namespace of a failed spec for inspection.
 # CHAOS_K6_VUS: number of k6 virtual users for the load deployment (default 10).
+# CHAOS_DISRUPTION_INTERVAL: base cadence in seconds for the background pod disruptor (default 60).
+# CHAOS_DISRUPTION_REBALANCE_INTERVAL: slower cadence in seconds used while only a slot rebalance is pending (default 120).
 CHAOS_ITERATIONS ?=
 CHAOS_SEED ?=
 CHAOS_KEEP_NAMESPACE_ON_FAILED ?=
 CHAOS_K6_VUS ?=
+CHAOS_DISRUPTION_INTERVAL ?=
+CHAOS_DISRUPTION_REBALANCE_INTERVAL ?=
 
 # CHAOS_ENV collects all chaos env vars that are set, to forward them to the test process.
 CHAOS_ENV = IMAGE_OPERATOR=$(IMAGE_OPERATOR) IMAGE_ROBIN=$(IMAGE_ROBIN) K6_IMG=$(K6_IMG)
@@ -357,6 +361,8 @@ CHAOS_ENV += $(if $(CHAOS_ITERATIONS),CHAOS_ITERATIONS=$(CHAOS_ITERATIONS),)
 CHAOS_ENV += $(if $(CHAOS_SEED),CHAOS_SEED=$(CHAOS_SEED),)
 CHAOS_ENV += $(if $(CHAOS_KEEP_NAMESPACE_ON_FAILED),CHAOS_KEEP_NAMESPACE_ON_FAILED=$(CHAOS_KEEP_NAMESPACE_ON_FAILED),)
 CHAOS_ENV += $(if $(CHAOS_K6_VUS),CHAOS_K6_VUS=$(CHAOS_K6_VUS),)
+CHAOS_ENV += $(if $(CHAOS_DISRUPTION_INTERVAL),CHAOS_DISRUPTION_INTERVAL=$(CHAOS_DISRUPTION_INTERVAL),)
+CHAOS_ENV += $(if $(CHAOS_DISRUPTION_REBALANCE_INTERVAL),CHAOS_DISRUPTION_REBALANCE_INTERVAL=$(CHAOS_DISRUPTION_REBALANCE_INTERVAL),)
 
 .PHONY: k6-build
 k6-build: ## Build the k6 load-generator image used by chaos tests.

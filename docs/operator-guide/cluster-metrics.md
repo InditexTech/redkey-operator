@@ -290,6 +290,12 @@ The following health-related gauges are exported:
 | `redkey_cluster_check_warnings` | Number of `[WARNING]` lines reported by `redis-cli --cluster check` |
 | `redkey_cluster_check_command_output_code` | Exit code returned by `redis-cli --cluster check`; `0` means success, non-zero means the command reported problems, and `-1` means Robin could not complete the command and exported conservative health defaults |
 
+> The same underlying health report is also surfaced as
+> [status conditions](../redkey-cluster-status.md#cluster-health-conditions) on the `RedkeyCluster`
+> (`Healthy`, `MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`,
+> `ClusterCheckPassing`), so you can gate on health with `kubectl wait --for=condition=Healthy` in
+> addition to scraping these metrics.
+
 **Example:**
 
 ```

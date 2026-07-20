@@ -4,13 +4,22 @@ SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# Redkey Cluster Status and Substatus
+# Redkey Cluster Phase, Status and Substatus
 
-The Redkey Operator tracks the lifecycle of each `RedkeyCluster` resource through a set of **Status** and **Substatus** fields. The `Status` field reflects the high-level phase of the cluster (e.g. initializing, ready, scaling), while the `Substatus` field provides finer-grained visibility into long-running operations such as scaling and upgrades. Together, they give operators a clear picture of what the cluster is doing at any point in time and allow automated tooling to react to state changes.
+The Redkey Operator exposes the state of each `RedkeyCluster` through three distinct fields —
+**Phase**, **Status** and **Substatus** — that answer three different questions, plus an orthogonal
+[health axis](#cluster-health-conditions). `Phase` is a user-facing rollup (is the cluster usable?),
+`Status` is the detailed operational state of the underlying configuration lifecycle (what operation
+is in progress?), and `Substatus` gives step-level visibility into long-running operations such as
+scaling and upgrades. Together they let operators and automation understand exactly what the cluster
+is doing at any point in time. See [Phase, Status and Substatus](#phase-status-and-substatus) for
+the precise semantics and how they relate.
 
 ## Table of Contents
 
+- [Phase, Status and Substatus](#phase-status-and-substatus)
 - [Status codes](#status-codes)
+- [Cluster health conditions](#cluster-health-conditions)
 - [Redkey Cluster creation Status transitions](#redkey-cluster-creation-status-transitions)
 - [Configuration change detection](#configuration-change-detection)
   - [Change categories](#change-categories)
@@ -27,15 +36,52 @@ The Redkey Operator tracks the lifecycle of each `RedkeyCluster` resource throug
 
 ---
 
+## Phase, Status and Substatus
+
+A `RedkeyCluster` reports its state through three fields, each answering a different question:
+
+| Field | JSONPath | Question it answers | Values |
+|-------|----------|---------------------|--------|
+| **Phase** | `.status.phase` | Is the cluster usable, working on something, or broken? | `Ready`, `Configuring`, `Error` |
+| **Status** | `.status.status` | Which lifecycle operation is in progress? | `Initializing`, `Configuring`, `Ready`, `ScalingUp`, `ScalingDown`, `ScalingToZero`, `Upgrading`, `Maintenance`, `Error` |
+| **Substatus** | `.status.substatus.status` | Which step *within* the current operation? | e.g. `WaitingForPods`, `Rebalancing`, `Remediating`, … (see the [Substatus reference](#substatus-values-reference)) |
+
+- **Phase** is a **user-facing rollup** derived from the cluster's `Conditions` (`Ready`,
+  `ConfigPending`, `Error`). It is the only one of the three shown in the default
+  `kubectl get rkcl` view. Use it for simple “is it ready?” checks and automation.
+- **Status** is the **operational state** of the underlying `RedkeyClusterConfig` state machine, set
+  by Robin and mirrored onto the cluster from the highest-sequence config. It is the detailed
+  lifecycle state (creation, scaling, upgrading, …) described in [Status codes](#status-codes).
+- **Substatus** is **purely informational** — it does not drive control flow. Robin sets it to expose
+  the current step of a long-running operation (scaling, upgrade, or health remediation).
+
+**Relationship.** `Phase` is *derived*, not stored independently:
+
+- `Status ∈ {Initializing, Configuring, ScalingUp, ScalingDown, ScalingToZero, Upgrading}` ⇒
+  `Phase = Configuring`.
+- `Status = Ready` and the highest-sequence config is `Applied` ⇒ `Phase = Ready`.
+- Any config in `Error` ⇒ `Phase = Error`.
+
+**Lifecycle, not health.** `Phase`/`Status` describe the **configuration lifecycle** — whether the
+desired spec has been applied — **not** whether the data plane is fully healthy at that instant. A
+cluster can be `Ready` while Robin's health-reconciler is still healing or rebalancing an applied
+cluster (surfaced as `Substatus = Remediating`). Live health is exposed on a separate axis via the
+[health conditions](#cluster-health-conditions).
+
+> Only the `PHASE` column is shown by `kubectl get rkcl`. The `STATUS`, `SUBSTATUS` and `PARTITION`
+> columns require `kubectl get rkcl -o wide`.
+
 ## Status codes
 
-Status codes is used to know the state of a Redis cluster.
+The `Status` field (`.status.status`) reports the operational lifecycle state of a Redis cluster —
+the detailed state machine that `Phase` rolls up (see [Phase, Status and Substatus](#phase-status-and-substatus)).
 
 The implemented status are:
 
 - **Initializing**: The necessary Kubernetes objects have been created (primarily a StatefulSet, which manages the pods on the Redis nodes, and Redkey Robin Deployment). The operator is waiting for all the pods to be ready and Robin to start responding.
 - **Configuring**: Robin is responsible for building the cluster, performing the necessary meets between all nodes, assigning slots to ensure everyone is covered, and making sure the cluster is balanced. The operator waits for Robin to confirm that the cluster is ready.
 - **Ready**: The cluster has the correct configuration, the desired number of primaries and replicas per primary, is rebalanced and ready to be used. The Redis clusters health in this status will be checked by the Operator periodically asking their Robin services.
+  > `Ready` means the highest-sequence `RedkeyClusterConfig` was **applied** — not that the data plane is fully healthy at that exact instant. After a config is applied, Robin's health-reconciler keeps the cluster healthy in the background (healing membership, recovering slot coverage, rebalancing) while the cluster **stays `Ready`**. The live data-plane health is exposed separately through the [health conditions](#cluster-health-conditions), and while remediation is in progress the informational [`Remediating`](#substatus-values-reference) substatus is shown.
 - **Upgrading**: The cluster is being upgraded, reconfiguring the objects to solve the mismatches. A RedkeyCluster enters this status when:
   - there are differences between the existing configuration in the configmap and the configuration of the RedkeyCluster object merged with the default configuration set in the code.
   - there is a mismatch between the StatefulSet object labels and the RedkeyCluster Spec labels.
@@ -51,6 +97,34 @@ The implemented status are:
   - Scaling down the cluster after upgradind raises an error.
   - Scaling up when in StatusScalingUp status goes wrong.
   - Scaling down when in StatusScalingDown status goes wrong.
+
+## Cluster health conditions
+
+`Status`/`Phase` describe the **configuration lifecycle**: `Ready` means the highest-sequence
+`RedkeyClusterConfig` was **applied**, not that the data plane is fully healthy at that instant.
+After a config is applied, Robin's health-reconciler keeps the cluster healthy in the background
+(healing membership, recovering slot coverage, rebalancing), and the cluster stays `Ready`
+throughout.
+
+To expose the **live data-plane health** independently of the lifecycle, Robin publishes a set of
+conditions on each `RedkeyClusterConfig`, which the Operator aggregates onto the `RedkeyCluster`
+`.status.conditions`. `Status=True` always means the positive condition holds.
+
+| Condition | `True` means |
+|-----------|--------------|
+| `Healthy` | Rollup — every health check below passed |
+| `MembershipHealthy` | All nodes agree on a consistent membership |
+| `SlotsCovered` | All 16384 hash slots are assigned |
+| `SlotsBalanced` | Slots are evenly distributed across primaries |
+| `ReplicasBalanced` | Replicas are correctly spread across primaries |
+| `ClusterCheckPassing` | `redis-cli --cluster check` reports no problems |
+
+These conditions are an **orthogonal health axis** and do **not** affect `Phase`
+(`Ready`/`Configuring`/`Error`). While a configuration operation is in progress the health report is
+stale, so the conditions are reported as `Unknown` (reason `Reconciling`) until the cluster settles
+back to `Ready`. While the health-reconciler is actively remediating an applied cluster, the
+informational [`Remediating`](#substatus-values-reference) substatus is shown (with `Status` still
+`Ready`), so `kubectl get rkcl -o wide -w` surfaces that the data plane is not yet fully quiescent.
 
 ## Redkey Cluster creation Status transitions
 
@@ -140,6 +214,7 @@ The Substatus that will be applied to scaling operations depends on whether the 
 | `MovingLastSlots` | Upgrade (Rolling N+1) | Migrating slots from the extra node back to node 0 |
 | `RemovingExtraNode` | Upgrade (Rolling N+1) | Forgetting the extra node and scaling the StatefulSet back to its original size |
 | `FastUpgrading` | Upgrade (Fast) | StatefulSet updated and pods deleted, waiting for recreation with the new image |
+| `Remediating` | Ready (health remediation) | The health-reconciler is healing an already-applied cluster (membership, slot coverage or rebalance); `Status` stays `Ready` |
 
 > **Note:** the `FormingCluster` substatus string is reused by both fast scaling and the
 > final phase of a fast upgrade (`EndingFastUpgrade`). In both cases it means Robin is

@@ -48,6 +48,15 @@ The main chaos loop validates:
 2. **k6 load running throughout** the chaos duration
 3. **Recovery verification** after each disruption
 
+> **Implementation update — continuous background disruptor (M2).** The implemented suite is more
+> aggressive than the legacy script: instead of a single pod deletion per iteration, a long-lived
+> **background disruptor** goroutine deletes pods at a randomized cadence
+> (`CHAOS_DISRUPTION_INTERVAL`) **continuously while each operation is in flight and recovering**. It
+> is paused only around each verification checkpoint (so `WaitForChaosReady` can converge) and during
+> a configurable calm window (`CHAOS_STABILIZATION_WINDOW`) that lets k6 drive traffic against the
+> healthy cluster before the next operation. Each scenario drives a focused disruptor (redis /
+> operator / robin / mixed). See the [Chaos Testing guide](../chaos-testing.md#continuous-disruption-model).
+
 ### 2.2 Test Scenarios Covered
 
 | Script                                   | Behavior Validated                                    | Failure Scenario                                             |
@@ -119,11 +128,11 @@ Describe("Chaos Under Load", func() {
 ```gherkin
 Given a 5-primary Redis cluster with k6 load running
 When  the chaos loop executes for the configured duration:
-      - Scale to random(5, 15) primaries
-      - Delete random(1, currentPrimaries/2) pods
-      - Wait for Ready status
-      - Scale down to random(3, 5) primaries
-      - Wait for Ready status
+      - Scale to random(3, 10) primaries
+      - A background disruptor deletes random redis pods continuously during the scale and recovery
+      - Pause the disruptor and wait for Ready status
+      - Scale down to random(3, 5) primaries under continuous disruption
+      - Pause the disruptor and wait for Ready status
 Then  the cluster status is OK
       All 16384 slots are assigned
       k6 completes without fatal errors
@@ -133,11 +142,10 @@ Then  the cluster status is OK
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include:
-      - Delete operator pod (deployment recreates it)
-      - Delete random redis pods
-      - Scale cluster up/down
-      - Wait for Ready after each action
+When  a background disruptor continuously:
+      - Deletes the operator pod (deployment recreates it)
+      - Deletes random redis pods
+      then it is paused and the cluster is left to reach Ready
 Then  the operator recovers and heals the cluster
       k6 completes successfully
 ```
@@ -146,10 +154,10 @@ Then  the operator recovers and heals the cluster
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include:
-      - Delete robin pods from random redis pods
-      - Delete random redis pods
-      - Wait for Ready after each action
+When  a background disruptor continuously:
+      - Deletes robin pods
+      - Deletes random redis pods
+      then it is paused and the cluster is left to reach Ready
 Then  robin pods are recreated
       Cluster heals to Ready status
 ```
@@ -158,12 +166,12 @@ Then  robin pods are recreated
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include random combinations of:
-      - Delete operator pod
-      - Delete robin pods
-      - Delete redis pods
-      - Scale cluster up/down
-      - Wait for Ready between major disruptions
+When  a background disruptor continuously deletes a random mix of:
+      - operator pod
+      - robin pods
+      - redis pods
+      while the loop periodically scales the cluster up/down,
+      then it is paused between major disruptions to let the cluster reach Ready
 Then  all components recover
       Cluster reaches Ready status
       k6 completes with acceptable error rate

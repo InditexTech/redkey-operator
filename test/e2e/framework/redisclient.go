@@ -223,6 +223,43 @@ func DelSlots(namespace, podName string, slots []int, password ...string) error 
 	return err
 }
 
+// SetSlotMigratingBetween puts a single slot owned by srcPod into an open (migrating/importing) state
+// between srcPod (migrating) and dstPod (importing), simulating a resharding interrupted mid-flight
+// between two specific nodes. Because it targets named pods, the open slot can be placed on non-seed
+// nodes — the exact condition that used to stall a scale-up rebalance: importing/migrating markers are
+// local to the node that holds them and are not gossiped, so the rebalance seed's CLUSTER NODES view
+// cannot see an open slot left on another node. It returns the affected slot.
+func SetSlotMigratingBetween(namespace, srcPod, dstPod string) (int, error) {
+	srcID, err := GetNodeID(namespace, srcPod)
+	if err != nil {
+		return 0, fmt.Errorf("getting node ID from %s: %w", srcPod, err)
+	}
+	dstID, err := GetNodeID(namespace, dstPod)
+	if err != nil {
+		return 0, fmt.Errorf("getting node ID from %s: %w", dstPod, err)
+	}
+	// Pick the first slot srcPod owns so CLUSTER SETSLOT MIGRATING (which requires ownership) succeeds.
+	slotOut, _, err := ExecInPod(namespace, srcPod,
+		"redis-cli cluster nodes | grep myself | awk '{ print $9 }' | cut -d- -f1")
+	if err != nil {
+		return 0, fmt.Errorf("reading an owned slot from %s: %w", srcPod, err)
+	}
+	slot, err := strconv.Atoi(strings.TrimSpace(slotOut))
+	if err != nil {
+		return 0, fmt.Errorf("parsing owned slot %q from %s: %w", strings.TrimSpace(slotOut), srcPod, err)
+	}
+
+	if _, _, err := ExecInPod(namespace, srcPod,
+		fmt.Sprintf("redis-cli cluster setslot %d migrating %s", slot, dstID)); err != nil {
+		return 0, fmt.Errorf("setting slot %d migrating on %s: %w", slot, srcPod, err)
+	}
+	if _, _, err := ExecInPod(namespace, dstPod,
+		fmt.Sprintf("redis-cli cluster setslot %d importing %s", slot, srcID)); err != nil {
+		return 0, fmt.Errorf("setting slot %d importing on %s: %w", slot, dstPod, err)
+	}
+	return slot, nil
+}
+
 // InsertKeys inserts `count` random key-value pairs into the cluster via the given pod.
 func InsertKeys(namespace, podName string, count int, password ...string) error {
 	for i := range count {

@@ -34,11 +34,11 @@ var _ = Describe("Chaos Under Load (PurgeKeysOnRebalance=true)", Label("chaos", 
 	})
 
 	It("recovers when operator pod is deleted during chaos", func() {
-		k6DepName = runOperatorDeletionChaos(rng, namespace.Name, clusterName)
+		k6DepName = runOperatorDeletionChaos(namespace.Name, clusterName)
 	})
 
 	It("recovers when robin pods are deleted during chaos", func() {
-		k6DepName = runRobinDeletionChaos(rng, namespace.Name, clusterName)
+		k6DepName = runRobinDeletionChaos(namespace.Name, clusterName)
 	})
 
 	It("recovers from full chaos deleting operator, robin, and redis pods", func() {
@@ -68,11 +68,11 @@ var _ = Describe("Chaos Under Load (PurgeKeysOnRebalance=false)", Label("chaos",
 	})
 
 	It("recovers when operator pod is deleted during chaos without purge", func() {
-		k6DepName = runOperatorDeletionChaos(rng, namespace.Name, clusterName)
+		k6DepName = runOperatorDeletionChaos(namespace.Name, clusterName)
 	})
 
 	It("recovers when robin pods are deleted during chaos without purge", func() {
-		k6DepName = runRobinDeletionChaos(rng, namespace.Name, clusterName)
+		k6DepName = runRobinDeletionChaos(namespace.Name, clusterName)
 	})
 
 	It("recovers from full chaos deleting operator, robin, and redis pods without purge", func() {

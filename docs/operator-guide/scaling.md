@@ -58,7 +58,10 @@ cluster from `3 + 3 = 6` nodes to `5 + 5 = 10` nodes.
 
 When Robin detects a topology change it transitions the cluster status to
 `ScalingUp` or `ScalingDown` and begins the corresponding flow. The status returns to
-`Ready` only once the new topology is fully converged and healthy.
+`Ready` once the new topology is applied and converged (slots stable, no in-flight
+migration). Note that `Ready` reflects the **applied topology**; ongoing data-plane health —
+including any background rebalancing Robin performs afterwards — is tracked separately via the
+[health conditions](../redkey-cluster-status.md#cluster-health-conditions).
 
 ## Node ordinals and roles
 

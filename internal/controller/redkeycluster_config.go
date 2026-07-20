@@ -216,7 +216,49 @@ func aggregateConditions(existingConditions []metav1.Condition, highestConfig *r
 		Reason: "StatusAggregated",
 	})
 
+	aggregateHealthConditions(&conditions, highestConfig)
+
 	return conditions
+}
+
+// healthConditionTypes are the live data-plane health conditions Robin writes on the config from the
+// cluster health report. They are mirrored onto the RedkeyCluster independently of Ready/Phase: a
+// cluster can be Ready (config applied) while the health-reconciler is still healing or rebalancing.
+var healthConditionTypes = []string{
+	redisv1.ConditionHealthy,
+	redisv1.ConditionMembershipHealthy,
+	redisv1.ConditionSlotsCovered,
+	redisv1.ConditionSlotsBalanced,
+	redisv1.ConditionReplicasBalanced,
+	redisv1.ConditionClusterCheckPassing,
+}
+
+// aggregateHealthConditions mirrors Robin's health conditions from the active config onto the
+// cluster. Robin only refreshes them while the cluster is applied and Ready, so while an operation
+// is in progress (or no report exists yet) the last values are stale — in that case they are
+// reported as Unknown/Reconciling instead of a potentially misleading True/False.
+func aggregateHealthConditions(conditions *[]metav1.Condition, activeConfig *redisv1.RedkeyClusterConfig) {
+	settled := isTerminalConfigPhase(activeConfig.Status.ConfigPhase) &&
+		activeConfig.Status.Status == redisv1.ClusterStatusReady
+
+	for _, condType := range healthConditionTypes {
+		if settled {
+			if src := meta.FindStatusCondition(activeConfig.Status.Conditions, condType); src != nil {
+				meta.SetStatusCondition(conditions, metav1.Condition{
+					Type:    condType,
+					Status:  src.Status,
+					Reason:  src.Reason,
+					Message: src.Message,
+				})
+				continue
+			}
+		}
+		meta.SetStatusCondition(conditions, metav1.Condition{
+			Type:   condType,
+			Status: metav1.ConditionUnknown,
+			Reason: "Reconciling",
+		})
+	}
 }
 
 func computePhaseFromConditions(conditions []metav1.Condition) string {
