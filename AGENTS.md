@@ -25,7 +25,7 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 
 | Layer | Technology |
 | ----- | ---------- |
-| Language | Go 1.26.4 |
+| Language | Go 1.26.5 |
 | Framework | [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) + [operator-sdk](https://github.com/operator-framework/operator-sdk) |
 | Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21.0 |
 | Target platform | Kubernetes v1.33 (also OpenShift v4.11+) |

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Define the desired Golang version
-ARG GOLANG_VERSION=1.26.4
+ARG GOLANG_VERSION=1.26.5
 
 
 FROM golang:${GOLANG_VERSION}-trixie AS builder
