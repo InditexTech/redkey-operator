@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,62 @@ import (
 
 	"github.com/inditextech/redkeyoperator/test/utils"
 )
+
+// DefaultSpecTimeout is the per-spec time budget applied by SetupSpecContexts when it is given a
+// non-positive timeout.
+const DefaultSpecTimeout = 20 * time.Minute
+
+// SetupSpecContexts wires per-spec timeout management into an Ordered container and removes the
+// cross-spec starvation that a single container-wide deadline causes: an Ordered container runs its
+// specs serially on one process, so a single shared deadline is consumed cumulatively and starves
+// the later specs as the suite grows (observed as "context deadline exceeded" failures in seconds
+// on otherwise-healthy specs). It registers the required Ginkgo lifecycle nodes and writes:
+//   - *suiteCtx: a long-lived context for BeforeAll/AfterAll resource lifecycle (e.g. namespace
+//     create/delete). It is context.Background(): namespace operations do not need a deadline (the
+//     suite-level ginkgo timeout bounds them), and giving the suite context a cancel that runs in a
+//     separate AfterAll would race with the container's own DeleteNamespace AfterAll and abort it.
+//   - *specCtx: a fresh context with an independent timeout, created before each spec.
+//
+// The per-spec context is cancelled at the start of the next spec (and the last one in AfterAll)
+// rather than in an AfterEach, so it remains valid during any nested Context-level AfterAll cleanup
+// that still references it (e.g. deleting the cluster created by that Context), while still ensuring
+// every context is eventually cancelled.
+//
+// Call it once inside the Describe body, before the container's own BeforeAll, so the suite context
+// is created before the container's setup runs.
+func SetupSpecContexts(suiteCtx, specCtx *context.Context, timeout time.Duration) {
+	if timeout <= 0 {
+		timeout = DefaultSpecTimeout
+	}
+	var specCancel context.CancelFunc
+	BeforeAll(func() {
+		*suiteCtx = context.Background()
+	})
+	BeforeEach(func() {
+		if specCancel != nil {
+			specCancel()
+		}
+		*specCtx, specCancel = context.WithTimeout(context.Background(), timeout)
+	})
+	AfterAll(func() {
+		if specCancel != nil {
+			specCancel()
+		}
+	})
+}
+
+// CollectDebugInfoOnFailure collects debug info for the namespace when the current spec has failed,
+// using a fresh short-lived context. The spec's own context may already be cancelled or past its
+// deadline (for example when the failure was itself a timeout), which would otherwise prevent the
+// collector from listing pods and gathering their descriptions.
+func CollectDebugInfoOnFailure(c client.Client, namespace string) {
+	if !CurrentSpecReport().Failed() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	CollectDebugInfo(ctx, c, namespace)
+}
 
 // CollectDebugInfo gathers debugging data for a namespace on test failure.
 // It prints operator/robin logs, kubernetes events, pod descriptions, and cluster info.

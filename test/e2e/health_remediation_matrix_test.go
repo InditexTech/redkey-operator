@@ -32,11 +32,13 @@ import (
 
 var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, Label("health"), func() {
 	var (
+		suiteCtx  context.Context
 		ctx       context.Context
-		cancel    context.CancelFunc
 		ns        *corev1.Namespace
 		clusterNs string
 	)
+
+	framework.SetupSpecContexts(&suiteCtx, &ctx, 20*time.Minute)
 
 	const (
 		clusterName  = "health-matrix-replicas"
@@ -44,22 +46,20 @@ var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, L
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
-
 		By("creating a test namespace")
 		var err error
-		ns, err = framework.CreateNamespace(ctx, k8sClient, "e2e-health-matrix-rep")
+		ns, err = framework.CreateNamespace(suiteCtx, k8sClient, "e2e-health-matrix-rep")
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
 
 		By("creating an ephemeral cluster with replicas, no auth")
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
-		_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")
-		_, err = framework.WaitForClusterReady(ctx, k8sClient,
+		_, err = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.DefaultTimeout)
 		Expect(err).NotTo(HaveOccurred())
@@ -67,17 +67,14 @@ var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, L
 
 	AfterAll(func() {
 		if ns != nil {
-			_ = framework.DeleteNamespace(ctx, k8sClient, ns)
+			_ = framework.DeleteNamespace(suiteCtx, k8sClient, ns)
 		}
-		cancel()
 	})
 
 	AfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			framework.CollectDebugInfo(ctx, k8sClient, clusterNs)
-		}
+		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
 		// Wait for cluster to stabilize between tests
-		_, _ = framework.WaitForClusterReady(ctx, k8sClient,
+		_, _ = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.HealthTimeout)
 	})
@@ -221,11 +218,13 @@ var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, L
 
 var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, Label("health"), func() {
 	var (
+		suiteCtx  context.Context
 		ctx       context.Context
-		cancel    context.CancelFunc
 		ns        *corev1.Namespace
 		clusterNs string
 	)
+
+	framework.SetupSpecContexts(&suiteCtx, &ctx, 20*time.Minute)
 
 	const (
 		clusterName  = "health-matrix-auth"
@@ -235,26 +234,24 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
-
 		By("creating a test namespace")
 		var err error
-		ns, err = framework.CreateNamespace(ctx, k8sClient, "e2e-health-matrix-auth")
+		ns, err = framework.CreateNamespace(suiteCtx, k8sClient, "e2e-health-matrix-auth")
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
 
 		By("creating auth secret")
-		err = framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
+		err = framework.CreateAuthSecret(suiteCtx, k8sClient, clusterNs, secretName, password)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating an ephemeral cluster with auth, no replicas")
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithAuth(secretName)
-		_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")
-		_, err = framework.WaitForClusterReady(ctx, k8sClient,
+		_, err = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.DefaultTimeout)
 		Expect(err).NotTo(HaveOccurred())
@@ -262,16 +259,13 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 
 	AfterAll(func() {
 		if ns != nil {
-			_ = framework.DeleteNamespace(ctx, k8sClient, ns)
+			_ = framework.DeleteNamespace(suiteCtx, k8sClient, ns)
 		}
-		cancel()
 	})
 
 	AfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			framework.CollectDebugInfo(ctx, k8sClient, clusterNs)
-		}
-		_, _ = framework.WaitForClusterReady(ctx, k8sClient,
+		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
+		_, _ = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.HealthTimeout)
 	})
@@ -395,11 +389,13 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 
 var _ = Describe("Health Remediation Matrix - Replicas with auth", Ordered, Label("health"), func() {
 	var (
+		suiteCtx  context.Context
 		ctx       context.Context
-		cancel    context.CancelFunc
 		ns        *corev1.Namespace
 		clusterNs string
 	)
+
+	framework.SetupSpecContexts(&suiteCtx, &ctx, 20*time.Minute)
 
 	const (
 		clusterName  = "health-matrix-rep-auth"
@@ -409,28 +405,26 @@ var _ = Describe("Health Remediation Matrix - Replicas with auth", Ordered, Labe
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
-
 		By("creating a test namespace")
 		var err error
-		ns, err = framework.CreateNamespace(ctx, k8sClient, "e2e-health-matrix-ra")
+		ns, err = framework.CreateNamespace(suiteCtx, k8sClient, "e2e-health-matrix-ra")
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
 
 		By("creating auth secret")
-		err = framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
+		err = framework.CreateAuthSecret(suiteCtx, k8sClient, clusterNs, secretName, password)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating an ephemeral cluster with replicas and auth")
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 			WithReplicas(1).
 			WithAuth(secretName)
-		_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")
-		_, err = framework.WaitForClusterReady(ctx, k8sClient,
+		_, err = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.DefaultTimeout)
 		Expect(err).NotTo(HaveOccurred())
@@ -438,16 +432,13 @@ var _ = Describe("Health Remediation Matrix - Replicas with auth", Ordered, Labe
 
 	AfterAll(func() {
 		if ns != nil {
-			_ = framework.DeleteNamespace(ctx, k8sClient, ns)
+			_ = framework.DeleteNamespace(suiteCtx, k8sClient, ns)
 		}
-		cancel()
 	})
 
 	AfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			framework.CollectDebugInfo(ctx, k8sClient, clusterNs)
-		}
-		_, _ = framework.WaitForClusterReady(ctx, k8sClient,
+		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
+		_, _ = framework.WaitForClusterReady(suiteCtx, k8sClient,
 			types.NamespacedName{Name: clusterName, Namespace: clusterNs},
 			framework.HealthTimeout)
 	})

@@ -24,18 +24,18 @@ import (
 
 var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func() {
 	var (
+		suiteCtx  context.Context
 		ctx       context.Context
-		cancel    context.CancelFunc
 		ns        *corev1.Namespace
 		clusterNs string
 	)
 
-	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
+	framework.SetupSpecContexts(&suiteCtx, &ctx, 20*time.Minute)
 
+	BeforeAll(func() {
 		By("creating a test namespace")
 		var err error
-		ns, err = framework.CreateNamespace(ctx, k8sClient, "e2e-health")
+		ns, err = framework.CreateNamespace(suiteCtx, k8sClient, "e2e-health")
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
@@ -44,15 +44,12 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 	AfterAll(func() {
 		By("cleaning up the test namespace")
 		if ns != nil {
-			_ = framework.DeleteNamespace(ctx, k8sClient, ns)
+			_ = framework.DeleteNamespace(suiteCtx, k8sClient, ns)
 		}
-		cancel()
 	})
 
 	AfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			framework.CollectDebugInfo(ctx, k8sClient, clusterNs)
-		}
+		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
 	})
 
 	Context("Meet/Forget recovery (ephemeral, no replicas)", func() {

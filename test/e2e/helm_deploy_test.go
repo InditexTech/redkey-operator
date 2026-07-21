@@ -24,11 +24,13 @@ import (
 
 var _ = Describe("Helm Deployment", Ordered, Label("helm"), func() {
 	var (
+		suiteCtx  context.Context
 		ctx       context.Context
-		cancel    context.CancelFunc
 		ns        *corev1.Namespace
 		clusterNs string
 	)
+
+	framework.SetupSpecContexts(&suiteCtx, &ctx, 15*time.Minute)
 
 	const (
 		helmReleaseName = "e2e-helm-cluster"
@@ -36,11 +38,9 @@ var _ = Describe("Helm Deployment", Ordered, Label("helm"), func() {
 	)
 
 	BeforeAll(func() {
-		ctx, cancel = context.WithTimeout(context.Background(), 15*time.Minute)
-
 		By("creating a test namespace")
 		var err error
-		ns, err = framework.CreateNamespace(ctx, k8sClient, "e2e-helm")
+		ns, err = framework.CreateNamespace(suiteCtx, k8sClient, "e2e-helm")
 		Expect(err).NotTo(HaveOccurred())
 		clusterNs = ns.Name
 		_, _ = fmt.Fprintf(GinkgoWriter, "Using namespace: %s\n", clusterNs)
@@ -52,15 +52,12 @@ var _ = Describe("Helm Deployment", Ordered, Label("helm"), func() {
 
 		By("cleaning up the test namespace")
 		if ns != nil {
-			_ = framework.DeleteNamespace(ctx, k8sClient, ns)
+			_ = framework.DeleteNamespace(suiteCtx, k8sClient, ns)
 		}
-		cancel()
 	})
 
 	AfterEach(func() {
-		if CurrentSpecReport().Failed() {
-			framework.CollectDebugInfo(ctx, k8sClient, clusterNs)
-		}
+		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
 	})
 
 	It("should deploy a cluster using the redkey-cluster Helm chart and reach Ready", func() {
