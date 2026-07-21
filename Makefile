@@ -279,6 +279,10 @@ IMAGE_ROBIN ?= $(IMG_ROBIN)
 # Parallel execution requires the ginkgo CLI (installed via `go install github.com/onsi/ginkgo/v2/ginkgo`).
 TEST_PARALLEL_PROCESS ?= 1
 
+# E2E_TIMEOUT bounds the whole Ginkgo suite run (not a single spec). The default fits CI runners;
+# raise it for slower machines running the full suite locally, e.g. make test-e2e E2E_TIMEOUT=180m.
+E2E_TIMEOUT ?= 90m
+
 # E2E tuning variables (passed as env vars to the test binary).
 # E2E_RECONCILE_INTERVAL: Robin reconcile loop interval in seconds (applies to normal, error and wait intervals).
 #   Controls how frequently Robin checks and reconciles the Redis cluster state. Lower = faster convergence.
@@ -315,12 +319,12 @@ test-e2e: manifests generate fmt vet setup-test-e2e kind ## Run E2E tests agains
 ifeq ($(TEST_PARALLEL_PROCESS),1)
 	$(E2E_ENV) go test ./test/e2e/ -v -ginkgo.v \
 		$(if $(LABEL),-ginkgo.label-filter='$(LABEL)',) \
-		-timeout 90m
+		-timeout $(E2E_TIMEOUT)
 else
 	$(E2E_ENV) go run github.com/onsi/ginkgo/v2/ginkgo \
 		-v -procs=$(TEST_PARALLEL_PROCESS) \
 		$(if $(LABEL),--label-filter='$(LABEL)',) \
-		--timeout=90m \
+		--timeout=$(E2E_TIMEOUT) \
 		./test/e2e/
 endif
 

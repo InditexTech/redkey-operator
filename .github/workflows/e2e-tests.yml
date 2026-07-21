@@ -114,7 +114,8 @@ jobs:
           E2E_POLL_INTERVAL=3 \
           E2E_CREATION_TIMEOUT=420 \
           E2E_HEALTH_TIMEOUT=420 \
-          E2E_UPGRADE_TIMEOUT=900
+          E2E_UPGRADE_TIMEOUT=900 \
+          E2E_TIMEOUT=90m
 
     - name: Delete Kind cluster
       if: always()
