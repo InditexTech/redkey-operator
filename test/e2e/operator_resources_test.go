@@ -317,11 +317,14 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 			By("applying 3 rapid spec changes without waiting between them")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			for i := range 3 {
-				cluster := &redkeyv1beta1.RedkeyCluster{}
-				err = k8sClient.Get(ctx, key, cluster)
-				Expect(err).NotTo(HaveOccurred())
-				cluster.Spec.Config = fmt.Sprintf("%s\nslowlog-log-slower-than %d", cluster.Spec.Config, (i+1)*10000)
-				err = k8sClient.Update(ctx, cluster)
+				err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					cluster := &redkeyv1beta1.RedkeyCluster{}
+					if getErr := k8sClient.Get(ctx, key, cluster); getErr != nil {
+						return getErr
+					}
+					cluster.Spec.Config = fmt.Sprintf("%s\nslowlog-log-slower-than %d", cluster.Spec.Config, (i+1)*10000)
+					return k8sClient.Update(ctx, cluster)
+				})
 				Expect(err).NotTo(HaveOccurred())
 			}
 
