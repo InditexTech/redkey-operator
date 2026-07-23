@@ -7,11 +7,11 @@ metadata:
   annotations:
     inditex.dev/description: "Standalone Redis for development purposes"
   labels:
-    inditex.dev/name: redkey-cluster-standalone
+    inditex.dev/name: redkey-standalone
     inditex.dev/owner: a-team
     inditex.dev/environment: development
     app.kubernetes.io/managed-by: kustomize
-  name: redkey-cluster-standalone
+  name: redkey-standalone
 spec:
   # Standalone mode deploys a single, non-clustered Redis instance
   # (cluster-enabled no). It is immutable once set and restricts the
