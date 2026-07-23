@@ -234,8 +234,7 @@ func CreateAuthSecret(ctx context.Context, c client.Client, namespace, name, pas
 		},
 		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{
-			"password":    password,
-			"requirepass": password,
+			"password": password,
 		},
 	}
 	return c.Create(ctx, secret)
@@ -251,7 +250,6 @@ func UpdateAuthSecret(ctx context.Context, c client.Client, namespace, name, new
 		secret.Data = make(map[string][]byte)
 	}
 	secret.Data["password"] = []byte(newPassword)
-	secret.Data["requirepass"] = []byte(newPassword)
 	return c.Update(ctx, secret)
 }
 
