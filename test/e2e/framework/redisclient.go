@@ -367,8 +367,13 @@ func VerifyClusterHealthy(namespace, podName string, expectedNodes int, password
 	if info.SlotsAssigned != 16384 {
 		return fmt.Errorf("slots assigned = %d, expected 16384", info.SlotsAssigned)
 	}
-	if expectedNodes > 0 && info.KnownNodes != expectedNodes {
-		return fmt.Errorf("known nodes = %d, expected %d", info.KnownNodes, expectedNodes)
+	// CLUSTER INFO's known_nodes transiently over-counts nodes that are still in
+	// the gossip handshake state during/just-after cluster formation, so we only
+	// fail here when fewer nodes than expected are known (an incomplete mesh).
+	// The exact node count is enforced below via CLUSTER NODES, which ignores
+	// transient handshake entries by counting only resolved master/slave roles.
+	if expectedNodes > 0 && info.KnownNodes < expectedNodes {
+		return fmt.Errorf("known nodes = %d, expected at least %d", info.KnownNodes, expectedNodes)
 	}
 	// Also verify via CLUSTER NODES that all nodes have resolved roles (not in
 	// handshake state). CLUSTER INFO counts transient handshake nodes in
