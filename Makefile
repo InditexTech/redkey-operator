@@ -524,6 +524,180 @@ undeploy-sample-standalone: kustomize ## Undeploy standalone sample.
 	$(KUSTOMIZE) build config/samples/standalone | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 
+##@ Utilities
+
+# CLUSTER is the name of the RedkeyCluster to target (required by the insert-keys* targets).
+# NUM_KEYS is the number of random keys to insert.
+# NAMESPACE optionally scopes kubectl to a namespace (defaults to the current context namespace).
+NUM_KEYS ?= 1000
+
+.PHONY: insert-keys
+insert-keys: ## Insert random keys into a RedkeyCluster (CLUSTER=<name> [NUM_KEYS=1000] [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make insert-keys CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "Inserting $(NUM_KEYS) keys into pod $$pod (cluster '$(CLUSTER)')"; \
+	for i in $$(seq 1 $(NUM_KEYS)); do echo "set $${RANDOM}$${RANDOM} $${RANDOM}$${RANDOM}"; done | $(KUBECTL) exec -i $$ns $$pod -- redis-cli -c
+
+.PHONY: insert-keys-auth
+insert-keys-auth: ## Insert random keys into an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NUM_KEYS=1000] [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make insert-keys-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "Inserting $(NUM_KEYS) keys into pod $$pod (cluster '$(CLUSTER)', auth secret '$$secret')"; \
+	for i in $$(seq 1 $(NUM_KEYS)); do echo "set $${RANDOM}$${RANDOM} $${RANDOM}$${RANDOM}"; done | $(KUBECTL) exec -i $$ns $$pod -- redis-cli -c -a "$$password" --no-auth-warning
+
+.PHONY: cluster-check
+cluster-check: ## Run 'redis-cli --cluster check' against a RedkeyCluster from its first pod (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-check CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli --cluster check localhost:6379
+
+.PHONY: cluster-check-auth
+cluster-check-auth: ## Run 'redis-cli --cluster check' against an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-check-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning --cluster check localhost:6379
+
+.PHONY: cluster-info
+cluster-info: ## Run 'redis-cli CLUSTER INFO' on every pod of a RedkeyCluster (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-info CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli CLUSTER INFO | sort; \
+	done
+
+.PHONY: cluster-info-auth
+cluster-info-auth: ## Run 'redis-cli CLUSTER INFO' on every pod of an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-info-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning CLUSTER INFO | sort; \
+	done
+
+.PHONY: cluster-nodes
+cluster-nodes: ## Run 'redis-cli CLUSTER NODES' on every pod of a RedkeyCluster (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-nodes CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli CLUSTER NODES | sort; \
+	done
+
+.PHONY: cluster-nodes-auth
+cluster-nodes-auth: ## Run 'redis-cli CLUSTER NODES' on every pod of an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-nodes-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning CLUSTER NODES | sort; \
+	done
+
+.PHONY: cluster-slots
+cluster-slots: ## Run 'redis-cli CLUSTER SLOTS' on every pod of a RedkeyCluster (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-slots CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli CLUSTER SLOTS | sort; \
+	done
+
+.PHONY: cluster-slots-auth
+cluster-slots-auth: ## Run 'redis-cli CLUSTER SLOTS' on every pod of an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-slots-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pods=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); \
+	test -n "$$pods" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	for pod in $$pods; do \
+		echo "[$$pod]"; \
+		$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning CLUSTER SLOTS | sort; \
+	done
+
+.PHONY: cluster-fix
+cluster-fix: ## Run 'redis-cli --cluster fix' against a RedkeyCluster from its first pod (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-fix CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli --cluster fix localhost:6379 --cluster-yes
+
+.PHONY: cluster-fix-auth
+cluster-fix-auth: ## Run 'redis-cli --cluster fix' against an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-fix-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning --cluster fix localhost:6379 --cluster-yes
+
+.PHONY: cluster-rebalance
+cluster-rebalance: ## Run 'redis-cli --cluster rebalance --cluster-use-empty-masters' against a RedkeyCluster from its first pod (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-rebalance CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli --cluster rebalance --cluster-use-empty-masters localhost:6379
+
+.PHONY: cluster-rebalance-auth
+cluster-rebalance-auth: ## Run 'redis-cli --cluster rebalance --cluster-use-empty-masters' against an authenticated RedkeyCluster, reading the password from its secret (CLUSTER=<name> [NAMESPACE=<ns>]).
+	@test -n "$(CLUSTER)" || { echo "CLUSTER is required (e.g. make cluster-rebalance-auth CLUSTER=my-cluster)"; exit 1; }
+	@ns=$${NAMESPACE:+-n $(NAMESPACE)}; \
+	secret=$$($(KUBECTL) get redkeycluster $$ns $(CLUSTER) -o jsonpath='{.spec.auth.secret}'); \
+	test -n "$$secret" || { echo "Cluster '$(CLUSTER)' has no spec.auth.secret configured"; exit 1; }; \
+	password=$$($(KUBECTL) get secret $$ns $$secret -o jsonpath='{.data.password}' | base64 -d); \
+	test -n "$$password" || { echo "Secret '$$secret' has no 'password' key"; exit 1; }; \
+	pod=$$($(KUBECTL) get po $$ns --field-selector=status.phase=Running -l 'redkey.inditex.dev/component=redis,redkey.inditex.dev/cluster=$(CLUSTER)' --sort-by='.metadata.name' -o jsonpath='{.items[0].metadata.name}'); \
+	test -n "$$pod" || { echo "No running redis pod found for cluster '$(CLUSTER)'"; exit 1; }; \
+	echo "[$$pod]"; \
+	$(KUBECTL) exec -i $$ns $$pod -- redis-cli -a "$$password" --no-auth-warning --cluster rebalance --cluster-use-empty-masters localhost:6379
+
+
 ##@ Dependencies
 
 ## Location to install dependencies to
