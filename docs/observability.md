@@ -144,7 +144,7 @@ This dashboard monitors the health and performance of the operator's controller-
 
 | Section | Panels |
 | ------- | ------ |
-| **Overview** | Leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
+| **Overview** | Operator version (`redkey_operator_build_info`), leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
 | **Reconciliation Performance** | Reconciliation rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
 | **Kubernetes API Client** | Requests by method & status — per-interval counts using `increase()` (exact number of operations per time bucket) |

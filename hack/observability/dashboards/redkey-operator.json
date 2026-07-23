@@ -66,7 +66,7 @@
       "gridPos": {
         "h": 5,
         "w": 4,
-        "x": 0,
+        "x": 4,
         "y": 1
       },
       "id": 1,
@@ -128,8 +128,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 4,
+        "w": 4,
+        "x": 8,
         "y": 1
       },
       "id": 2,
@@ -199,8 +199,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 9,
+        "w": 4,
+        "x": 12,
         "y": 1
       },
       "id": 3,
@@ -263,8 +263,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 14,
+        "w": 4,
+        "x": 16,
         "y": 1
       },
       "id": 4,
@@ -342,8 +342,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 19,
+        "w": 4,
+        "x": 20,
         "y": 1
       },
       "id": 5,
@@ -2646,6 +2646,69 @@
       ],
       "title": "Deployment Replicas (desired vs available)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 40,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "name",
+        "wideLayout": true
+      },
+      "title": "Operator Version",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max by (version) (redkey_operator_build_info{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "range": false,
+          "refId": "A"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

@@ -13,9 +13,11 @@ import (
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -31,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -55,6 +58,25 @@ func init() {
 
 	utilruntime.Must(redisv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+
+	registerBuildInfo()
+}
+
+// registerBuildInfo exposes the operator's build metadata as a Prometheus
+// gauge (redkey_operator_build_info) whose value is always 1. The operator
+// version and Go version are carried as labels so they can be surfaced on
+// dashboards and alerts.
+func registerBuildInfo() {
+	buildInfo := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "redkey_operator_build_info",
+		Help: "Build information for the Redkey operator (value is always 1; see labels).",
+		ConstLabels: prometheus.Labels{
+			"version":    USER_AGENT_VERSION,
+			"go_version": goruntime.Version(),
+		},
+	})
+	buildInfo.Set(1)
+	crmetrics.Registry.MustRegister(buildInfo)
 }
 
 // nolint:gocyclo
