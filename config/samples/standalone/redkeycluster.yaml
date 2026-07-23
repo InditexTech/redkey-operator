@@ -46,10 +46,10 @@ spec:
     image: ghcr.io/inditextech/redkey-robin:latest
     resources:
       requests:
-        cpu: 500m
+        cpu: 200m
         memory: 100Mi
       limits:
-        cpu: 1
+        cpu: 400m
         memory: 200Mi
     config:
       reconciler:
