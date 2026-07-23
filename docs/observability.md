@@ -147,12 +147,18 @@ This dashboard monitors the health and performance of the operator's controller-
 | **Overview** | Leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
 | **Reconciliation Performance** | Reconciliation rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
-| **Kubernetes API Client** | Request rate by method & status, request duration p95, request/response size p95, rate limiter wait p95, request retries |
-| **Certificates & Transport** | Certificate reads vs errors, transport cache entries |
+| **Kubernetes API Client** | Request rate by method & status |
+| **Process & Go Runtime** | Process memory (RSS vs virtual), Go heap (in-use/idle/stack), process CPU usage (cores), goroutines, GC pause quantiles, open file descriptors vs max |
+| **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available) |
 
 **Variables:**
 - `datasource` — select the Prometheus data source
-- `job` — filter by Prometheus job label (auto-filtered to `.*redkey.*`)
+- `namespace` / `pod` — primary filters; scope every panel to the operator pod(s)
+- `job` — hidden variable (auto-filtered to `.*redkey.*`). Kept as a safety guard so the `controller_runtime_*`, `workqueue_*` and `go_*` panels do not accidentally include series from other controller-runtime operators (e.g. the prometheus-operator, which exposes the same metric names)
+
+> **Kubernetes API Client** shows only `rest_client_requests_total`. controller-runtime v0.21 registers just that client-go metric — the request-duration, request/response-size, rate-limiter and retries histograms are **not** wired up, so those panels (and the `certwatcher` / transport-cache panels) were removed as they can never produce data with this version.
+>
+> The **Process & Go Runtime** panels come from the operator's own `/metrics` endpoint (`process_*`, `go_*`) and require no extra components. The **Kubernetes Container** panels depend on the kubelet/cAdvisor scrape (enabled by default in `kube-prometheus-stack`) and on kube-state-metrics (`kubeStateMetrics.enabled: true` in `values-prometheus-stack.yaml`). Node/host-level metrics are not available because `nodeExporter` is disabled in the dev stack.
 
 ### Redkey Cluster Dashboard
 

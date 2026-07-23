@@ -92,7 +92,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(leader_election_master_status{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "max(leader_election_master_status{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
           "instant": true,
           "legendFormat": "",
           "range": false,
@@ -155,7 +155,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_reconcile_total{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
           "instant": true,
           "legendFormat": "",
           "range": false,
@@ -226,7 +226,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) / clamp_min(sum(rate(controller_runtime_reconcile_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])), 0.000001)",
+          "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) / clamp_min(sum(rate(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])), 0.000001)",
           "instant": true,
           "legendFormat": "",
           "range": false,
@@ -290,7 +290,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_active_workers{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(controller_runtime_active_workers{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
           "instant": true,
           "legendFormat": "Active",
           "range": false,
@@ -302,7 +302,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_max_concurrent_reconciles{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(controller_runtime_max_concurrent_reconciles{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
           "instant": true,
           "legendFormat": "Max",
           "range": false,
@@ -369,7 +369,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_reconcile_panics_total{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(controller_runtime_reconcile_panics_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
           "instant": true,
           "legendFormat": "",
           "range": false,
@@ -473,7 +473,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(controller_runtime_reconcile_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (result)",
+          "expr": "sum(rate(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (result)",
           "instant": false,
           "legendFormat": "{{result}}",
           "range": true,
@@ -516,7 +516,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -565,7 +565,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (le))",
           "instant": false,
           "legendFormat": "p50",
           "range": true,
@@ -577,7 +577,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (le))",
           "instant": false,
           "legendFormat": "p95",
           "range": true,
@@ -589,7 +589,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(controller_runtime_reconcile_time_seconds_bucket{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (le))",
           "instant": false,
           "legendFormat": "p99",
           "range": true,
@@ -681,7 +681,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(controller_runtime_terminal_reconcile_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (controller)",
+          "expr": "sum(rate(controller_runtime_terminal_reconcile_errors_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (controller)",
           "instant": false,
           "legendFormat": "{{controller}}",
           "range": true,
@@ -785,7 +785,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(workqueue_depth{job=~\"$job\", instance=~\"$instance\"}) by (name)",
+          "expr": "sum(workqueue_depth{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (name)",
           "instant": false,
           "legendFormat": "{{name}}",
           "range": true,
@@ -877,7 +877,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(workqueue_adds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (name)",
+          "expr": "sum(rate(workqueue_adds_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (name)",
           "instant": false,
           "legendFormat": "{{name}}",
           "range": true,
@@ -920,7 +920,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -969,7 +969,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(workqueue_queue_duration_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le, name))",
+          "expr": "histogram_quantile(0.95, sum(rate(workqueue_queue_duration_seconds_bucket{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (le, name))",
           "instant": false,
           "legendFormat": "{{name}} queue p95",
           "range": true,
@@ -981,7 +981,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(workqueue_work_duration_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le, name))",
+          "expr": "histogram_quantile(0.95, sum(rate(workqueue_work_duration_seconds_bucket{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (le, name))",
           "instant": false,
           "legendFormat": "{{name}} work p95",
           "range": true,
@@ -1073,7 +1073,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(workqueue_retries_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (name)",
+          "expr": "sum(rate(workqueue_retries_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (name)",
           "instant": false,
           "legendFormat": "{{name}}",
           "range": true,
@@ -1165,7 +1165,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(workqueue_longest_running_processor_seconds{job=~\"$job\", instance=~\"$instance\"}) by (name)",
+          "expr": "max(workqueue_longest_running_processor_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (name)",
           "instant": false,
           "legendFormat": "{{name}}",
           "range": true,
@@ -1257,7 +1257,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(workqueue_unfinished_work_seconds{job=~\"$job\", instance=~\"$instance\"}) by (name)",
+          "expr": "max(workqueue_unfinished_work_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (name)",
           "instant": false,
           "legendFormat": "{{name}}",
           "range": true,
@@ -1337,7 +1337,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 33
       },
@@ -1361,7 +1361,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(rest_client_requests_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (method, code)",
+          "expr": "sum(rate(rest_client_requests_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (method, code)",
           "instant": false,
           "legendFormat": "{{method}} {{code}}",
           "range": true,
@@ -1372,96 +1372,16 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 33
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
       },
-      "id": 16,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(rest_client_request_duration_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le, method))",
-          "instant": false,
-          "legendFormat": "{{method}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Request Duration p95",
-      "type": "timeseries"
+      "id": 105,
+      "title": "Process & Go Runtime",
+      "type": "row"
     },
     {
       "datasource": {
@@ -1523,9 +1443,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 41
+        "y": 43
       },
-      "id": 17,
+      "id": 22,
       "options": {
         "legend": {
           "calcs": [],
@@ -1545,9 +1465,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(rest_client_request_size_bytes_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "process_resident_memory_bytes{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
           "instant": false,
-          "legendFormat": "request p95",
+          "legendFormat": "{{pod}} RSS",
           "range": true,
           "refId": "A"
         },
@@ -1557,14 +1477,314 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(rest_client_response_size_bytes_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "process_virtual_memory_bytes{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
           "instant": false,
-          "legendFormat": "response p95",
+          "legendFormat": "{{pod}} virtual",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Request/Response Size p95",
+      "title": "Process Memory (RSS vs Virtual)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 43
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_memstats_heap_inuse_bytes{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
+          "instant": false,
+          "legendFormat": "{{pod}} heap in-use",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_memstats_heap_idle_bytes{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
+          "instant": false,
+          "legendFormat": "{{pod}} heap idle",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_memstats_stack_inuse_bytes{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
+          "instant": false,
+          "legendFormat": "{{pod}} stack in-use",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Go Heap Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 43
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "rate(process_cpu_seconds_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])",
+          "instant": false,
+          "legendFormat": "{{pod}} CPU cores",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Process CPU Usage (cores)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 51
+      },
+      "id": 25,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_goroutines{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
+          "instant": false,
+          "legendFormat": "{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Goroutines",
       "type": "timeseries"
     },
     {
@@ -1627,9 +1847,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 41
+        "y": 51
       },
-      "id": 18,
+      "id": 26,
       "options": {
         "legend": {
           "calcs": [],
@@ -1649,14 +1869,38 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(rest_client_rate_limiter_duration_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (le))",
+          "expr": "go_gc_duration_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\", quantile=\"0.5\"}",
           "instant": false,
-          "legendFormat": "p95",
+          "legendFormat": "p50",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_gc_duration_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\", quantile=\"0.75\"}",
+          "instant": false,
+          "legendFormat": "p75",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "go_gc_duration_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\", quantile=\"1\"}",
+          "instant": false,
+          "legendFormat": "max",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "title": "Rate Limiter Wait Duration p95",
+      "title": "GC Pause Duration (quantiles)",
       "type": "timeseries"
     },
     {
@@ -1677,7 +1921,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 20,
+            "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1711,7 +1955,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -1719,9 +1963,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 41
+        "y": 51
       },
-      "id": 19,
+      "id": 27,
       "options": {
         "legend": {
           "calcs": [],
@@ -1741,14 +1985,26 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(rest_client_request_retries_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "process_open_fds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
           "instant": false,
-          "legendFormat": "retries",
+          "legendFormat": "{{pod}} open",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "process_max_fds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}",
+          "instant": false,
+          "legendFormat": "{{pod}} max",
+          "range": true,
+          "refId": "B"
         }
       ],
-      "title": "Client Request Retries",
+      "title": "Open File Descriptors",
       "type": "timeseries"
     },
     {
@@ -1757,10 +2013,10 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 59
       },
-      "id": 104,
-      "title": "Certificates & Transport",
+      "id": 106,
+      "title": "Kubernetes Container (cAdvisor + kube-state-metrics)",
       "type": "row"
     },
     {
@@ -1781,7 +2037,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 15,
+            "fillOpacity": 20,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1821,11 +2077,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 50
+        "y": 60
       },
-      "id": 20,
+      "id": 28,
       "options": {
         "legend": {
           "calcs": [],
@@ -1845,9 +2101,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(certwatcher_read_certificate_total{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}[$__rate_interval])) by (pod)",
           "instant": false,
-          "legendFormat": "reads total",
+          "legendFormat": "{{pod}} usage",
           "range": true,
           "refId": "A"
         },
@@ -1857,14 +2113,126 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(certwatcher_read_certificate_errors_total{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\", resource=\"cpu\"}) by (pod)",
           "instant": false,
-          "legendFormat": "read errors total",
+          "legendFormat": "{{pod}} limit",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\", resource=\"cpu\"}) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}} request",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "title": "Certificate Read Total vs Errors",
+      "title": "CPU Usage vs Requests/Limits (cores)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.25
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 60
+      },
+      "id": 29,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_cpu_cfs_throttled_periods_total{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}[$__rate_interval])) by (pod) / clamp_min(sum(rate(container_cpu_cfs_periods_total{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}[$__rate_interval])) by (pod), 0.000001)",
+          "instant": false,
+          "legendFormat": "{{pod}} throttled",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Throttling Ratio",
       "type": "timeseries"
     },
     {
@@ -1919,17 +2287,17 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "bytes"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 50
+        "w": 8,
+        "x": 16,
+        "y": 60
       },
-      "id": 21,
+      "id": 30,
       "options": {
         "legend": {
           "calcs": [],
@@ -1949,14 +2317,334 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rest_client_transport_cache_entries{job=~\"$job\", instance=~\"$instance\"})",
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}) by (pod)",
           "instant": false,
-          "legendFormat": "cache entries",
+          "legendFormat": "{{pod}} working set",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\", resource=\"memory\"}) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}} limit",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\", resource=\"memory\"}) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}} request",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Memory Working Set vs Requests/Limits",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.8
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 68
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}) by (pod) / clamp_min(sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\", resource=\"memory\"}) by (pod), 1)",
+          "instant": false,
+          "legendFormat": "{{pod}} usage %",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Transport Cache Entries",
+      "title": "Memory Usage % (working set / limit)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 68
+      },
+      "id": 32,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_pod_container_status_restarts_total{namespace=~\"$namespace\", pod=~\"$pod\", container=\"manager\"}) by (pod)",
+          "instant": false,
+          "legendFormat": "{{pod}} restarts",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Container Restarts (total)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 68
+      },
+      "id": 33,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_deployment_status_replicas{namespace=~\"$namespace\", deployment=~\".*controller-manager\"}) by (deployment)",
+          "instant": false,
+          "legendFormat": "{{deployment}} desired",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_deployment_status_replicas_available{namespace=~\"$namespace\", deployment=~\".*controller-manager\"}) by (deployment)",
+          "instant": false,
+          "legendFormat": "{{deployment}} available",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Deployment Replicas (desired vs available)",
       "type": "timeseries"
     }
   ],
@@ -1987,7 +2675,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(controller_runtime_reconcile_total, job)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": true,
         "label": "Job",
         "multi": false,
@@ -2004,15 +2692,39 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(controller_runtime_reconcile_total{job=~\"$job\"}, instance)",
+        "definition": "label_values(controller_runtime_reconcile_total{job=~\"$job\"}, namespace)",
         "hide": 0,
         "includeAll": true,
+        "label": "Namespace",
         "multi": true,
-        "name": "instance",
+        "name": "namespace",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(controller_runtime_reconcile_total{job=~\"$job\"}, instance)",
+          "query": "label_values(controller_runtime_reconcile_total{job=~\"$job\"}, namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\"}, pod)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Pod",
+        "multi": true,
+        "name": "pod",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\"}, pod)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
