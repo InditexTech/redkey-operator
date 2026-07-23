@@ -169,19 +169,24 @@ This dashboard monitors the Redis clusters managed by Robin — cluster health, 
 | Section | Panels |
 | ------- | ------ |
 | **Cluster Overview** | Healthy, membership OK, slots covered, balanced, known nodes, cluster size, check errors, check warnings |
-| **Redis Version & Node Topology** | Node info table (IP, role, state, slots), Redis version table per instance |
-| **Memory** | RSS per node vs maxmemory, memory usage % (RSS/max), memory trend forecast (predict_linear 1h) |
-| **Operations & Commands** | Commands/sec rate, connected clients, keyspace hit ratio, evicted & expired keys rate |
-| **Network** | Network throughput (input/output rate), total network I/O (cumulative), AOF buffer |
-| **CPU** | CPU usage rate (sys + user), CPU children rate, total CPU per node (stacked) |
 | **Cluster Topology** | Primaries count, replicas count, disconnected nodes |
+| **Redis Version & Node Topology** | Node info table (IP, role, state, slots), Redis version table per instance |
+| **Keyspace** | Keys per node, keys with TTL (expires), average TTL (`redkey_keyspace_keys` / `_expires` / `_avg_ttl`, per `database`) |
+| **Operations & Commands** | Row 1: commands count (`increase`), commands/sec rate, connected clients. Row 2: keyspace hits / evicted / expired counts (`increase`). Row 3: keyspace hit ratio, evicted keys rate, expired keys rate |
+| **Persistence (AOF)** | AOF size base vs current per node (`redkey_aof_base_size`, `redkey_aof_current_size`) |
+| **CPU** | CPU usage rate (sys + user), CPU children rate, total CPU per node (stacked) |
+| **Memory** | RSS per node vs maxmemory, memory usage % (RSS/max), memory trend forecast (predict_linear 1h) |
+| **Network** | Network throughput (input/output rate), total network I/O (cumulative), AOF buffer |
+| **Kubernetes Container (Redis pods)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, StatefulSet replicas (desired vs ready) — filtered to `container="redis"`, pods `<cluster>-N` |
 
 All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_connected_clients`, `redkey_used_memory_rss`).
 
 **Variables:**
 - `datasource` — select the Prometheus data source
-- `job` — filter by Prometheus job (discovered from `redkey_cluster_healthy` metric)
+- `job` — filter by Prometheus job (discovered from the node-level `redkey_used_memory_rss` metric, present in **both** cluster and standalone modes)
 - `cluster` — filter by RedkeyCluster name
+
+> The `job`/`cluster` variables are derived from `redkey_used_memory_rss` (node-level) rather than `redkey_cluster_healthy` (cluster-level). Robin skips cluster-level metrics in **standalone** mode, so a standalone cluster would otherwise never appear in the `cluster` list. Cluster-level panels (health, topology) are simply empty for standalone clusters, which is expected.
 
 ### Redkey Robin Dashboard
 
