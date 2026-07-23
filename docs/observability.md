@@ -147,7 +147,7 @@ This dashboard monitors the health and performance of the operator's controller-
 | **Overview** | Leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
 | **Reconciliation Performance** | Reconciliation rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
-| **Kubernetes API Client** | Request rate by method & status |
+| **Kubernetes API Client** | Requests by method & status — per-interval counts using `increase()` (exact number of operations per time bucket) |
 | **Process & Go Runtime** | Process memory (RSS vs virtual), Go heap (in-use/idle/stack), process CPU usage (cores), goroutines, GC pause quantiles, open file descriptors vs max |
 | **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available) |
 
@@ -191,17 +191,21 @@ This dashboard monitors Robin itself as a process — its runtime health, resour
 
 | Section | Panels |
 | ------- | ------ |
-| **Overview** | Uptime, goroutines (current), Go version, open file descriptors |
-| **Kubernetes API Client** | Request rate by method & status (`rest_client_requests_total`), error rate (4xx/5xx) |
+| **Overview** | Fleet summary: Robin instances (count) and Go version (per-version count), plus *goroutines per instance* and *open FDs per instance* time series for quick outlier/leak spotting |
+| **Kubernetes API Client** | Per-interval counts using `increase()`: requests by method/status and errors (4xx/5xx) — the exact number of operations/errors per time bucket |
 | **Memory** | Process RSS vs virtual memory, Go heap (in-use, idle, stack), allocation rate, GC cycles rate |
 | **CPU & Scheduling** | Process CPU usage rate, goroutines over time, GC pause duration quantiles, live objects & heap objects |
 | **File Descriptors** | Open FDs vs limit over time, FD utilisation gauge |
+| **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available) — filtered to `container="robin"` |
 
-Metrics come from Go runtime collectors (`go_*`), process collectors (`process_*`), and the Kubernetes client-go adapter (`rest_client_requests_total`).
+Metrics come from Go runtime collectors (`go_*`), process collectors (`process_*`), the Kubernetes client-go adapter (`rest_client_requests_total`), and — for the Kubernetes Container section — the kubelet/cAdvisor scrape and kube-state-metrics (`container_*`, `kube_pod_*`, `kube_deployment_*`).
 
 **Variables:**
 - `datasource` — select the Prometheus data source
-- `job` — filter by Prometheus job (auto-filtered to `.*robin.*`)
+- `namespace` / `pod` — primary filters; select one or several Robin instances
+- `job` — hidden variable (auto-filtered to `.*robin.*`). Robin exposes only generic metrics (`process_*`, `go_*`, `rest_client_*`) whose names collide with the operator and the prometheus-operator, so `job` is kept as a hidden anchor to isolate Robin's series.
+
+> The previous `cluster` variable was removed: the active scrape is the Robin **PodMonitor**, which only attaches `pod`/`namespace` target labels (not `cluster`), so that filter never resolved any values. Use `namespace` + `pod` instead.
 
 ## Metrics Scraping Configuration
 

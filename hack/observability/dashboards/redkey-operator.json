@@ -1331,7 +1331,7 @@
               }
             ]
           },
-          "unit": "ops"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -1361,14 +1361,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(rest_client_requests_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (method, code)",
+          "expr": "sum(increase(rest_client_requests_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (method, code)",
           "instant": false,
           "legendFormat": "{{method}} {{code}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Request Rate by Method & Status",
+      "title": "Requests by Method & Status (count)",
       "type": "timeseries"
     },
     {
