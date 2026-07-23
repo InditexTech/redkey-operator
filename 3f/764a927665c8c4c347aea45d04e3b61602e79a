@@ -1,0 +1,19 @@
+hack/observability/dashboards/redkey-operator.json
+  s_faed3a73f322c2::t_0848276ca9ff61 69,131-132,202-203,266-267,345-346,2649-2711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3f764a927665c8c4c347aea45d04e3b61602e79a",
+  "prompts": {},
+  "sessions": {
+    "s_faed3a73f322c2": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "e65669de-0f5c-4ca0-bbe0-b334759e81c3",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
