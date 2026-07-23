@@ -127,6 +127,10 @@ var _ = SynchronizedAfterSuite(func() {
 		By("undeploying the operator")
 		cmd := exec.Command("make", "undeploy")
 		_, _ = utils.Run(cmd)
+
+		By("uninstalling the CRDs")
+		cmd = exec.Command("make", "uninstall")
+		_, _ = utils.Run(cmd)
 	}
 
 	if !skipCertManagerInstall && !isCertManagerAlreadyInstalled {

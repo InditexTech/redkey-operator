@@ -5,6 +5,7 @@
 # used to generate the 'manifests/' directory in a bundle.
 resources:
 - bases/redkey-operator.clusterserviceversion.yaml
+- ../crd
 - ../default
 - ../samples
 - ../scorecard

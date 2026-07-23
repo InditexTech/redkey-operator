@@ -18,7 +18,10 @@ namePrefix: redkey-operator-
 #    someName: someValue
 
 resources:
-- ../crd
+# CRDs are intentionally NOT included here so that `make undeploy` (which deletes
+# everything built from config/default) does not remove the CRDs and, with them,
+# the RedkeyCluster resources. CRDs are managed separately via `make install` /
+# `make uninstall` (config/crd), and `make deploy` installs them as a prerequisite.
 - ../rbac
 - ../manager
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
