@@ -144,17 +144,17 @@ This dashboard monitors the health and performance of the operator's controller-
 
 | Section | Panels |
 | ------- | ------ |
-| **Overview** | Operator version (`redkey_operator_build_info`), leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
-| **Reconciliation Performance** | Reconciliation rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors |
+| **Overview** | Operator version (`redkey_operator_build_info`), uptime, leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
+| **Reconciliation Performance** | Count by result (`increase`), rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors, reconciliations by controller, average reconcile duration (`rate(sum)/rate(count)`), non-terminal reconcile errors by controller |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
-| **Kubernetes API Client** | Requests by method & status — per-interval counts using `increase()` (exact number of operations per time bucket) |
-| **Process & Go Runtime** | Process memory (RSS vs virtual), Go heap (in-use/idle/stack), process CPU usage (cores), goroutines, GC pause quantiles, open file descriptors vs max |
-| **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available) |
+| **Kubernetes API Client** | Requests by method & status (`increase()` per-interval counts), client errors (4xx / 5xx), request rate by method |
+| **Process & Go Runtime** | Process memory (RSS vs virtual), Go heap (in-use/idle/stack), process CPU usage (cores), goroutines, GC pause quantiles, open file descriptors vs max, Go allocation rate, GC cycles rate, live heap objects, OS threads, next-GC target vs heap in-use |
+| **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available), last terminated reason (OOMKilled, etc.), pod ready |
 
 **Variables:**
 - `datasource` — select the Prometheus data source
 - `namespace` / `pod` — primary filters; scope every panel to the operator pod(s)
-- `job` — hidden variable (auto-filtered to `.*redkey.*`). Kept as a safety guard so the `controller_runtime_*`, `workqueue_*` and `go_*` panels do not accidentally include series from other controller-runtime operators (e.g. the prometheus-operator, which exposes the same metric names)
+- `job` — hidden **constant** pinned to `redkey-operator`. It anchors the `controller_runtime_*`, `workqueue_*` and `go_*` panels to the operator's series so they do not accidentally include series from other controller-runtime operators (e.g. the prometheus-operator, which exposes the same metric names). The value is stamped onto every sample by the ServiceMonitor via `relabelings` (see [Metrics Scraping Configuration](#metrics-scraping-configuration))
 
 > **Kubernetes API Client** shows only `rest_client_requests_total`. controller-runtime v0.21 registers just that client-go metric — the request-duration, request/response-size, rate-limiter and retries histograms are **not** wired up, so those panels (and the `certwatcher` / transport-cache panels) were removed as they can never produce data with this version.
 >
@@ -208,7 +208,7 @@ Metrics come from Go runtime collectors (`go_*`), process collectors (`process_*
 **Variables:**
 - `datasource` — select the Prometheus data source
 - `namespace` / `pod` — primary filters; select one or several Robin instances
-- `job` — hidden variable (auto-filtered to `.*robin.*`). Robin exposes only generic metrics (`process_*`, `go_*`, `rest_client_*`) whose names collide with the operator and the prometheus-operator, so `job` is kept as a hidden anchor to isolate Robin's series.
+- `job` — hidden **constant** pinned to `redkey-robin`. Robin exposes only generic metrics (`process_*`, `go_*`, `rest_client_*`) whose names collide with the operator and the prometheus-operator, so `job` anchors the panels to Robin's series. The value is stamped onto every sample by the PodMonitor via `relabelings` (see [Metrics Scraping Configuration](#metrics-scraping-configuration)).
 
 > The previous `cluster` variable was removed: the active scrape is the Robin **PodMonitor**, which only attaches `pod`/`namespace` target labels (not `cluster`), so that filter never resolved any values. Use `namespace` + `pod` instead.
 
@@ -226,7 +226,12 @@ endpoints:
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
     tlsConfig:
       insecureSkipVerify: true
+    relabelings:
+      - targetLabel: job
+        replacement: redkey-operator
 ```
+
+The `relabelings` block pins a stable, human-friendly `job` label (`redkey-operator`) instead of the default Service name, so dashboards and queries can filter on `job="redkey-operator"`.
 
 The ServiceMonitor selects the metrics Service by its labels:
 - `control-plane: controller-manager`
@@ -245,7 +250,12 @@ podMetricsEndpoints:
   - targetPort: 8080
     path: /metrics
     scheme: http
+    relabelings:
+      - targetLabel: job
+        replacement: redkey-robin
 ```
+
+The `relabelings` block pins a stable, human-friendly `job` label (`redkey-robin`) instead of the default pod name.
 
 The PodMonitor selects pods with the label `redkey.inditex.dev/component: robin` (applied by the operator when creating Robin Deployments).
 

@@ -25,53 +25,9 @@ prometheus:
     # Retain data for 24h in dev
     retention: 24h
     storageSpec: {}
-    # Direct scrape configs as fallback — these use kubernetes_sd_config
-    # to discover targets by pod labels, bypassing ServiceMonitor/PodMonitor.
-    additionalScrapeConfigs:
-      # Scrape Redkey Operator metrics (HTTPS with bearer token)
-      - job_name: 'redkey-operator'
-        scheme: https
-        tls_config:
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names: []
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_label_control_plane]
-            action: keep
-            regex: controller-manager
-          - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
-            action: keep
-            regex: redkey-operator
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: https
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-      # Scrape Redkey Robin metrics (plain HTTP)
-      - job_name: 'redkey-robin'
-        scheme: http
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: []
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: redkey-robin
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: ${1}:8080
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - source_labels: [__meta_kubernetes_pod_label_redkey_inditex_dev_cluster]
-            target_label: cluster
+    # Scrape targets are discovered exclusively via the ServiceMonitor (operator)
+    # and PodMonitor (Robin) defined in servicemonitors.yaml. Each pins a stable
+    # `job` label (redkey-operator / redkey-robin) via relabelings.
 
 # -- Grafana configuration
 grafana:

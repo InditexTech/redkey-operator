@@ -40,7 +40,10 @@ OPERATOR_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-operator.json")
 INSTANCE_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-instance.json")
 ROBIN_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-robin.json")
 
-cat <<EOF | kubectl apply -f -
+# Server-side apply avoids the client-side "last-applied-configuration" annotation,
+# which would otherwise exceed the 262144-byte annotation limit now that the bundled
+# dashboards are large.
+cat <<EOF | kubectl apply --server-side --force-conflicts -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:

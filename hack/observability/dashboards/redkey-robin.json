@@ -2234,27 +2234,23 @@
         "type": "datasource"
       },
       {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
+        "current": {
+          "selected": false,
+          "text": "redkey-robin",
+          "value": "redkey-robin"
         },
-        "definition": "label_values(process_start_time_seconds, job)",
         "hide": 2,
-        "includeAll": true,
-        "multi": true,
+        "label": "Job",
         "name": "job",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(process_start_time_seconds, job)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 2,
-        "regex": ".*robin.*",
-        "sort": 1,
-        "type": "query",
-        "label": "Job"
+        "options": [
+          {
+            "selected": true,
+            "text": "redkey-robin",
+            "value": "redkey-robin"
+          }
+        ],
+        "query": "redkey-robin",
+        "type": "constant"
       },
       {
         "current": {},

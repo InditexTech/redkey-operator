@@ -28,6 +28,10 @@ spec:
       tlsConfig:
         insecureSkipVerify: true
       interval: 15s
+      # Pin a stable, human-friendly job label instead of the default Service name.
+      relabelings:
+        - targetLabel: job
+          replacement: redkey-operator
 ---
 # PodMonitor for Redkey Robin instances.
 # Robin is deployed as a standalone Deployment per Redkey.
@@ -52,3 +56,7 @@ spec:
       path: /metrics
       scheme: http
       interval: 15s
+      # Pin a stable, human-friendly job label instead of the default pod name.
+      relabelings:
+        - targetLabel: job
+          replacement: redkey-robin
