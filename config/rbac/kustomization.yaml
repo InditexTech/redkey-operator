@@ -25,10 +25,10 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the redkeyoperator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- redkeyclusterconfig_admin_role.yaml
-- redkeyclusterconfig_editor_role.yaml
-- redkeyclusterconfig_viewer_role.yaml
-- redkeycluster_admin_role.yaml
-- redkeycluster_editor_role.yaml
-- redkeycluster_viewer_role.yaml
+- redkeyconfig_admin_role.yaml
+- redkeyconfig_editor_role.yaml
+- redkeyconfig_viewer_role.yaml
+- redkey_admin_role.yaml
+- redkey_editor_role.yaml
+- redkey_viewer_role.yaml
 

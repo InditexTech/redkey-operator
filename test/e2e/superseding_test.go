@@ -25,7 +25,7 @@ import (
 // concurrently.
 func updatePrimaries(ctx context.Context, key types.NamespacedName, primaries int32) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &redkeyv1beta1.RedkeyCluster{}
+		cluster := &redkeyv1beta1.Redkey{}
 		if err := k8sClient.Get(ctx, key, cluster); err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 		const clusterName = "superseding-skip"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should skip intermediate configs and apply only the final one", func() {
@@ -77,7 +77,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 				WithSkipIfSuperseded(true)
 			opts.Primaries = 3
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase with 3 primaries")
@@ -157,7 +157,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 		const clusterName = "superseding-noskip"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should apply all configs sequentially when skipIfSuperseded is false", func() {
@@ -166,7 +166,7 @@ var _ = Describe("Config Superseding", Ordered, Label("superseding"), func() {
 				WithSkipIfSuperseded(false)
 			opts.Primaries = 3
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")

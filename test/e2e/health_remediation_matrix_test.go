@@ -55,7 +55,7 @@ var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, L
 
 		By("creating an ephemeral cluster with replicas, no auth")
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
-		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
+		_, err = framework.CreateRedkey(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")
@@ -247,7 +247,7 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 
 		By("creating an ephemeral cluster with auth, no replicas")
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithAuth(secretName)
-		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
+		_, err = framework.CreateRedkey(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")
@@ -420,7 +420,7 @@ var _ = Describe("Health Remediation Matrix - Replicas with auth", Ordered, Labe
 		opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 			WithReplicas(1).
 			WithAuth(secretName)
-		_, err = framework.CreateRedkeyCluster(suiteCtx, k8sClient, opts)
+		_, err = framework.CreateRedkey(suiteCtx, k8sClient, opts)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the cluster to reach Ready")

@@ -28,10 +28,10 @@ containers, additional volumes, or extra service ports for metrics exporters.
 
 ## Cluster-wide labels and annotations
 
-`spec.labels` and `spec.annotations` on the `RedkeyCluster` are propagated to
+`spec.labels` and `spec.annotations` on the `Redkey` are propagated to
 **every** Kubernetes object Redkey manages for the cluster:
 
-- the `RedkeyClusterConfig`,
+- the `RedkeyConfig`,
 - the Robin `Deployment` and its RBAC objects (`ServiceAccount`, `Role`,
   `RoleBinding`),
 - the Redis `StatefulSet` (and its pod template), the headless `Service`, the
@@ -39,7 +39,7 @@ containers, additional volumes, or extra service ports for metrics exporters.
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -74,12 +74,12 @@ In short: **base wins over override, and override wins over `spec.labels` /
 
 ## Specifying overrides
 
-Overrides live under `spec.override` of the `RedkeyCluster` (and are propagated
-to the `RedkeyClusterConfig` consumed by Robin):
+Overrides live under `spec.override` of the `Redkey` (and are propagated
+to the `RedkeyConfig` consumed by Robin):
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:

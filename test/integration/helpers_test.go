@@ -20,8 +20,8 @@ import (
 
 const clusterLabel = "redkey.inditex.dev/cluster"
 
-func newReconciler() *controller.RedkeyClusterReconciler {
-	return &controller.RedkeyClusterReconciler{
+func newReconciler() *controller.RedkeyReconciler {
+	return &controller.RedkeyReconciler{
 		Client: k8sClient,
 		Scheme: k8sClient.Scheme(),
 	}
@@ -33,13 +33,13 @@ func reconcileCluster(ctx context.Context, name types.NamespacedName) {
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
-func newTestCluster(name, namespace string) *redisv1.RedkeyCluster { //nolint:unparam
-	return &redisv1.RedkeyCluster{
+func newTestCluster(name, namespace string) *redisv1.Redkey { //nolint:unparam
+	return &redisv1.Redkey{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: redisv1.RedkeyClusterSpec{
+		Spec: redisv1.RedkeySpec{
 			Ephemeral: true,
 			Primaries: 3,
 			Robin:     redisv1.RobinSpec{Image: "redkey-robin:latest"},
@@ -47,9 +47,9 @@ func newTestCluster(name, namespace string) *redisv1.RedkeyCluster { //nolint:un
 	}
 }
 
-// updateConfigStatus updates the status subresource of a RedkeyClusterConfig,
+// updateConfigStatus updates the status subresource of a RedkeyConfig,
 // ensuring that required fields (Nodes) are initialised to satisfy CRD validation.
-func updateConfigStatus(ctx context.Context, config *redisv1.RedkeyClusterConfig) {
+func updateConfigStatus(ctx context.Context, config *redisv1.RedkeyConfig) {
 	if config.Status.Nodes == nil {
 		config.Status.Nodes = map[string]*redisv1.RedisNode{}
 	}
@@ -57,8 +57,8 @@ func updateConfigStatus(ctx context.Context, config *redisv1.RedkeyClusterConfig
 }
 
 // listConfigs returns all configs for the given cluster sorted by sequence ascending.
-func listConfigs(ctx context.Context, clusterName, namespace string) []redisv1.RedkeyClusterConfig {
-	var configList redisv1.RedkeyClusterConfigList
+func listConfigs(ctx context.Context, clusterName, namespace string) []redisv1.RedkeyConfig {
+	var configList redisv1.RedkeyConfigList
 	ExpectWithOffset(1, k8sClient.List(ctx, &configList,
 		client.InNamespace(namespace),
 		client.MatchingLabels{clusterLabel: clusterName},
@@ -72,14 +72,14 @@ func listConfigs(ctx context.Context, clusterName, namespace string) []redisv1.R
 }
 
 // setupThreeConfigs creates a cluster and three configs via successive spec changes (primaries 3→5→7).
-func setupThreeConfigs(ctx context.Context, clusterName, namespace string) []redisv1.RedkeyClusterConfig {
+func setupThreeConfigs(ctx context.Context, clusterName, namespace string) []redisv1.RedkeyConfig {
 	namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
 	cluster := newTestCluster(clusterName, namespace)
 	ExpectWithOffset(1, k8sClient.Create(ctx, cluster)).To(Succeed())
 
 	reconcileCluster(ctx, namespacedName)
-	var cl redisv1.RedkeyCluster
+	var cl redisv1.Redkey
 	ExpectWithOffset(1, k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 	cl.Spec.Primaries = 5
 	ExpectWithOffset(1, k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -95,7 +95,7 @@ func setupThreeConfigs(ctx context.Context, clusterName, namespace string) []red
 }
 
 // setupAppliedReadyCluster creates a cluster, reconciles, sets its config to Applied+Ready, and reconciles again.
-func setupAppliedReadyCluster(ctx context.Context, clusterName, namespace string) redisv1.RedkeyCluster {
+func setupAppliedReadyCluster(ctx context.Context, clusterName, namespace string) redisv1.Redkey {
 	namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
 	cluster := newTestCluster(clusterName, namespace)
@@ -110,14 +110,14 @@ func setupAppliedReadyCluster(ctx context.Context, clusterName, namespace string
 
 	reconcileCluster(ctx, namespacedName)
 
-	var updated redisv1.RedkeyCluster
+	var updated redisv1.Redkey
 	ExpectWithOffset(1, k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 	return updated
 }
 
-// deleteCluster deletes a RedkeyCluster and all its configs.
+// deleteCluster deletes a Redkey and all its configs.
 func deleteCluster(ctx context.Context, name, namespace string) { //nolint:unparam
-	cluster := &redisv1.RedkeyCluster{}
+	cluster := &redisv1.Redkey{}
 	nn := types.NamespacedName{Name: name, Namespace: namespace}
 	if err := k8sClient.Get(ctx, nn, cluster); err == nil {
 		ExpectWithOffset(1, k8sClient.Delete(ctx, cluster)).To(Succeed())

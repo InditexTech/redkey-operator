@@ -234,7 +234,7 @@ The chaos tests require a stronger `WaitForReady` than the current E2E helper. T
 func WaitForChaosReady(ctx context.Context, client client.Client, namespace, clusterName string, timeout time.Duration) error {
     return wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
         // 1. Check CR status
-        cluster := &redkeyv1.RedkeyCluster{}
+        cluster := &redkeyv1.Redkey{}
         if err := client.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: namespace}, cluster); err != nil {
             return false, nil
         }
@@ -246,7 +246,7 @@ func WaitForChaosReady(ctx context.Context, client client.Client, namespace, clu
         pods := &corev1.PodList{}
         if err := client.List(ctx, pods,
             client.InNamespace(namespace),
-            client.MatchingLabels{"redis.redkeycluster.operator/component": "redis"}); err != nil {
+            client.MatchingLabels{"redis.redkey.operator/component": "redis"}); err != nil {
             return false, nil
         }
 
@@ -342,7 +342,7 @@ test/chaos/
 ├── chaos_suite_test.go       # Main chaos test scenarios (BDD style)
 ├── helpers.go                # Test-level helper functions
 ├── framework/
-│   ├── cluster.go            # RedkeyCluster creation helpers
+│   ├── cluster.go            # Redkey creation helpers
 │   ├── k6.go                 # k6 Job creation and monitoring
 │   ├── namespace.go          # Namespace creation/deletion helpers
 │   ├── operator.go           # Operator scaling helpers (ScaleOperatorDown/Up)
@@ -373,7 +373,7 @@ test/chaos/
 │  BeforeEach (per test):                                         │
 │    1. Create isolated namespace                                 │
 │    2. Deploy operator in namespace                              │
-│    3. Create RedkeyCluster (N primaries + robin)                │
+│    3. Create Redkey (N primaries + robin)                │
 │    4. Wait for Ready status                                     │
 │                                                                 │
 │  Test Body (BDD style):                                         │
@@ -392,7 +392,7 @@ test/chaos/
 │  AfterEach:                                                     │
 │    1. Collect logs on failure (operator, k6, redis pods)        │
 │    2. Delete k6 Job (if exists)                                 │
-│    3. Delete RedkeyCluster (remove finalizers)                  │
+│    3. Delete Redkey (remove finalizers)                  │
 │    4. Delete namespace                                          │
 │                                                                 │
 │  AfterSuite:                                                    │

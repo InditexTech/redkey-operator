@@ -14,7 +14,7 @@ import (
 const (
 	// EnvOperatorImage overrides the operator image deployed into each chaos namespace.
 	EnvOperatorImage = "IMAGE_OPERATOR"
-	// EnvRobinImage overrides the Robin image used by the RedkeyCluster spec.
+	// EnvRobinImage overrides the Robin image used by the Redkey spec.
 	EnvRobinImage = "IMAGE_ROBIN"
 	// EnvRedisImage overrides the Redis image used for the cluster nodes.
 	EnvRedisImage = "REDIS_IMAGE"
@@ -74,10 +74,10 @@ func getEnv(key, fallback string) string {
 // GetOperatorImage returns the operator image to deploy in the chaos namespace.
 func GetOperatorImage() string { return getEnv(EnvOperatorImage, defaultOperatorImage) }
 
-// GetRobinImage returns the Robin image used by the RedkeyCluster spec.
+// GetRobinImage returns the Robin image used by the Redkey spec.
 func GetRobinImage() string { return getEnv(EnvRobinImage, defaultRobinImage) }
 
-// GetRedisImage returns the Redis image used by the RedkeyCluster spec.
+// GetRedisImage returns the Redis image used by the Redkey spec.
 func GetRedisImage() string { return getEnv(EnvRedisImage, defaultRedisImage) }
 
 // GetK6Image returns the k6 load-generator image.

@@ -14,7 +14,7 @@ For a new cluster configuration, set the property `ephemeral: true` and apply th
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: redis-cluster
   ...

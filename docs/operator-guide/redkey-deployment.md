@@ -8,13 +8,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ## CRD
 
-Redkey operator CRD defines a new resource type `RedkeyCluster`.
+Redkey operator CRD defines a new resource type `Redkey`.
 
 Below you'll find an example of manifest conforming to the resource definition that will deploy a Redkey cluster:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: redkey-cluster-sample
   namespace: default
@@ -71,7 +71,7 @@ However, it's possible to set `primaries: 1` to deploy a single instance Redkey 
 
 ## Live reloading
 
-The configuration from `config` item will be placed under a ConfigMap created and managed by the Operator. This ConfigMap shares its name with the RedkeyCluster.
+The configuration from `config` item will be placed under a ConfigMap created and managed by the Operator. This ConfigMap shares its name with the Redkey.
 
 The configuration contained in this ConfigMap is the `source of truth` that Redkey operator will use to create and configure the Redkey cluster nodes.
 

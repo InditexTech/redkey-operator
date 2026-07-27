@@ -54,14 +54,14 @@ func CreateNamespace(ctx context.Context, c client.Client, prefix string) (*core
 	return ns, nil
 }
 
-// DeleteNamespace cleans up RedkeyCluster CRs (removing finalizers) and deletes the namespace.
+// DeleteNamespace cleans up Redkey CRs (removing finalizers) and deletes the namespace.
 func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace) error {
 	if ns == nil {
 		return nil
 	}
 
-	// Remove any RedkeyCluster CRs so their finalizers don't stall deletion
-	var clusterList redkeyv1beta1.RedkeyClusterList
+	// Remove any Redkey CRs so their finalizers don't stall deletion
+	var clusterList redkeyv1beta1.RedkeyList
 	if err := c.List(ctx, &clusterList, &client.ListOptions{Namespace: ns.Name}); err == nil {
 		for i := range clusterList.Items {
 			name := clusterList.Items[i].Name
@@ -69,7 +69,7 @@ func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace)
 
 			// Strip finalizers
 			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				rc := &redkeyv1beta1.RedkeyCluster{}
+				rc := &redkeyv1beta1.Redkey{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rc); err != nil {
 					return err
 				}
@@ -78,21 +78,21 @@ func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace)
 			})
 
 			// Delete the CR
-			_ = c.Delete(ctx, &redkeyv1beta1.RedkeyCluster{
+			_ = c.Delete(ctx, &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			})
 		}
 	}
 
 	// Also remove finalizers from configs
-	var configList redkeyv1beta1.RedkeyClusterConfigList
+	var configList redkeyv1beta1.RedkeyConfigList
 	if err := c.List(ctx, &configList, &client.ListOptions{Namespace: ns.Name}); err == nil {
 		for i := range configList.Items {
 			name := configList.Items[i].Name
 			namespace := configList.Items[i].Namespace
 
 			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				cfg := &redkeyv1beta1.RedkeyClusterConfig{}
+				cfg := &redkeyv1beta1.RedkeyConfig{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cfg); err != nil {
 					return err
 				}
@@ -122,13 +122,13 @@ func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace)
 	return nil
 }
 
-// DeleteRedkeyCluster removes a single RedkeyCluster CR and its associated configs from a
+// DeleteRedkey removes a single Redkey CR and its associated configs from a
 // namespace, stripping finalizers so deletion is not stalled, and waits for the cluster CR to
 // disappear. It is intended for per-Context cleanup in Ordered specs that share a namespace, so
 // that clusters do not accumulate (and starve node CPU) until the whole Describe finishes.
-func DeleteRedkeyCluster(ctx context.Context, c client.Client, name, namespace string) error {
+func DeleteRedkey(ctx context.Context, c client.Client, name, namespace string) error {
 	// Strip finalizers from the cluster's configs first so they don't block CR deletion.
-	var configList redkeyv1beta1.RedkeyClusterConfigList
+	var configList redkeyv1beta1.RedkeyConfigList
 	if err := c.List(ctx, &configList,
 		client.InNamespace(namespace),
 		client.MatchingLabels{"redkey.inditex.dev/cluster": name},
@@ -136,14 +136,14 @@ func DeleteRedkeyCluster(ctx context.Context, c client.Client, name, namespace s
 		for i := range configList.Items {
 			cfgName := configList.Items[i].Name
 			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				cfg := &redkeyv1beta1.RedkeyClusterConfig{}
+				cfg := &redkeyv1beta1.RedkeyConfig{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: cfgName}, cfg); err != nil {
 					return err
 				}
 				cfg.Finalizers = nil
 				return c.Update(ctx, cfg)
 			})
-			_ = c.Delete(ctx, &redkeyv1beta1.RedkeyClusterConfig{
+			_ = c.Delete(ctx, &redkeyv1beta1.RedkeyConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: cfgName, Namespace: namespace},
 			})
 		}
@@ -151,28 +151,28 @@ func DeleteRedkeyCluster(ctx context.Context, c client.Client, name, namespace s
 
 	// Strip the cluster CR's own finalizers, then delete it.
 	_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		rc := &redkeyv1beta1.RedkeyCluster{}
+		rc := &redkeyv1beta1.Redkey{}
 		if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rc); err != nil {
 			return err
 		}
 		rc.Finalizers = nil
 		return c.Update(ctx, rc)
 	})
-	_ = c.Delete(ctx, &redkeyv1beta1.RedkeyCluster{
+	_ = c.Delete(ctx, &redkeyv1beta1.Redkey{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 	})
 
 	// Wait for the cluster CR to disappear so its pods are released before the next Context starts.
 	err := wait.PollUntilContextTimeout(ctx, namespacePollInterval, namespaceWaitTimeout, true,
 		func(ctx context.Context) (bool, error) {
-			err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &redkeyv1beta1.RedkeyCluster{})
+			err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &redkeyv1beta1.Redkey{})
 			if err != nil {
 				return true, nil // gone
 			}
 			return false, nil
 		})
 	if err != nil {
-		return fmt.Errorf("redkeycluster %s/%s still exists after timeout: %w", namespace, name, err)
+		return fmt.Errorf("redkey %s/%s still exists after timeout: %w", namespace, name, err)
 	}
 	return nil
 }

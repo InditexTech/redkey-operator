@@ -67,11 +67,11 @@ All exported metric names use the `redkey_` prefix.
 
 ## Configuration
 
-All metrics configuration is placed under `spec.robin.config.metrics` of the `RedkeyCluster` resource:
+All metrics configuration is placed under `spec.robin.config.metrics` of the `Redkey` resource:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -170,7 +170,7 @@ metrics:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
   namespace: redis-prod
@@ -291,7 +291,7 @@ The following health-related gauges are exported:
 | `redkey_cluster_check_command_output_code` | Exit code returned by `redis-cli --cluster check`; `0` means success, non-zero means the command reported problems, and `-1` means Robin could not complete the command and exported conservative health defaults |
 
 > The same underlying health report is also surfaced as
-> [status conditions](../redkey-cluster-status.md#cluster-health-conditions) on the `RedkeyCluster`
+> [status conditions](../redkey-cluster-status.md#cluster-health-conditions) on the `Redkey`
 > (`Healthy`, `MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`,
 > `ClusterCheckPassing`), so you can gate on health with `kubectl wait --for=condition=Healthy` in
 > addition to scraping these metrics.
@@ -338,8 +338,8 @@ Every metric includes the following labels automatically:
 
 | Label | Source | Example |
 | ----- | ------ | ------- |
-| `cluster` | RedkeyCluster name | `my-cluster` |
-| `namespace` | RedkeyCluster namespace | `redis-prod` |
+| `cluster` | Redkey name | `my-cluster` |
+| `namespace` | Redkey namespace | `redis-prod` |
 
 ### Metric-Specific Labels
 
@@ -538,7 +538,7 @@ spec:
               Cluster {{ $labels.namespace }}/{{ $labels.cluster }} has a primary slot
               distribution outside Robin's balance threshold.
 
-        - alert: RedkeyClusterCheckErrors
+        - alert: RedkeyCheckErrors
           expr: redkey_cluster_check_errors > 0
           for: 5m
           labels:
@@ -549,7 +549,7 @@ spec:
               Cluster {{ $labels.namespace }}/{{ $labels.cluster }} has
               {{ $value }} redis-cli cluster check errors.
 
-        - alert: RedkeyClusterCheckCommandUnavailable
+        - alert: RedkeyCheckCommandUnavailable
           expr: redkey_cluster_check_command_output_code < 0
           for: 10m
           labels:
@@ -572,7 +572,7 @@ Recommended usage:
 
 All metrics settings are **hot-reloadable** — changes take effect without a Robin Pod restart. When you update `spec.robin.config.metrics`:
 
-1. The Operator creates a new `RedkeyClusterConfig` with the updated settings.
+1. The Operator creates a new `RedkeyConfig` with the updated settings.
 2. Robin picks it up on the next reconciliation cycle.
 3. The metrics collector applies the new configuration on its next collection tick.
 

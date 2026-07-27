@@ -162,7 +162,7 @@ This dashboard monitors the health and performance of the operator's controller-
 
 ### Redkey Cluster Dashboard
 
-Located in `hack/observability/dashboards/redkey-cluster.json`.
+Located in `hack/observability/dashboards/redkey-instance.json`.
 
 This dashboard monitors the Redis clusters managed by Robin — cluster health, topology, and per-node performance:
 
@@ -184,7 +184,7 @@ All metrics use the `redkey_` prefix (e.g., `redkey_cluster_healthy`, `redkey_co
 **Variables:**
 - `datasource` — select the Prometheus data source
 - `job` — filter by Prometheus job (discovered from the node-level `redkey_used_memory_rss` metric, present in **both** cluster and standalone modes)
-- `cluster` — filter by RedkeyCluster name
+- `cluster` — filter by Redkey name
 
 > The `job`/`cluster` variables are derived from `redkey_used_memory_rss` (node-level) rather than `redkey_cluster_healthy` (cluster-level). Robin skips cluster-level metrics in **standalone** mode, so a standalone cluster would otherwise never appear in the `cluster` list. Cluster-level panels (health, topology) are simply empty for standalone clusters, which is expected.
 
@@ -238,7 +238,7 @@ This Service is created by the kustomize overlay (`config/default/metrics_servic
 
 ### Robin Metrics
 
-Robin is deployed as a standalone Deployment per RedkeyCluster. It exposes metrics over **HTTP on port 8080** without authentication. A PodMonitor scrapes Robin pods directly using `targetPort`:
+Robin is deployed as a standalone Deployment per Redkey. It exposes metrics over **HTTP on port 8080** without authentication. A PodMonitor scrapes Robin pods directly using `targetPort`:
 
 ```yaml
 podMetricsEndpoints:

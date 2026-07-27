@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Redkey Cluster Phase, Status and Substatus
 
-The Redkey Operator exposes the state of each `RedkeyCluster` through three distinct fields —
+The Redkey Operator exposes the state of each `Redkey` through three distinct fields —
 **Phase**, **Status** and **Substatus** — that answer three different questions, plus an orthogonal
 [health axis](#cluster-health-conditions). `Phase` is a user-facing rollup (is the cluster usable?),
 `Status` is the detailed operational state of the underlying configuration lifecycle (what operation
@@ -38,7 +38,7 @@ the precise semantics and how they relate.
 
 ## Phase, Status and Substatus
 
-A `RedkeyCluster` reports its state through three fields, each answering a different question:
+A `Redkey` reports its state through three fields, each answering a different question:
 
 | Field | JSONPath | Question it answers | Values |
 |-------|----------|---------------------|--------|
@@ -48,8 +48,8 @@ A `RedkeyCluster` reports its state through three fields, each answering a diffe
 
 - **Phase** is a **user-facing rollup** derived from the cluster's `Conditions` (`Ready`,
   `ConfigPending`, `Error`). It is the only one of the three shown in the default
-  `kubectl get rkcl` view. Use it for simple “is it ready?” checks and automation.
-- **Status** is the **operational state** of the underlying `RedkeyClusterConfig` state machine, set
+  `kubectl get rk` view. Use it for simple “is it ready?” checks and automation.
+- **Status** is the **operational state** of the underlying `RedkeyConfig` state machine, set
   by Robin and mirrored onto the cluster from the highest-sequence config. It is the detailed
   lifecycle state (creation, scaling, upgrading, …) described in [Status codes](#status-codes).
 - **Substatus** is **purely informational** — it does not drive control flow. Robin sets it to expose
@@ -68,8 +68,8 @@ cluster can be `Ready` while Robin's health-reconciler is still healing or rebal
 cluster (surfaced as `Substatus = Remediating`). Live health is exposed on a separate axis via the
 [health conditions](#cluster-health-conditions).
 
-> Only the `PHASE` column is shown by `kubectl get rkcl`. The `STATUS`, `SUBSTATUS` and `PARTITION`
-> columns require `kubectl get rkcl -o wide`.
+> Only the `PHASE` column is shown by `kubectl get rk`. The `STATUS`, `SUBSTATUS` and `PARTITION`
+> columns require `kubectl get rk -o wide`.
 
 ## Status codes
 
@@ -81,14 +81,14 @@ The implemented status are:
 - **Initializing**: The necessary Kubernetes objects have been created (primarily a StatefulSet, which manages the pods on the Redis nodes, and Redkey Robin Deployment). The operator is waiting for all the pods to be ready and Robin to start responding.
 - **Configuring**: Robin is responsible for building the cluster, performing the necessary meets between all nodes, assigning slots to ensure everyone is covered, and making sure the cluster is balanced. The operator waits for Robin to confirm that the cluster is ready.
 - **Ready**: The cluster has the correct configuration, the desired number of primaries and replicas per primary, is rebalanced and ready to be used. The Redis clusters health in this status will be checked by the Operator periodically asking their Robin services.
-  > `Ready` means the highest-sequence `RedkeyClusterConfig` was **applied** — not that the data plane is fully healthy at that exact instant. After a config is applied, Robin's health-reconciler keeps the cluster healthy in the background (healing membership, recovering slot coverage, rebalancing) while the cluster **stays `Ready`**. The live data-plane health is exposed separately through the [health conditions](#cluster-health-conditions), and while remediation is in progress the informational [`Remediating`](#substatus-values-reference) substatus is shown.
-- **Upgrading**: The cluster is being upgraded, reconfiguring the objects to solve the mismatches. A RedkeyCluster enters this status when:
-  - there are differences between the existing configuration in the configmap and the configuration of the RedkeyCluster object merged with the default configuration set in the code.
-  - there is a mismatch between the StatefulSet object labels and the RedkeyCluster Spec labels.
-  - a mismatch exists between RedkeyCluster resources defined under spec and effective resources defined in the StatefulSet.
-  - the images set in RedkeyCluster under spec and the image set in the StatefulSet object are not the same.
-- **ScalingDown**: The cluster enters in this status to remove excess nodes. RedkeyCluster nodes (primaries * replicas per primary) > StatefulSet replicas.
-- **ScalingUp**: The cluster enters in this status to create the needed nodes to equal the desired nodes with the current nodes. RedkeyCluster primaries * replicas per primary < StatefulSet replicas.
+  > `Ready` means the highest-sequence `RedkeyConfig` was **applied** — not that the data plane is fully healthy at that exact instant. After a config is applied, Robin's health-reconciler keeps the cluster healthy in the background (healing membership, recovering slot coverage, rebalancing) while the cluster **stays `Ready`**. The live data-plane health is exposed separately through the [health conditions](#cluster-health-conditions), and while remediation is in progress the informational [`Remediating`](#substatus-values-reference) substatus is shown.
+- **Upgrading**: The cluster is being upgraded, reconfiguring the objects to solve the mismatches. A Redkey enters this status when:
+  - there are differences between the existing configuration in the configmap and the configuration of the Redkey object merged with the default configuration set in the code.
+  - there is a mismatch between the StatefulSet object labels and the Redkey Spec labels.
+  - a mismatch exists between Redkey resources defined under spec and effective resources defined in the StatefulSet.
+  - the images set in Redkey under spec and the image set in the StatefulSet object are not the same.
+- **ScalingDown**: The cluster enters in this status to remove excess nodes. Redkey nodes (primaries * replicas per primary) > StatefulSet replicas.
+- **ScalingUp**: The cluster enters in this status to create the needed nodes to equal the desired nodes with the current nodes. Redkey primaries * replicas per primary < StatefulSet replicas.
 - **ScalingToZero**: The cluster is being scaled to zero primaries. Robin is deleting all its managed objects (StatefulSet, Service, ConfigMap, PDB, optionally PVCs). Once complete, all infrastructure is removed and the cluster reaches Ready with 0 replicas.
 - **Error**: An error is detected in the cluster. The operator tries to recover the cluster from error checking the configuration and/or scaling the cluster.
   - Storage capacity mismatch.
@@ -101,13 +101,13 @@ The implemented status are:
 ## Cluster health conditions
 
 `Status`/`Phase` describe the **configuration lifecycle**: `Ready` means the highest-sequence
-`RedkeyClusterConfig` was **applied**, not that the data plane is fully healthy at that instant.
+`RedkeyConfig` was **applied**, not that the data plane is fully healthy at that instant.
 After a config is applied, Robin's health-reconciler keeps the cluster healthy in the background
 (healing membership, recovering slot coverage, rebalancing), and the cluster stays `Ready`
 throughout.
 
 To expose the **live data-plane health** independently of the lifecycle, Robin publishes a set of
-conditions on each `RedkeyClusterConfig`, which the Operator aggregates onto the `RedkeyCluster`
+conditions on each `RedkeyConfig`, which the Operator aggregates onto the `Redkey`
 `.status.conditions`. `Status=True` always means the positive condition holds.
 
 | Condition | `True` means |
@@ -124,7 +124,7 @@ These conditions are an **orthogonal health axis** and do **not** affect `Phase`
 stale, so the conditions are reported as `Unknown` (reason `Reconciling`) until the cluster settles
 back to `Ready`. While the health-reconciler is actively remediating an applied cluster, the
 informational [`Remediating`](#substatus-values-reference) substatus is shown (with `Status` still
-`Ready`), so `kubectl get rkcl -o wide -w` surfaces that the data plane is not yet fully quiescent.
+`Ready`), so `kubectl get rk -o wide -w` surfaces that the data plane is not yet fully quiescent.
 
 ## Redkey Cluster creation Status transitions
 
@@ -132,7 +132,7 @@ The status flow in creating a new Redkey Cluster is as simple as this:
 
 ![Redkey Cluster Initialization](./images/redkey-cluster-initialization.png)
 
-The following is an example of the sequence of states that we can see when deploying the sample Redkey Cluster* (command `kubectl get rkcl -o wide -w`):
+The following is an example of the sequence of states that we can see when deploying the sample Redkey Cluster* (command `kubectl get rk -o wide -w`):
 
 ```
 NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS         SUBSTATUS
@@ -143,13 +143,13 @@ redis-cluster-ephemeral   cluster   3           0          true        true     
 redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```
 
-> **Note:** the `STATUS`, `SUBSTATUS` and `PARTITION` columns (along with `STORAGE` and `DELETEPVC`) are only shown with `-o wide`. The default `kubectl get rkcl` view shows the `MODE`, `PRIMARIES`, `REPLICAS`, `EPHEMERAL`, `PURGEKEYS` and `PHASE` columns.
+> **Note:** the `STATUS`, `SUBSTATUS` and `PARTITION` columns (along with `STORAGE` and `DELETEPVC`) are only shown with `-o wide`. The default `kubectl get rk` view shows the `MODE`, `PRIMARIES`, `REPLICAS`, `EPHEMERAL`, `PURGEKEYS` and `PHASE` columns.
 
 \* The sample Redkey Cluster can be deployed from the project code by executing `make deploy-sample-ephemeral`.
 
 ## Configuration change detection
 
-When a new `RedkeyClusterConfig` is created for an existing cluster (i.e. there is a previous Applied config), Robin performs an automated **change detection** step before entering the state machine. This avoids unnecessary cluster operations when only lightweight (Robin-internal) settings have changed, and ensures the correct status transition is applied for structural changes.
+When a new `RedkeyConfig` is created for an existing cluster (i.e. there is a previous Applied config), Robin performs an automated **change detection** step before entering the state machine. This avoids unnecessary cluster operations when only lightweight (Robin-internal) settings have changed, and ensures the correct status transition is applied for structural changes.
 
 The detection is implemented in `internal/reconciler/config_changes.go` and the transition logic in `internal/reconciler/status_transitions.go`.
 
@@ -187,7 +187,7 @@ When topology changes are combined with Kubernetes/Redis changes, Robin handles 
 
 To provide more detail about scaling and upgrade operations, a series of Substatus fields have been added to the ScalingUp, ScalingDown, ScalingToZero and Upgrading status fields. This allows you to see the current stage of the operation for the cluster.
 
-Substatus values are **purely informational** — they do not control the reconciliation flow. Robin sets them at the beginning of each significant phase to provide observability via `kubectl get rkcc -w`, dashboards, and alerting.
+Substatus values are **purely informational** — they do not control the reconciliation flow. Robin sets them at the beginning of each significant phase to provide observability via `kubectl get rkc -w`, dashboards, and alerting.
 
 The Substatus that will be applied to scaling operations depends on whether the cluster qualifies for **fast scaling** (ephemeral, no replicas, purgeKeysOnRebalance=true) or uses the normal **slot-migration scaling** path.
 
@@ -360,7 +360,7 @@ These SubStatus have been defined:
 
 When performing a Rolling N+1 upgrade, Robin iterates from the last partition to partition 0, applying **DrainingNode** and **RollingUpdate** to each partition in sequence.
 
-Current partition can be shown using `kubectl get rkcc -o wide`.
+Current partition can be shown using `kubectl get rkc -o wide`.
 
 ![Redkey Cluster Upgrading Slow](./images/redkey-cluster-substatus-upgrading-slow.png)
 

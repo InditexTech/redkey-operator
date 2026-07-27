@@ -1,0 +1,114 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# Redkey name (defaults to release name)
+nameOverride: ""
+
+# Deployment mode: "cluster" (Redis Cluster, default) or "standalone" (single instance).
+# Standalone is immutable and limited to a single primary with no replicas.
+mode: cluster
+
+primaries: 3
+replicasPerPrimary: 0
+ephemeral: true
+purgeKeysOnRebalance: true
+image: redis:8-bookworm
+version: ""
+
+# Storage (only for non-ephemeral clusters)
+storage: ""
+storageClassName: ""
+accessModes:
+  - ReadWriteOnce
+
+deletePVC: false
+skipIfSuperseded: true
+# backup: false
+
+# Authentication - reference a Secret containing Redis credentials
+# auth:
+#   secret: my-redis-secret
+
+labels:
+  team: a-team
+  custom: custom-label
+
+# Annotations to propagate to Redis pods
+# annotations:
+#   prometheus.io/scrape: "true"
+#   custom-annotation: custom-value
+
+config: |
+  maxmemory 90mb
+  maxmemory-samples 5
+  maxmemory-policy allkeys-lru
+  protected-mode no
+  appendonly no
+  save ""
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# PodDisruptionBudget configuration
+# pdb:
+#   enabled: true
+#   pdbSizeUnavailable: 1
+
+# Override generated child resources (StatefulSet, Service)
+# override:
+#   statefulSet: {}
+#   service: {}
+
+robin:
+  image: ghcr.io/inditextech/redkey-robin:0.1.0
+  imagePullPolicy: Always
+  resources:
+    requests:
+      cpu: 500m
+      memory: 100Mi
+    limits:
+      cpu: 1
+      memory: 200Mi
+  config:
+    reconciler:
+      intervalSeconds: 30
+      intervalOnErrorSeconds: 10
+      intervalOnWaitSeconds: 10
+    cluster:
+      connectionMaxRetries: 10
+      connectionBackOffSeconds: 10
+      clusterCommandTimeoutSeconds: 24
+      rebalanceTimeoutSeconds: 600
+      clusterMeetWaitSeconds: 5
+    metrics:
+      collectionIntervalSeconds: 60
+      metricsLabels: {}
+      redisInfoKeys:
+        - keyspace_hits
+        - evicted_keys
+        - connected_clients
+        - total_commands_processed
+        - keyspace_misses
+        - expired_keys
+        - redis_version
+        - used_memory_rss
+        - maxmemory
+        - used_cpu_sys
+        - used_cpu_sys_children
+        - used_cpu_user
+        - used_cpu_user_children
+        - total_net_input_bytes
+        - total_net_output_bytes
+        - aof_base_size
+        - aof_current_size
+        - mem_aof_buffer
+
+# Post-install hook that waits for the Redkey to be Ready.
+# All RBAC resources are auto-created and auto-cleaned by Helm hooks.
+waitReady:
+  enabled: false
+  image: bitnami/kubectl:latest
+  timeout: "300s"
+  backoffLimit: 3

@@ -3,4 +3,4 @@
 
 resources:
 - secret.yaml
-- redkeycluster.yaml
+- redkey_cluster.yaml

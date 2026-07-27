@@ -54,7 +54,7 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "ephemeral-noreplica"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with 3 primaries and reach Ready", func() {
@@ -62,8 +62,8 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
 
-			By("creating the RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -115,14 +115,14 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "ephemeral-replica"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with 3 primaries and 1 replica each and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 
-			By("creating the RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -177,14 +177,14 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "pvc-noreplica"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with persistent storage and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
 
-			By("creating the RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -221,14 +221,14 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "pvc-replica"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with PVC storage and replicas and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
 
-			By("creating the RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -282,14 +282,14 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "replica-spread"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should distribute replicas across different primaries", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
 
-			By("creating the RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -335,15 +335,15 @@ var _ = Describe("Cluster Creation", Ordered, Label("creation"), func() {
 		const clusterName = "large-cluster"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with 5 primaries and reach Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Primaries = 5
 
-			By("creating the RedkeyCluster with 5 primaries")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the Redkey with 5 primaries")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")

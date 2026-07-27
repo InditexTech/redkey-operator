@@ -30,7 +30,7 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 	namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 	deployName := types.NamespacedName{Name: clusterName + "-robin", Namespace: namespace}
 
-	var reconciler *controller.RedkeyClusterReconciler
+	var reconciler *controller.RedkeyReconciler
 
 	reconcileIt := func() {
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -41,14 +41,14 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 		reconciler = newReconciler()
 	})
 
-	Context("When creating a new RedkeyCluster", Ordered, func() {
+	Context("When creating a new Redkey", Ordered, func() {
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 3,
 					Robin: redisv1.RobinSpec{
@@ -91,7 +91,7 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 
 			By("verifying OwnerReference is set")
 			Expect(deploy.OwnerReferences).NotTo(BeEmpty())
-			Expect(deploy.OwnerReferences[0].Kind).To(Equal("RedkeyCluster"))
+			Expect(deploy.OwnerReferences[0].Kind).To(Equal("Redkey"))
 			Expect(deploy.OwnerReferences[0].Name).To(Equal(clusterName))
 
 			By("verifying replicas default to 1")
@@ -123,12 +123,12 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 
 	Context("When the Deployment drifts from the desired state", Ordered, func() {
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 3,
 					Robin: redisv1.RobinSpec{
@@ -232,14 +232,14 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 		})
 	})
 
-	Context("When the RedkeyCluster spec is updated", Ordered, func() {
+	Context("When the Redkey spec is updated", Ordered, func() {
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 3,
 					Robin: redisv1.RobinSpec{
@@ -271,8 +271,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 			Expect(k8sClient.Get(ctx, deployName, &deploy)).To(Succeed())
 			Expect(deploy.Spec.Template.Spec.Containers[0].Image).To(Equal("robin:v1.0.0"))
 
-			By("updating the RedkeyCluster Robin image")
-			var cluster redisv1.RedkeyCluster
+			By("updating the Redkey Robin image")
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Robin.Template.Spec.Containers[0].Image = "robin:v3.0.0"
 			Expect(k8sClient.Update(ctx, &cluster)).To(Succeed())
@@ -285,8 +285,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 		})
 
 		It("should update the Deployment when resources are added", func() {
-			By("updating the RedkeyCluster Robin resources")
-			var cluster redisv1.RedkeyCluster
+			By("updating the Redkey Robin resources")
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Robin.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -306,8 +306,8 @@ var _ = Describe("Robin Deployment Reconciliation", func() {
 		})
 
 		It("should update the Deployment when node selector is added", func() {
-			By("updating the RedkeyCluster Robin node selector")
-			var cluster redisv1.RedkeyCluster
+			By("updating the Redkey Robin node selector")
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Robin.Template.Spec.NodeSelector = map[string]string{
 				"node-role": "infra",

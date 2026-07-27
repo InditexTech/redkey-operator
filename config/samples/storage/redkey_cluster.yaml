@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: redkey.inditex.dev/v1beta1
+kind: Redkey
+metadata:
+  annotations:
+    inditex.dev/description: "Persistent Redis Cluster for development purposes"
+  labels:
+    inditex.dev/name: redkey-cluster-storage
+    inditex.dev/owner: a-team
+    inditex.dev/environment: development
+    app.kubernetes.io/managed-by: kustomize
+  name: redkey-cluster-storage
+spec:
+  mode: cluster
+  primaries: 3
+  ephemeral: false
+  storage: "1Gi"
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  image: redis:8-bookworm
+  purgeKeysOnRebalance: false
+  labels:
+    team: a-team
+  config: |
+    maxmemory 90mb
+    maxmemory-samples 5
+    maxmemory-policy allkeys-lru
+    protected-mode no
+    appendonly yes
+    appendfsync everysec
+    save 3600 1
+    save 300 100
+    save 60 10000
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  robin:
+    image: ghcr.io/inditextech/redkey-robin:latest
+    resources:
+      requests:
+        cpu: 200m
+        memory: 100Mi
+      limits:
+        cpu: 400m
+        memory: 200Mi
+    config:
+      reconciler:
+        intervalSeconds: 30
+        intervalOnErrorSeconds: 10
+        intervalOnWaitSeconds: 10
+      cluster:
+        connectionMaxRetries: 10
+        connectionBackOffSeconds: 10
+        clusterCommandTimeoutSeconds: 24
+        rebalanceTimeoutSeconds: 600
+        clusterMeetWaitSeconds: 5
+      metrics:
+        collectionIntervalSeconds: 60

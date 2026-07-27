@@ -89,7 +89,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 
 			// Create 3 configs
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -138,7 +138,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 
 			// Create 3 configs
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -181,7 +181,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 
 			// Create 2 configs
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -225,7 +225,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 
 			// Create 2 configs
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -257,12 +257,12 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 		namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 3,
 					Robin:     redisv1.RobinSpec{Image: "redkey-robin:latest"},
@@ -272,7 +272,7 @@ var _ = Describe("Cleanup of Superseded Configs", func() {
 
 			// Create 2 configs
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())

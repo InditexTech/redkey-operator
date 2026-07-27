@@ -58,13 +58,13 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 		const clusterName = "resources-robin"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create Robin Deployment with correct labels and RBAC resources", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -90,16 +90,16 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 			Expect(deploy.Spec.Template.Labels["redkey.inditex.dev/component"]).To(Equal("robin"))
 			Expect(*deploy.Spec.Replicas).To(Equal(int32(1)))
 
-			By("verifying Robin Deployment has owner reference to RedkeyCluster")
+			By("verifying Robin Deployment has owner reference to Redkey")
 			Expect(deploy.OwnerReferences).NotTo(BeEmpty())
 			ownerFound := false
 			for _, ref := range deploy.OwnerReferences {
-				if ref.Kind == "RedkeyCluster" && ref.Name == clusterName {
+				if ref.Kind == "Redkey" && ref.Name == clusterName {
 					ownerFound = true
 					break
 				}
 			}
-			Expect(ownerFound).To(BeTrue(), "Robin Deployment should have OwnerReference to RedkeyCluster")
+			Expect(ownerFound).To(BeTrue(), "Robin Deployment should have OwnerReference to Redkey")
 
 			By("verifying Robin container has correct environment variables")
 			containers := deploy.Spec.Template.Spec.Containers
@@ -147,7 +147,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 					if resource == "statefulsets" {
 						hasStatefulSetRule = true
 					}
-					if resource == "redkeyclusterconfigs" || resource == "redkeyclusterconfigs/status" {
+					if resource == "redkeyconfigs" || resource == "redkeyconfigs/status" {
 						hasConfigRule = true
 					}
 					if resource == "secrets" {
@@ -156,7 +156,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 				}
 			}
 			Expect(hasStatefulSetRule).To(BeTrue(), "Role should grant statefulsets access")
-			Expect(hasConfigRule).To(BeTrue(), "Role should grant redkeyclusterconfigs access")
+			Expect(hasConfigRule).To(BeTrue(), "Role should grant redkeyconfigs access")
 			Expect(hasSecretRule).To(BeTrue(), "Role should grant secrets access")
 
 			By("verifying RoleBinding exists and links SA to Role")
@@ -175,13 +175,13 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 		const clusterName = "resources-config-gen"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
-		It("should create a new RedkeyClusterConfig when the cluster spec changes", func() {
+		It("should create a new RedkeyConfig when the cluster spec changes", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -201,7 +201,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 
 			By("updating the cluster spec (change redis config)")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -218,7 +218,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 				maxSeq := configs[len(configs)-1].Spec.Sequence
 				return maxSeq > maxSeqBefore
 			}, 2*time.Minute, 5*time.Second).Should(BeTrue(),
-				"A new RedkeyClusterConfig with higher sequence should be created")
+				"A new RedkeyConfig with higher sequence should be created")
 
 			By("waiting for the new config to reach Applied")
 			_, err = framework.WaitForActiveConfigApplied(ctx, k8sClient, clusterName, clusterNs, framework.DefaultTimeout)
@@ -236,13 +236,13 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 		const clusterName = "resources-config-cleanup"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should clean up old superseded configs keeping only the last Applied and newer", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -256,7 +256,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 
 			for i := range 3 {
 				err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					cluster := &redkeyv1beta1.RedkeyCluster{}
+					cluster := &redkeyv1beta1.Redkey{}
 					if getErr := k8sClient.Get(ctx, key, cluster); getErr != nil {
 						return getErr
 					}
@@ -294,13 +294,13 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 		const clusterName = "resources-multiconfig"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create configs with monotonically increasing sequences for rapid spec changes", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -318,7 +318,7 @@ var _ = Describe("Operator Resources", Ordered, Label("operator-resources"), fun
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 			for i := range 3 {
 				err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					cluster := &redkeyv1beta1.RedkeyCluster{}
+					cluster := &redkeyv1beta1.Redkey{}
 					if getErr := k8sClient.Get(ctx, key, cluster); getErr != nil {
 						return getErr
 					}

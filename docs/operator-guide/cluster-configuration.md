@@ -53,11 +53,11 @@ Robin additionally sets persistence-related parameters based on the `ephemeral` 
 
 ## User Overrides
 
-Any parameter specified in `spec.config` on the `RedkeyCluster` CR is appended **after** the defaults in the generated `redis.conf`:
+Any parameter specified in `spec.config` on the `Redkey` CR is appended **after** the defaults in the generated `redis.conf`:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -74,7 +74,7 @@ Since Redis uses last-write-wins for duplicate parameters, user-specified values
 ## Configuration Lifecycle
 
 1. **Cluster creation**: Robin generates `redis.conf` with defaults + user config and stores it in a ConfigMap.
-2. **Configuration update**: When the spec changes, the Operator creates a new `RedkeyClusterConfig`. Robin detects the change and reconciles it.
+2. **Configuration update**: When the spec changes, the Operator creates a new `RedkeyConfig`. Robin detects the change and reconciles it.
 3. **Hot-reload vs restart**: Redis does not hot-reload `redis.conf`. Configuration changes that affect the Redis pod template take effect only after the pods are recycled through the [upgrade](upgrade.md) flow.
 
 ## Which changes recycle the Redis pods?

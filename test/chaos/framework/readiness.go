@@ -34,7 +34,7 @@ const (
 
 // WaitForChaosReady waits for the Redis cluster to be fully healthy after a fault.
 // Checks: CR phase == Ready, the operator has observed the latest spec (ObservedGeneration ==
-// Generation), the highest-sequence RedkeyClusterConfig has finished applying (ConfigPhase=Applied,
+// Generation), the highest-sequence RedkeyConfig has finished applying (ConfigPhase=Applied,
 // Status=Ready), pod count matches spec, all pods Running, and the aggregated Healthy condition is
 // True (Robin's own health assessment: membership, slot coverage, balance and cluster-check).
 //
@@ -91,7 +91,7 @@ func chaosReadyState(
 	clientset kubernetes.Interface,
 	namespace, clusterName string,
 ) (bool, string) {
-	cluster, err := GetRedkeyCluster(ctx, c, namespace, clusterName)
+	cluster, err := GetRedkey(ctx, c, namespace, clusterName)
 	if err != nil {
 		return false, fmt.Sprintf("error getting cluster: %v", err)
 	}
@@ -174,7 +174,7 @@ func IsChaosConverged(
 // so its pod deletions land specifically while slots are in motion — the phase most sensitive to
 // churn — rather than during the quiescent pod-startup steps. Any error returns false.
 func IsInSlotMovementPhase(ctx context.Context, c client.Client, namespace, clusterName string) bool {
-	cluster, err := GetRedkeyCluster(ctx, c, namespace, clusterName)
+	cluster, err := GetRedkey(ctx, c, namespace, clusterName)
 	if err != nil {
 		return false
 	}
@@ -188,14 +188,14 @@ func IsInSlotMovementPhase(ctx context.Context, c client.Client, namespace, clus
 	}
 }
 
-// highestConfigSettled reports whether the highest-sequence RedkeyClusterConfig has finished
-// applying (ConfigPhase=Applied and operational Status=Ready). The aggregated RedkeyCluster status
+// highestConfigSettled reports whether the highest-sequence RedkeyConfig has finished
+// applying (ConfigPhase=Applied and operational Status=Ready). The aggregated Redkey status
 // can momentarily read Ready while a freshly-created, higher-sequence config has not been picked up
 // yet, because the operator's aggregation falls back to the previous Applied config until Robin
 // marks the new one InProgress. Gating on the highest-sequence config directly closes that window so
 // the chaos loop never advances mid-operation.
 func highestConfigSettled(ctx context.Context, c client.Client, namespace, clusterName string) (bool, string) {
-	var configs redkeyv1beta1.RedkeyClusterConfigList
+	var configs redkeyv1beta1.RedkeyConfigList
 	if err := c.List(ctx, &configs,
 		client.InNamespace(namespace),
 		client.MatchingLabels{clusterLabel: clusterName},
@@ -206,7 +206,7 @@ func highestConfigSettled(ctx context.Context, c client.Client, namespace, clust
 		return false, fmt.Sprintf("error listing configs: %v", err)
 	}
 	if len(configs.Items) == 0 {
-		return false, "no RedkeyClusterConfig found yet"
+		return false, "no RedkeyConfig found yet"
 	}
 
 	highest := &configs.Items[0]

@@ -32,7 +32,7 @@ var _ = Describe("Aggregate Status", func() {
 			// First reconcile creates config (ConfigPhase is empty/Pending by default)
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Phase).To(Equal(redisv1.PhaseConfiguring))
 		})
@@ -54,7 +54,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Phase).To(Equal(redisv1.PhaseConfiguring))
 		})
@@ -76,7 +76,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Phase).To(Equal(redisv1.PhaseReady))
 		})
@@ -97,7 +97,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Phase).To(Equal(redisv1.PhaseReady))
 		})
@@ -117,7 +117,7 @@ var _ = Describe("Aggregate Status", func() {
 			configs := listConfigs(ctx, clusterName, namespace)
 			configs[0].Status.ConfigPhase = redisv1.ConfigPhaseInProgress
 			configs[0].Status.Status = redisv1.ClusterStatusScalingUp
-			configs[0].Status.Substatus = redisv1.RedkeyClusterSubstatus{
+			configs[0].Status.Substatus = redisv1.RedkeySubstatus{
 				Status:             "WaitingForPods",
 				UpgradingPartition: 2,
 			}
@@ -125,7 +125,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Status).To(Equal(redisv1.ClusterStatusScalingUp))
 			Expect(updated.Status.Substatus.Status).To(Equal("WaitingForPods"))
@@ -155,7 +155,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Nodes).To(HaveLen(2))
 			Expect(updated.Status.Nodes["node-0"].Role).To(Equal("primary"))
@@ -182,7 +182,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Nodes).NotTo(BeNil())
 			Expect(updated.Status.Nodes).To(BeEmpty())
@@ -217,7 +217,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 
 			readyCond := findCondition(updated.Status.Conditions, "Ready")
@@ -242,7 +242,7 @@ var _ = Describe("Aggregate Status", func() {
 			// Config stays Pending (default)
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 
 			pendingCond := findCondition(updated.Status.Conditions, "ConfigPending")
@@ -282,7 +282,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.ObservedGeneration).To(Equal(updated.Generation))
 		})
@@ -297,7 +297,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			reconcileCluster(ctx, namespacedName)
 
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.LastUpdatedAt).NotTo(BeNil())
 		})
@@ -314,7 +314,7 @@ var _ = Describe("Aggregate Status", func() {
 
 			// Create 2 configs by changing spec
 			reconcileCluster(ctx, namespacedName)
-			var cl redisv1.RedkeyCluster
+			var cl redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cl)).To(Succeed())
 			cl.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cl)).To(Succeed())
@@ -335,7 +335,7 @@ var _ = Describe("Aggregate Status", func() {
 			reconcileCluster(ctx, namespacedName)
 
 			// Cluster status should reflect the remaining Applied config (seq 2)
-			var updated redisv1.RedkeyCluster
+			var updated redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
 			Expect(updated.Status.Status).To(Equal(redisv1.ClusterStatusReady))
 			Expect(updated.Status.Phase).To(Equal(redisv1.PhaseReady))

@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: redkey.inditex.dev/v1beta1
+kind: Redkey
+metadata:
+  name: {{ include "redkey.name" . }}
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.mode }}
+  mode: {{ .Values.mode }}
+  {{- end }}
+  primaries: {{ .Values.primaries }}
+  replicasPerPrimary: {{ .Values.replicasPerPrimary }}
+  ephemeral: {{ .Values.ephemeral }}
+  {{- if .Values.purgeKeysOnRebalance }}
+  purgeKeysOnRebalance: {{ .Values.purgeKeysOnRebalance }}
+  {{- end }}
+  skipIfSuperseded: {{ .Values.skipIfSuperseded }}
+  image: {{ .Values.image }}
+  {{- if .Values.version }}
+  version: {{ .Values.version | quote }}
+  {{- end }}
+  {{- if and (not .Values.ephemeral) .Values.storage }}
+  storage: {{ .Values.storage }}
+  {{- end }}
+  {{- if and (not .Values.ephemeral) .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  accessModes:
+    {{- toYaml .Values.accessModes | nindent 4 }}
+  {{- if .Values.deletePVC }}
+  deletePVC: {{ .Values.deletePVC }}
+  {{- end }}
+  {{- if .Values.backup }}
+  backup: {{ .Values.backup }}
+  {{- end }}
+  {{- if .Values.auth }}
+  auth:
+    {{- toYaml .Values.auth | nindent 4 }}
+  {{- end }}
+  {{- if .Values.labels }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+  {{- end }}
+  {{- if .Values.annotations }}
+  annotations:
+    {{- toYaml .Values.annotations | nindent 4 }}
+  {{- end }}
+  {{- if .Values.config }}
+  config: |
+    {{- .Values.config | nindent 4 }}
+  {{- end }}
+  {{- if .Values.resources }}
+  resources:
+    {{- toYaml .Values.resources | nindent 4 }}
+  {{- end }}
+  {{- if .Values.pdb }}
+  pdb:
+    {{- toYaml .Values.pdb | nindent 4 }}
+  {{- end }}
+  {{- if .Values.override }}
+  override:
+    {{- toYaml .Values.override | nindent 4 }}
+  {{- end }}
+  robin:
+    image: {{ .Values.robin.image }}
+    {{- if .Values.robin.resources }}
+    resources:
+      {{- toYaml .Values.robin.resources | nindent 6 }}
+    {{- end }}
+    config:
+      {{- toYaml .Values.robin.config | nindent 6 }}

@@ -54,10 +54,10 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 	Context("Cascading deletion", func() {
 		const clusterName = "lifecycle-delete"
 
-		It("should delete all child resources when the RedkeyCluster is deleted", func() {
+		It("should delete all child resources when the Redkey is deleted", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -95,15 +95,15 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(deployList.Items).NotTo(BeEmpty(), "Robin Deployment should exist")
 
-			// RedkeyClusterConfigs
-			configList := &redkeyv1beta1.RedkeyClusterConfigList{}
+			// RedkeyConfigs
+			configList := &redkeyv1beta1.RedkeyConfigList{}
 			err = k8sClient.List(ctx, configList, client.InNamespace(clusterNs),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(configList.Items).NotTo(BeEmpty(), "RedkeyClusterConfig should exist")
+			Expect(configList.Items).NotTo(BeEmpty(), "RedkeyConfig should exist")
 
-			By("deleting the RedkeyCluster")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			By("deleting the Redkey")
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			err = k8sClient.Delete(ctx, cluster)
@@ -147,13 +147,13 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 			}, 2*time.Minute, 5*time.Second).Should(Equal(0), "Robin Deployment should be deleted")
 
 			Eventually(func() int {
-				list := &redkeyv1beta1.RedkeyClusterConfigList{}
+				list := &redkeyv1beta1.RedkeyConfigList{}
 				if err := k8sClient.List(ctx, list, client.InNamespace(clusterNs),
 					client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 					return -1
 				}
 				return len(list.Items)
-			}, 2*time.Minute, 5*time.Second).Should(Equal(0), "RedkeyClusterConfigs should be deleted")
+			}, 2*time.Minute, 5*time.Second).Should(Equal(0), "RedkeyConfigs should be deleted")
 
 			By("verifying Redis pods are terminated")
 			Eventually(func() int {
@@ -173,7 +173,7 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 		It("should successfully recreate a cluster with the same name after deletion", func() {
 			By("creating the initial cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -189,7 +189,7 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("deleting the cluster")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			err = k8sClient.Delete(ctx, cluster)
@@ -207,7 +207,7 @@ var _ = Describe("Cluster Lifecycle", Ordered, Label("lifecycle"), func() {
 
 			By("recreating the cluster with the same name")
 			opts = framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the recreated cluster to reach Ready")

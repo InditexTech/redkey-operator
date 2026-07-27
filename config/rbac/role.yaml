@@ -81,7 +81,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs
+  - redkeyconfigs
   verbs:
   - create
   - delete
@@ -91,9 +91,9 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs/status
-  - redkeyclusters/scale
-  - redkeyclusters/status
+  - redkeyconfigs/status
+  - redkeys/scale
+  - redkeys/status
   verbs:
   - get
   - patch
@@ -101,7 +101,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - create
   - delete
@@ -113,6 +113,6 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/finalizers
+  - redkeys/finalizers
   verbs:
   - update

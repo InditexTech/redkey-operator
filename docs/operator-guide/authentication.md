@@ -10,18 +10,18 @@ This guide explains how to configure Redis password authentication for a Redkey 
 
 ## Overview
 
-Redkey supports Redis `requirepass` + `masterauth` authentication. The password is stored in a Kubernetes Secret and referenced by name in the `RedkeyCluster` spec. The flow is:
+Redkey supports Redis `requirepass` + `masterauth` authentication. The password is stored in a Kubernetes Secret and referenced by name in the `Redkey` spec. The flow is:
 
 1. The user creates a Secret containing the Redis password.
-2. The user references the Secret name in `spec.auth.secret` of the `RedkeyCluster`.
-3. The Operator propagates the reference to `RedkeyClusterConfig.spec.auth.secret`.
+2. The user references the Secret name in `spec.auth.secret` of the `Redkey`.
+3. The Operator propagates the reference to `RedkeyConfig.spec.auth.secret`.
 4. Robin detects the auth change, applies it to all running Redis nodes via `CONFIG SET requirepass` + `CONFIG SET masterauth`, and updates the ConfigMap for future pod restarts.
 
 Auth changes are applied **in-place via hot-reload** — no pods are recycled, no rolling upgrade is triggered, and the cluster remains fully operational throughout.
 
 ```ascii
 ┌────────────┐       ┌──────────────────────┐       ┌─────────────────┐
-│   Secret   │◄──────│  RedkeyClusterConfig │◄──────│ RedkeyCluster   │
+│   Secret   │◄──────│  RedkeyConfig │◄──────│ Redkey   │
 │ (password) │ read  │   spec.auth.secret   │ copy  │ spec.auth.secret│
 └────────────┘       └──────────────────────┘       └────────────────┘
        ▲
@@ -37,7 +37,7 @@ Auth changes are applied **in-place via hot-reload** — no pods are recycled, n
 
 ## Creating the Auth Secret
 
-Create a Kubernetes Secret in the same namespace as the `RedkeyCluster`. The Secret must contain a key named `password` with the Redis password value:
+Create a Kubernetes Secret in the same namespace as the `Redkey`. The Secret must contain a key named `password` with the Redis password value:
 
 ```yaml
 apiVersion: v1
@@ -58,15 +58,15 @@ kubectl create secret generic my-redis-secret \
   --from-literal=password='my-strong-password'
 ```
 
-> **Important**: The Secret **must** be in the same namespace as the `RedkeyCluster` resource.
+> **Important**: The Secret **must** be in the same namespace as the `Redkey` resource.
 
-## Configuring the RedkeyCluster
+## Configuring the Redkey
 
 Reference the Secret name in the `spec.auth.secret` field:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
   namespace: my-namespace
@@ -78,7 +78,7 @@ spec:
   # ... other fields
 ```
 
-When the Operator reconciles this resource it copies the `auth` reference into each `RedkeyClusterConfig` it creates.
+When the Operator reconciles this resource it copies the `auth` reference into each `RedkeyConfig` it creates.
 
 ## How Robin Applies Auth Changes
 
@@ -111,7 +111,7 @@ spec:
   # no auth field — Robin connects without a password
 ```
 
-If a previously authenticated cluster should be switched to no-auth, remove the `spec.auth.secret` field from the `RedkeyCluster`. Robin will detect the empty secret name and stop sending a password.
+If a previously authenticated cluster should be switched to no-auth, remove the `spec.auth.secret` field from the `Redkey`. Robin will detect the empty secret name and stop sending a password.
 
 ## Rotating the Password
 
@@ -127,8 +127,8 @@ Robin manages `requirepass` and `masterauth` automatically. There are two ways t
 ### New Secret (different name)
 
 1. Create the new Secret with the new password.
-2. Update `spec.auth.secret` in the `RedkeyCluster` to point to the new Secret name.
-3. The Operator creates a new `RedkeyClusterConfig` with the updated auth reference.
+2. Update `spec.auth.secret` in the `Redkey` to point to the new Secret name.
+3. The Operator creates a new `RedkeyConfig` with the updated auth reference.
 4. Robin detects the config change and applies the new password via CONFIG SET to all nodes.
 5. Since auth is the only change, the config is marked as Applied immediately (no cluster operation).
 

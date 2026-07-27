@@ -28,7 +28,7 @@ protected-mode no
 appendonly no
 save ""`
 
-// ClusterOptions configures a RedkeyCluster for chaos testing.
+// ClusterOptions configures a Redkey for chaos testing.
 type ClusterOptions struct {
 	Name                 string
 	Namespace            string
@@ -48,14 +48,14 @@ func DefaultClusterOptions(name, namespace string, primaries int32, purgeKeysOnR
 	}
 }
 
-// BuildRedkeyCluster builds an ephemeral RedkeyCluster object from the options.
-func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
-	return &redkeyv1beta1.RedkeyCluster{
+// BuildRedkey builds an ephemeral Redkey object from the options.
+func (o ClusterOptions) BuildRedkey() *redkeyv1beta1.Redkey {
+	return &redkeyv1beta1.Redkey{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      o.Name,
 			Namespace: o.Namespace,
 		},
-		Spec: redkeyv1beta1.RedkeyClusterSpec{
+		Spec: redkeyv1beta1.RedkeySpec{
 			Primaries:          o.Primaries,
 			ReplicasPerPrimary: o.ReplicasPerPrimary,
 			Ephemeral:          true,
@@ -74,40 +74,40 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 	}
 }
 
-// CreateRedkeyCluster creates a RedkeyCluster in the given namespace.
-func CreateRedkeyCluster(
+// CreateRedkey creates a Redkey in the given namespace.
+func CreateRedkey(
 	ctx context.Context,
 	c client.Client,
 	opts ClusterOptions,
-) (*redkeyv1beta1.RedkeyCluster, error) {
-	cluster := opts.BuildRedkeyCluster()
+) (*redkeyv1beta1.Redkey, error) {
+	cluster := opts.BuildRedkey()
 	if err := c.Create(ctx, cluster); err != nil {
-		return nil, fmt.Errorf("creating RedkeyCluster %s/%s: %w", opts.Namespace, opts.Name, err)
+		return nil, fmt.Errorf("creating Redkey %s/%s: %w", opts.Namespace, opts.Name, err)
 	}
 	return cluster, nil
 }
 
-// GetRedkeyCluster fetches the current RedkeyCluster CR.
-func GetRedkeyCluster(
+// GetRedkey fetches the current Redkey CR.
+func GetRedkey(
 	ctx context.Context,
 	c client.Client,
 	namespace, name string,
-) (*redkeyv1beta1.RedkeyCluster, error) {
-	cluster := &redkeyv1beta1.RedkeyCluster{}
+) (*redkeyv1beta1.Redkey, error) {
+	cluster := &redkeyv1beta1.Redkey{}
 	if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); err != nil {
 		return nil, err
 	}
 	return cluster, nil
 }
 
-// ScaleCluster updates spec.primaries on the RedkeyCluster, retrying on conflicts and on
+// ScaleCluster updates spec.primaries on the Redkey, retrying on conflicts and on
 // validation errors raised while the cluster is not yet Ready (the operator/Robin may reject a
 // topology change until the cluster stabilizes).
 func ScaleCluster(ctx context.Context, c client.Client, namespace, name string, primaries int32) error {
 	return wait.PollUntilContextTimeout(ctx, 3*time.Second, scaleAckTimeout, true,
 		func(ctx context.Context) (bool, error) {
 			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				cluster := &redkeyv1beta1.RedkeyCluster{}
+				cluster := &redkeyv1beta1.Redkey{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); err != nil {
 					return err
 				}

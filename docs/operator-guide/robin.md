@@ -12,7 +12,7 @@ Robin is designed to help the Operator (Batman) in its duties, in particular:
 - Provide Redkey Cluster prometheus metrics
 - FUTURE WORK
 
-The Operator deploys a Deployment and a ConfigMap for Robin given the configuration provided in `spec.robin` for each Redkey Cluster, if configured. The operator is responsible of reconcile any addition, update or delete in the `spec.robin` of a RedkeyCluster.
+The Operator deploys a Deployment and a ConfigMap for Robin given the configuration provided in `spec.robin` for each Redkey Cluster, if configured. The operator is responsible of reconcile any addition, update or delete in the `spec.robin` of a Redkey.
 
 ## How to deploy Robin
 
@@ -80,7 +80,7 @@ The template supports the following overrides:
 
 ## How to configure Robin
 
-Robin's operational settings are configured through the structured object `spec.robin.config`. Unlike `image`, `resources` and `template` (which are part of the Robin Deployment's pod template), the values under `spec.robin.config` are propagated by the Operator into the `RedkeyClusterConfig` resource and **hot-reloaded by Robin at runtime without recreating the Pod** — see the [Dynamic Configuration](#dynamic-configuration) section below.
+Robin's operational settings are configured through the structured object `spec.robin.config`. Unlike `image`, `resources` and `template` (which are part of the Robin Deployment's pod template), the values under `spec.robin.config` are propagated by the Operator into the `RedkeyConfig` resource and **hot-reloaded by Robin at runtime without recreating the Pod** — see the [Dynamic Configuration](#dynamic-configuration) section below.
 
 All subfields are optional. Any value omitted from the CR keeps Robin's built-in (or CLI-provided) startup default.
 
@@ -109,7 +109,7 @@ All subfields are optional. Any value omitted from the CR keeps Robin's built-in
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -160,12 +160,12 @@ Please refer to [Redkey Robin](https://github.com/InditexTech/redkeyrobin/docs/d
 
 ## Authentication
 
-Robin authenticates to Redis using a password stored in a Kubernetes Secret. The secret name is configured declaratively in `spec.auth.secret` of the `RedkeyCluster` — no CLI flags or environment variables are required.
+Robin authenticates to Redis using a password stored in a Kubernetes Secret. The secret name is configured declaratively in `spec.auth.secret` of the `Redkey` — no CLI flags or environment variables are required.
 
 For full details on creating the Secret, configuring auth, password rotation, and troubleshooting, see the [Redis Authentication](authentication.md) guide.
 
 ## Dynamic Configuration
 
-All Robin operational settings (`reconciler.intervalSeconds`, `reconciler.intervalOnErrorSeconds`, `reconciler.intervalOnWaitSeconds`, `metrics.collectionIntervalSeconds`, `metrics.redisInfoKeys`, `metrics.metricsLabels`, connection retries, and the auth secret reference) are applied **at runtime without a Pod restart**. Robin continuously polls `RedkeyClusterConfig` resources and updates its internal state when new configurations are detected. If a reconciler interval is omitted from the CR, Robin keeps its startup value; for `intervalOnWaitSeconds` that startup default is 10 seconds unless overridden via CLI. Changing `metricsLabels` values is applied on the next metrics cycle; adding or removing label keys resets only Robin's RedKey metrics registry so Prometheus can ingest the new label schema.
+All Robin operational settings (`reconciler.intervalSeconds`, `reconciler.intervalOnErrorSeconds`, `reconciler.intervalOnWaitSeconds`, `metrics.collectionIntervalSeconds`, `metrics.redisInfoKeys`, `metrics.metricsLabels`, connection retries, and the auth secret reference) are applied **at runtime without a Pod restart**. Robin continuously polls `RedkeyConfig` resources and updates its internal state when new configurations are detected. If a reconciler interval is omitted from the CR, Robin keeps its startup value; for `intervalOnWaitSeconds` that startup default is 10 seconds unless overridden via CLI. Changing `metricsLabels` values is applied on the next metrics cycle; adding or removing label keys resets only Robin's RedKey metrics registry so Prometheus can ingest the new label schema.
 
 For a complete explanation of the hot-reload mechanism, propagation timing, and examples, see the [Dynamic Configuration](dynamic-configuration.md) guide.

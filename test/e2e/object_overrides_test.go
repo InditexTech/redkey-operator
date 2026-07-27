@@ -59,7 +59,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 		const clusterName = "overrides-sts"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("applies pod template and metadata overrides while preserving identity", func() {
@@ -88,7 +88,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 					},
 				},
 			})
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -132,7 +132,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 		const clusterName = "overrides-svc"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("applies extra ports and annotations while remaining headless", func() {
@@ -148,7 +148,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 					},
 				},
 			})
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -187,7 +187,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 		const clusterName = "overrides-transition"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("adds overrides on update and reverts cleanly when removed", func() {
@@ -195,7 +195,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 
 			By("creating a cluster without any override")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key, framework.CreationTimeout)
@@ -211,7 +211,7 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 			Expect(hasServicePort(svc, "metrics")).To(BeFalse())
 
 			By("updating the cluster to add StatefulSet and Service overrides")
-			Expect(updateOverride(ctx, key, &redkeyv1beta1.RedkeyClusterOverrideSpec{
+			Expect(updateOverride(ctx, key, &redkeyv1beta1.RedkeyOverrideSpec{
 				StatefulSet: &redkeyv1beta1.PartialStatefulSet{
 					Metadata: metav1.ObjectMeta{
 						Annotations: map[string]string{"backup.io/enabled": "true"},
@@ -321,10 +321,10 @@ var _ = Describe("Object Overrides", Ordered, Label("overrides"), func() {
 // updateOverride refetches the cluster and sets spec.override, retrying on
 // optimistic-concurrency conflicts caused by the operator mutating the object.
 func updateOverride(
-	ctx context.Context, key types.NamespacedName, override *redkeyv1beta1.RedkeyClusterOverrideSpec,
+	ctx context.Context, key types.NamespacedName, override *redkeyv1beta1.RedkeyOverrideSpec,
 ) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &redkeyv1beta1.RedkeyCluster{}
+		cluster := &redkeyv1beta1.Redkey{}
 		if err := k8sClient.Get(ctx, key, cluster); err != nil {
 			return err
 		}

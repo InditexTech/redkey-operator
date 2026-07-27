@@ -54,21 +54,21 @@ func CreateNamespace(ctx context.Context, c client.Client, prefix string) (*core
 	return ns, nil
 }
 
-// DeleteNamespace cleans up RedkeyCluster CRs (removing finalizers) and deletes the namespace.
+// DeleteNamespace cleans up Redkey CRs (removing finalizers) and deletes the namespace.
 func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace) error {
 	if ns == nil {
 		return nil
 	}
 
-	// Remove any RedkeyCluster CRs so their finalizers don't stall deletion
-	var clusterList redkeyv1beta1.RedkeyClusterList
+	// Remove any Redkey CRs so their finalizers don't stall deletion
+	var clusterList redkeyv1beta1.RedkeyList
 	if err := c.List(ctx, &clusterList, &client.ListOptions{Namespace: ns.Name}); err == nil {
 		for i := range clusterList.Items {
 			name := clusterList.Items[i].Name
 			namespace := clusterList.Items[i].Namespace
 
 			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				rc := &redkeyv1beta1.RedkeyCluster{}
+				rc := &redkeyv1beta1.Redkey{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rc); err != nil {
 					return err
 				}
@@ -76,21 +76,21 @@ func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace)
 				return c.Update(ctx, rc)
 			})
 
-			_ = c.Delete(ctx, &redkeyv1beta1.RedkeyCluster{
+			_ = c.Delete(ctx, &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			})
 		}
 	}
 
 	// Also remove finalizers from configs
-	var configList redkeyv1beta1.RedkeyClusterConfigList
+	var configList redkeyv1beta1.RedkeyConfigList
 	if err := c.List(ctx, &configList, &client.ListOptions{Namespace: ns.Name}); err == nil {
 		for i := range configList.Items {
 			name := configList.Items[i].Name
 			namespace := configList.Items[i].Namespace
 
 			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				cfg := &redkeyv1beta1.RedkeyClusterConfig{}
+				cfg := &redkeyv1beta1.RedkeyConfig{}
 				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cfg); err != nil {
 					return err
 				}

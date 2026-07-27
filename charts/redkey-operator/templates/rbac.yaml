@@ -130,7 +130,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - create
   - delete
@@ -142,21 +142,13 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/finalizers
+  - redkeys/finalizers
   verbs:
   - update
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/scale
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - redkey.inditex.dev
-  resources:
-  - redkeyclusters/status
+  - redkeys/scale
   verbs:
   - get
   - patch
@@ -164,7 +156,15 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs
+  - redkeys/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs
   verbs:
   - create
   - delete
@@ -174,7 +174,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs/status
+  - redkeyconfigs/status
   verbs:
   - get
   - patch
@@ -231,7 +231,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - create
   - delete
@@ -243,13 +243,13 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/status
+  - redkeys/status
   verbs:
   - get
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs
+  - redkeyconfigs
   verbs:
   - get
   - list
@@ -257,7 +257,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs/status
+  - redkeyconfigs/status
   verbs:
   - get
 ---
@@ -272,7 +272,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - get
   - list
@@ -280,13 +280,13 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/status
+  - redkeys/status
   verbs:
   - get
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs
+  - redkeyconfigs
   verbs:
   - get
   - list
@@ -294,7 +294,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusterconfigs/status
+  - redkeyconfigs/status
   verbs:
   - get
 {{- end }}

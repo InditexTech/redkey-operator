@@ -47,19 +47,19 @@ func envDurationSeconds(key string, defaultSeconds int) time.Duration {
 	return time.Duration(defaultSeconds) * time.Second
 }
 
-// WaitForClusterPhase waits until the RedkeyCluster has the specified .status.phase.
+// WaitForClusterPhase waits until the Redkey has the specified .status.phase.
 func WaitForClusterPhase(
 	ctx context.Context,
 	c client.Client,
 	key types.NamespacedName,
 	desiredPhase string,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyCluster, error) {
+) (*redkeyv1beta1.Redkey, error) {
 	var lastPhase string
 
 	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
 		func(ctx context.Context) (bool, error) {
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			if err := c.Get(ctx, key, cluster); err != nil {
 				return false, nil // keep polling
 			}
@@ -74,26 +74,26 @@ func WaitForClusterPhase(
 			key.Name, desiredPhase, lastPhase, err)
 	}
 
-	cluster := &redkeyv1beta1.RedkeyCluster{}
+	cluster := &redkeyv1beta1.Redkey{}
 	if err := c.Get(ctx, key, cluster); err != nil {
 		return nil, err
 	}
 	return cluster, nil
 }
 
-// WaitForClusterStatus waits until the RedkeyCluster has the specified .status.status.
+// WaitForClusterStatus waits until the Redkey has the specified .status.status.
 func WaitForClusterStatus(
 	ctx context.Context,
 	c client.Client,
 	key types.NamespacedName,
 	desiredStatus string,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyCluster, error) {
+) (*redkeyv1beta1.Redkey, error) {
 	var lastStatus string
 
 	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
 		func(ctx context.Context) (bool, error) {
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			if err := c.Get(ctx, key, cluster); err != nil {
 				return false, nil
 			}
@@ -105,26 +105,26 @@ func WaitForClusterStatus(
 			key.Name, desiredStatus, lastStatus, err)
 	}
 
-	cluster := &redkeyv1beta1.RedkeyCluster{}
+	cluster := &redkeyv1beta1.Redkey{}
 	if err := c.Get(ctx, key, cluster); err != nil {
 		return nil, err
 	}
 	return cluster, nil
 }
 
-// WaitForConfigPhase waits until the RedkeyClusterConfig with the given key has the desired configPhase.
+// WaitForConfigPhase waits until the RedkeyConfig with the given key has the desired configPhase.
 func WaitForConfigPhase(
 	ctx context.Context,
 	c client.Client,
 	key types.NamespacedName,
 	desiredPhase string,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyClusterConfig, error) {
+) (*redkeyv1beta1.RedkeyConfig, error) {
 	var lastPhase string
 
 	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
 		func(ctx context.Context) (bool, error) {
-			config := &redkeyv1beta1.RedkeyClusterConfig{}
+			config := &redkeyv1beta1.RedkeyConfig{}
 			if err := c.Get(ctx, key, config); err != nil {
 				return false, nil
 			}
@@ -136,7 +136,7 @@ func WaitForConfigPhase(
 			key.Name, desiredPhase, lastPhase, err)
 	}
 
-	config := &redkeyv1beta1.RedkeyClusterConfig{}
+	config := &redkeyv1beta1.RedkeyConfig{}
 	if err := c.Get(ctx, key, config); err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func WaitForClusterReady(
 	c client.Client,
 	key types.NamespacedName,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyCluster, error) {
+) (*redkeyv1beta1.Redkey, error) {
 	return WaitForClusterPhase(ctx, c, key, redkeyv1beta1.PhaseReady, timeout)
 }
 
@@ -196,13 +196,13 @@ func WaitForActiveConfigApplied(
 	c client.Client,
 	clusterName, namespace string,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyClusterConfig, error) {
+) (*redkeyv1beta1.RedkeyConfig, error) {
 	var lastPhase string
 	var lastConfigName string
 
 	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
 		func(ctx context.Context) (bool, error) {
-			configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			configs := &redkeyv1beta1.RedkeyConfigList{}
 			if err := c.List(ctx, configs, client.InNamespace(namespace),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 				return false, nil
@@ -212,7 +212,7 @@ func WaitForActiveConfigApplied(
 			}
 
 			// Find highest-sequence config
-			var active *redkeyv1beta1.RedkeyClusterConfig
+			var active *redkeyv1beta1.RedkeyConfig
 			maxSeq := -1
 			for i := range configs.Items {
 				if configs.Items[i].Spec.Sequence > maxSeq {
@@ -234,12 +234,12 @@ func WaitForActiveConfigApplied(
 	}
 
 	// Return the final config
-	configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+	configs := &redkeyv1beta1.RedkeyConfigList{}
 	if err := c.List(ctx, configs, client.InNamespace(namespace),
 		client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 		return nil, err
 	}
-	var active *redkeyv1beta1.RedkeyClusterConfig
+	var active *redkeyv1beta1.RedkeyConfig
 	maxSeq := -1
 	for i := range configs.Items {
 		if configs.Items[i].Spec.Sequence > maxSeq {
@@ -265,13 +265,13 @@ func WaitForActiveConfigAppliedTopology(
 	clusterName, namespace string,
 	expectedPrimaries, expectedReplicasPerPrimary int,
 	timeout time.Duration,
-) (*redkeyv1beta1.RedkeyClusterConfig, error) {
+) (*redkeyv1beta1.RedkeyConfig, error) {
 	var lastPhase, lastConfigName string
 	var lastPrimaries, lastReplicas int32
 
 	err := wait.PollUntilContextTimeout(ctx, DefaultPollInterval, timeout, true,
 		func(ctx context.Context) (bool, error) {
-			configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			configs := &redkeyv1beta1.RedkeyConfigList{}
 			if err := c.List(ctx, configs, client.InNamespace(namespace),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 				return false, nil
@@ -280,7 +280,7 @@ func WaitForActiveConfigAppliedTopology(
 				return false, nil
 			}
 
-			var active *redkeyv1beta1.RedkeyClusterConfig
+			var active *redkeyv1beta1.RedkeyConfig
 			maxSeq := -1
 			for i := range configs.Items {
 				if configs.Items[i].Spec.Sequence > maxSeq {
@@ -312,13 +312,13 @@ func WaitForActiveConfigAppliedTopology(
 	return WaitForActiveConfigApplied(ctx, c, clusterName, namespace, timeout)
 }
 
-// ListConfigs returns all RedkeyClusterConfigs for a cluster, sorted by sequence.
+// ListConfigs returns all RedkeyConfigs for a cluster, sorted by sequence.
 func ListConfigs(
 	ctx context.Context,
 	c client.Client,
 	clusterName, namespace string,
-) ([]redkeyv1beta1.RedkeyClusterConfig, error) {
-	configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+) ([]redkeyv1beta1.RedkeyConfig, error) {
+	configs := &redkeyv1beta1.RedkeyConfigList{}
 	if err := c.List(ctx, configs, client.InNamespace(namespace),
 		client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 		return nil, err
@@ -336,7 +336,7 @@ func ListConfigs(
 	return items, nil
 }
 
-// SetClusterConfigStatus sets the status.status field of the active RedkeyClusterConfig for a cluster.
+// SetClusterConfigStatus sets the status.status field of the active RedkeyConfig for a cluster.
 // This can be used to put Robin into Maintenance mode or restore it to Ready.
 func SetClusterConfigStatus(
 	ctx context.Context,
@@ -344,17 +344,17 @@ func SetClusterConfigStatus(
 	clusterName, namespace string,
 	status string,
 ) error {
-	configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+	configs := &redkeyv1beta1.RedkeyConfigList{}
 	if err := c.List(ctx, configs, client.InNamespace(namespace),
 		client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 		return fmt.Errorf("listing configs for cluster %s: %w", clusterName, err)
 	}
 	if len(configs.Items) == 0 {
-		return fmt.Errorf("no RedkeyClusterConfig found for cluster %s in namespace %s", clusterName, namespace)
+		return fmt.Errorf("no RedkeyConfig found for cluster %s in namespace %s", clusterName, namespace)
 	}
 
 	// Find highest-sequence config (active)
-	var active *redkeyv1beta1.RedkeyClusterConfig
+	var active *redkeyv1beta1.RedkeyConfig
 	maxSeq := -1
 	for i := range configs.Items {
 		if configs.Items[i].Spec.Sequence > maxSeq {

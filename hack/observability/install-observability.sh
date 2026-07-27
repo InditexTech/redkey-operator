@@ -37,7 +37,7 @@ kubectl apply -f "${SCRIPT_DIR}/servicemonitors.yaml"
 # 5. Generate and apply Grafana dashboards ConfigMap
 echo "  Creating Grafana dashboards ConfigMap..."
 OPERATOR_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-operator.json")
-CLUSTER_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-cluster.json")
+INSTANCE_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-instance.json")
 ROBIN_DASHBOARD=$(cat "${SCRIPT_DIR}/dashboards/redkey-robin.json")
 
 cat <<EOF | kubectl apply -f -
@@ -53,8 +53,8 @@ metadata:
 data:
   redkey-operator.json: |
 $(echo "${OPERATOR_DASHBOARD}" | sed 's/^/    /')
-  redkey-cluster.json: |
-$(echo "${CLUSTER_DASHBOARD}" | sed 's/^/    /')
+  redkey-instance.json: |
+$(echo "${INSTANCE_DASHBOARD}" | sed 's/^/    /')
   redkey-robin.json: |
 $(echo "${ROBIN_DASHBOARD}" | sed 's/^/    /')
 EOF
@@ -81,7 +81,7 @@ for i in $(seq 1 30); do
 done
 
 # Wait up to 60 s for the sidecar to write and register the dashboards
-for uid in redkey-operator redkey-cluster redkey-robin; do
+for uid in redkey-operator redkey-instance redkey-robin; do
   for i in $(seq 1 30); do
     STATUS=$(curl -sf -u "${GRAFANA_USER}:${GRAFANA_PASS}" \
       "${GRAFANA_URL}/api/dashboards/uid/${uid}" \
@@ -94,7 +94,7 @@ for uid in redkey-operator redkey-cluster redkey-robin; do
 done
 
 # Star the dashboards for the admin user (Grafana 10+ supports uid-based endpoint)
-for uid in redkey-operator redkey-cluster redkey-robin; do
+for uid in redkey-operator redkey-instance redkey-robin; do
   STATUS=$(curl -sf -X POST -u "${GRAFANA_USER}:${GRAFANA_PASS}" \
     "${GRAFANA_URL}/api/user/stars/dashboard/uid/${uid}" \
     -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")

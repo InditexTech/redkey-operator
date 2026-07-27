@@ -65,7 +65,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 	updateClusterImage := func(clusterName, newImage string) {
 		key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
-		configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+		configs := &redkeyv1beta1.RedkeyConfigList{}
 		Expect(k8sClient.List(ctx, configs, client.InNamespace(clusterNs),
 			client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName})).To(Succeed())
 		prevMaxSeq := 0
@@ -76,7 +76,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		}
 
 		Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			if err := k8sClient.Get(ctx, key, cluster); err != nil {
 				return err
 			}
@@ -85,7 +85,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		})).To(Succeed())
 
 		Eventually(func() bool {
-			cfgs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			cfgs := &redkeyv1beta1.RedkeyConfigList{}
 			if err := k8sClient.List(ctx, cfgs, client.InNamespace(clusterNs),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 				return false
@@ -102,7 +102,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 	updateClusterAuthAndImage := func(clusterName, secretName, newImage string) {
 		key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
-		configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+		configs := &redkeyv1beta1.RedkeyConfigList{}
 		Expect(k8sClient.List(ctx, configs, client.InNamespace(clusterNs),
 			client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName})).To(Succeed())
 		prevMaxSeq := 0
@@ -113,7 +113,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		}
 
 		Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			if err := k8sClient.Get(ctx, key, cluster); err != nil {
 				return err
 			}
@@ -123,7 +123,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		})).To(Succeed())
 
 		Eventually(func() bool {
-			cfgs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			cfgs := &redkeyv1beta1.RedkeyConfigList{}
 			if err := k8sClient.List(ctx, cfgs, client.InNamespace(clusterNs),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 				return false
@@ -220,7 +220,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create an authenticated cluster and insert data", func() {
@@ -232,7 +232,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithAuth(secretName)
 			opts.PurgeKeysOnRebalance = new(false)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForUpgradeComplete(clusterName, 3, password)
@@ -286,7 +286,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create an authenticated ephemeral cluster", func() {
@@ -299,7 +299,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 				WithAuth(secretName)
 			opts.PurgeKeysOnRebalance = new(true)
 
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForUpgradeComplete(clusterName, 3, password)
@@ -349,7 +349,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster without auth and insert data", func() {
@@ -360,7 +360,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			By("creating a cluster without auth")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.PurgeKeysOnRebalance = new(false)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForUpgradeComplete(clusterName, 3)
@@ -410,7 +410,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create an authenticated cluster with replicas and insert data", func() {
@@ -422,7 +422,7 @@ var _ = Describe("Authentication and Upgrade", Ordered, Label("auth", "upgrade")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithReplicas(1).
 				WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForUpgradeComplete(clusterName, 6, password)

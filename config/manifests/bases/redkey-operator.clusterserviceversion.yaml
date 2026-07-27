@@ -9,7 +9,7 @@ metadata:
       [
         {
           "apiVersion": "redkey.inditex.dev/v1beta1",
-          "kind": "RedkeyCluster",
+          "kind": "Redkey",
           "metadata": {
             "name": "redis-cluster-example"
           },
@@ -40,10 +40,10 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: RedkeyCluster is the Schema for the redkeyclusters API
-      displayName: Redkey Cluster
-      kind: RedkeyCluster
-      name: redkeyclusters.redkey.inditex.dev
+    - description: Redkey is the Schema for the redkeys API
+      displayName: Redkey
+      kind: Redkey
+      name: redkeys.redkey.inditex.dev
       specDescriptors:
       - description: ReplicasPerPrimary specifies how many replicas should be attached
           to each Redis Primary node
@@ -51,23 +51,23 @@ spec:
         path: replicasPerPrimary
       version: ""
     - description: |-
-        RedkeyClusterConfig is the Schema for the redkeyclusterconfigs API.
+        RedkeyConfig is the Schema for the redkeyconfigs API.
         It represents a sequenced desired-state snapshot created by the Operator and consumed by Robin.
-      displayName: Redkey Cluster Config
-      kind: RedkeyClusterConfig
-      name: redkeyclusterconfigs.redkey.inditex.dev
+      displayName: Redkey Config
+      kind: RedkeyConfig
+      name: redkeyconfigs.redkey.inditex.dev
       version: v1beta1
     - description: |-
-        RedkeyClusterConfig is the Schema for the redkeyclusterconfigs API.
+        RedkeyConfig is the Schema for the redkeyconfigs API.
         It represents a sequenced desired-state snapshot created by the Operator and consumed by Robin.
-      displayName: Redkey Cluster Config
-      kind: RedkeyClusterConfig
-      name: redkeyclusterconfigs.redkey.inditex.dev
+      displayName: Redkey Config
+      kind: RedkeyConfig
+      name: redkeyconfigs.redkey.inditex.dev
       version: v1beta1
-    - description: RedkeyCluster is the Schema for the redkeyclusters API.
-      displayName: Redkey Cluster
-      kind: RedkeyCluster
-      name: redkeyclusters.redkey.inditex.dev
+    - description: Redkey is the Schema for the redkeys API.
+      displayName: Redkey
+      kind: Redkey
+      name: redkeys.redkey.inditex.dev
       version: v1beta1
   description: |
     Seamless Redkey Cluster Management on Kubernetes.

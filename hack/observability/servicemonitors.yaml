@@ -30,7 +30,7 @@ spec:
       interval: 15s
 ---
 # PodMonitor for Redkey Robin instances.
-# Robin is deployed as a standalone Deployment per RedkeyCluster.
+# Robin is deployed as a standalone Deployment per Redkey.
 # It exposes metrics on HTTP port 8080 but does NOT define container ports or a Service,
 # so we scrape the pod directly using targetPort.
 apiVersion: monitoring.coreos.com/v1

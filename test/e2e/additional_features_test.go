@@ -56,10 +56,10 @@ var _ = Describe("Additional Features", Ordered, Label("features"), func() {
 		const clusterName = "additional-redis-config"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
-		It("should propagate Redis config changes to all nodes via new RedkeyClusterConfig", func() {
+		It("should propagate Redis config changes to all nodes via new RedkeyConfig", func() {
 			By("creating a cluster with initial redis config")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.Config = `maxmemory 90mb
@@ -68,7 +68,7 @@ protected-mode no
 appendonly no
 save ""
 hz 10`
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -87,7 +87,7 @@ hz 10`
 			}
 
 			By("updating Redis config (changing hz and maxmemory-policy)")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -138,7 +138,7 @@ hz 20`
 		const clusterName = "additional-labels"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should propagate custom labels to StatefulSet pods on creation", func() {
@@ -151,7 +151,7 @@ hz 20`
 				"redkey.inditex.dev/component": "hijacked",
 			}
 			opts.Labels = &labels
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -195,7 +195,7 @@ hz 20`
 		It("should update custom labels on existing pods when spec changes", func() { //nolint:dupl
 			By("updating custom labels")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err := k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -240,7 +240,7 @@ hz 20`
 		const clusterName = "additional-annotations"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should propagate custom annotations to StatefulSet pods on creation", func() {
@@ -251,7 +251,7 @@ hz 20`
 				"prometheus.io/port":   "9121",
 			}
 			opts.Annotations = &annotations
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -283,7 +283,7 @@ hz 20`
 		It("should update custom annotations on existing pods when spec changes", func() { //nolint:dupl
 			By("updating custom annotations")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err := k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -327,7 +327,7 @@ hz 20`
 		const clusterName = "additional-pdb-change"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create PDB with correct configuration on cluster creation", func() {
@@ -337,7 +337,7 @@ hz 20`
 				Enabled:            true,
 				PdbSizeUnavailable: intstr.FromInt32(1),
 			}
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
@@ -362,7 +362,7 @@ hz 20`
 		It("should update PDB when configuration changes and remove when disabled", func() {
 			By("updating PDB maxUnavailable to 2")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err := k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			cluster.Spec.Pdb.PdbSizeUnavailable = intstr.FromInt32(2)
@@ -414,14 +414,14 @@ hz 20`
 		const clusterName = "additional-purge-false"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should preserve keys during rebalance when purgeKeysOnRebalance is false", func() {
 			By("creating an ephemeral cluster with purgeKeysOnRebalance=false")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
 			opts.PurgeKeysOnRebalance = new(false)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}

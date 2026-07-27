@@ -72,7 +72,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 		key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 
 		// Get current highest sequence before update
-		configs := &redkeyv1beta1.RedkeyClusterConfigList{}
+		configs := &redkeyv1beta1.RedkeyConfigList{}
 		Expect(k8sClient.List(ctx, configs, client.InNamespace(clusterNs),
 			client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName})).To(Succeed())
 		prevMaxSeq := 0
@@ -83,7 +83,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 		}
 
 		Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			if err := k8sClient.Get(ctx, key, cluster); err != nil {
 				return err
 			}
@@ -93,7 +93,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 
 		// Wait for the operator to create a new config with a higher sequence
 		Eventually(func() bool {
-			cfgs := &redkeyv1beta1.RedkeyClusterConfigList{}
+			cfgs := &redkeyv1beta1.RedkeyConfigList{}
 			if err := k8sClient.List(ctx, cfgs, client.InNamespace(clusterNs),
 				client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
 				return false
@@ -183,7 +183,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 		const clusterName = "upgrade-fast-ephemeral"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary cluster and reaches Ready", func() {
@@ -192,7 +192,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 			opts.ReplicasPerPrimary = 0
 			opts.PurgeKeysOnRebalance = new(true)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForUpgradeComplete(clusterName, 3)
@@ -234,7 +234,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 	) {
 		Context(description, func() {
 			AfterAll(func() {
-				_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+				_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 			})
 
 			It("creates the cluster and inserts data", func() {
@@ -246,7 +246,7 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 				opts.ReplicasPerPrimary = replicasPerPrimary
 				opts.PurgeKeysOnRebalance = new(false) // rolling upgrade
 
-				_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+				_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 				Expect(err).NotTo(HaveOccurred())
 
 				podNames := waitForUpgradeComplete(clusterName, totalNodes)

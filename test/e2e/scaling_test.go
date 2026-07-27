@@ -20,13 +20,13 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-// updateClusterTopology mutates a RedkeyCluster's spec with conflict-retry, used to
+// updateClusterTopology mutates a Redkey's spec with conflict-retry, used to
 // trigger a scaling operation.
 func updateClusterTopology(
-	ctx context.Context, key types.NamespacedName, mutate func(*redkeyv1beta1.RedkeyCluster),
+	ctx context.Context, key types.NamespacedName, mutate func(*redkeyv1beta1.Redkey),
 ) {
 	Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &redkeyv1beta1.RedkeyCluster{}
+		cluster := &redkeyv1beta1.Redkey{}
 		if err := k8sClient.Get(ctx, key, cluster); err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func waitForScaledCluster(
 	// previous, already-Applied config during the window before the operator creates the
 	// new config and return prematurely — letting a subsequent scaling spec start while
 	// this operation is still in flight and starving its timeout budget.
-	cluster := &redkeyv1beta1.RedkeyCluster{}
+	cluster := &redkeyv1beta1.Redkey{}
 	Expect(k8sClient.Get(ctx, key, cluster)).To(Succeed())
 	expectedPrimaries := int(cluster.Spec.Primaries)
 	expectedReplicasPerPrimary := int(cluster.Spec.ReplicasPerPrimary)
@@ -117,7 +117,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary cluster and reaches Ready", func() {
@@ -126,7 +126,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.ReplicasPerPrimary = 0
 			opts.PurgeKeysOnRebalance = new(false) // force normal rebalance
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
@@ -136,7 +136,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales up 3→5 primaries preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 5
 			})
 
@@ -149,7 +149,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales down 5→3 primaries preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 3
 			})
 
@@ -178,7 +178,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("converges when a non-seed node holds a leftover open slot during scale-up", func() {
@@ -188,7 +188,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.ReplicasPerPrimary = 0
 			opts.PurgeKeysOnRebalance = new(false) // force normal, data-preserving rebalance
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
@@ -197,7 +197,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			Expect(framework.InsertKeys(clusterNs, podNames[0], 50)).To(Succeed())
 
 			By("requesting a scale-up to 5 primaries")
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 5
 			})
 
@@ -243,7 +243,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("recovers instead of looping in Verifying when the target is already met", func() {
@@ -253,7 +253,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.ReplicasPerPrimary = 0
 			opts.PurgeKeysOnRebalance = new(false)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
@@ -304,7 +304,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
@@ -312,7 +312,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.Primaries = 3
 			opts.PurgeKeysOnRebalance = new(false)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 6)
@@ -320,7 +320,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales up 3→4 primaries (1 replica each) preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 4
 			})
 
@@ -333,7 +333,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales down 4→3 primaries (1 replica each) preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 3
 			})
 
@@ -352,7 +352,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary persistent cluster and reaches Ready", func() {
@@ -360,7 +360,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
@@ -368,7 +368,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales up 3→5 primaries preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 5
 			})
 
@@ -380,7 +380,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales down 5→3 primaries preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 3
 			})
 
@@ -399,14 +399,14 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica persistent cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
 			opts.Primaries = 3
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 6)
@@ -414,7 +414,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales up 3→5 primaries (1 replica each) preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 5
 			})
 
@@ -427,7 +427,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales down 5→3 primaries (1 replica each) preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 3
 			})
 
@@ -448,7 +448,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
@@ -456,7 +456,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.Primaries = 3
 			opts.PurgeKeysOnRebalance = new(false)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			// 3 primaries + 3 replicas = 6 nodes.
@@ -465,7 +465,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 1→2 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 2
 			})
 
@@ -478,7 +478,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 2→1 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 1
 			})
 
@@ -491,7 +491,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 1→0 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 0
 			})
 
@@ -504,7 +504,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 0→1 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 1
 			})
 
@@ -524,14 +524,14 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica persistent cluster and reaches Ready", func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithReplicas(1)
 			opts.Primaries = 3
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			// 3 primaries + 3 replicas = 6 nodes.
@@ -540,7 +540,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 1→0 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 0
 			})
 
@@ -553,7 +553,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 0→2 preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 2
 			})
 
@@ -575,7 +575,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica cluster with purgeKeysOnRebalance=true", func() {
@@ -583,7 +583,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.Primaries = 3
 			opts.PurgeKeysOnRebalance = new(true)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			// 3 primaries + 3 replicas = 6 nodes.
@@ -592,7 +592,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales replicas 1→0 preserving data (fast scaling blocked by existing replicas)", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.ReplicasPerPrimary = 0
 			})
 
@@ -615,7 +615,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary/1-replica cluster and reaches Ready", func() {
@@ -623,7 +623,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.Primaries = 3
 			opts.PurgeKeysOnRebalance = new(false)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			// 3 primaries + 3 replicas = 6 nodes.
@@ -632,7 +632,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("scales 3P/1R → 5P/2R simultaneously preserving data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 5
 				c.Spec.ReplicasPerPrimary = 2
 			})
@@ -655,7 +655,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a 3-primary cluster eligible for fast scaling", func() {
@@ -664,7 +664,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			opts.ReplicasPerPrimary = 0
 			opts.PurgeKeysOnRebalance = new(true)
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
@@ -672,7 +672,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("fast scales up 3→6 primaries purging data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 6
 			})
 
@@ -688,7 +688,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("fast scales down 6→3 primaries purging data", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 3
 			})
 

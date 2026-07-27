@@ -77,7 +77,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		const clusterName = "standalone-ephemeral"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a single-node standalone instance and reaches Ready", func() {
@@ -85,8 +85,8 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 			opts.Primaries = 1
 			opts.ReplicasPerPrimary = 0
 
-			By("creating the standalone RedkeyCluster")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the standalone Redkey")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -127,7 +127,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		const clusterName = "standalone-storage"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a single-node standalone instance with a PVC and reaches Ready", func() {
@@ -137,8 +137,8 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 			opts.Primaries = 1
 			opts.ReplicasPerPrimary = 0
 
-			By("creating the standalone RedkeyCluster with storage")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			By("creating the standalone Redkey with storage")
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -172,7 +172,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a single-node standalone instance", func() {
@@ -180,7 +180,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 			opts.Primaries = 1
 			opts.ReplicasPerPrimary = 0
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key(), framework.CreationTimeout)
@@ -190,7 +190,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		})
 
 		It("scales the standalone instance down to zero", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 0
 			})
 
@@ -198,7 +198,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		})
 
 		It("scales the standalone instance back up to one", func() {
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 1
 			})
 
@@ -218,7 +218,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		}
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates a single-node standalone instance", func() {
@@ -226,7 +226,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 			opts.Primaries = 1
 			opts.ReplicasPerPrimary = 0
 
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = framework.WaitForClusterReady(ctx, k8sClient, key(), framework.CreationTimeout)
@@ -237,7 +237,7 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 
 		It("applies a Redis configuration change by recycling the pod", func() {
 			By("changing the Redis configuration")
-			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.RedkeyCluster) {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Config = "maxmemory 64mb"
 			})
 
@@ -277,20 +277,20 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("creates an authenticated single-node standalone instance and reaches Ready", func() {
 			By("creating the auth secret")
 			Expect(framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)).To(Succeed())
 
-			By("creating the standalone RedkeyCluster with auth")
+			By("creating the standalone Redkey with auth")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithMode(redkeyv1beta1.ModeStandalone).
 				WithAuth(secretName)
 			opts.Primaries = 1
 			opts.ReplicasPerPrimary = 0
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -331,10 +331,10 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 	})
 
 	Context("CEL validation", func() {
-		standaloneSpec := func(name string, primaries, replicas int32) *redkeyv1beta1.RedkeyCluster {
-			return &redkeyv1beta1.RedkeyCluster{
+		standaloneSpec := func(name string, primaries, replicas int32) *redkeyv1beta1.Redkey {
+			return &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: clusterNs},
-				Spec: redkeyv1beta1.RedkeyClusterSpec{
+				Spec: redkeyv1beta1.RedkeySpec{
 					Mode:               redkeyv1beta1.ModeStandalone,
 					Primaries:          primaries,
 					ReplicasPerPrimary: replicas,
@@ -370,10 +370,10 @@ var _ = Describe("Standalone", Ordered, Label("standalone"), func() {
 			cluster := standaloneSpec("standalone-immutable-mode", 1, 0)
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 			DeferCleanup(func() {
-				_ = framework.DeleteRedkeyCluster(ctx, k8sClient, "standalone-immutable-mode", clusterNs)
+				_ = framework.DeleteRedkey(ctx, k8sClient, "standalone-immutable-mode", clusterNs)
 			})
 
-			fetched := &redkeyv1beta1.RedkeyCluster{}
+			fetched := &redkeyv1beta1.Redkey{}
 			key := types.NamespacedName{Name: "standalone-immutable-mode", Namespace: clusterNs}
 			Expect(k8sClient.Get(ctx, key, fetched)).To(Succeed())
 			fetched.Spec.Mode = redkeyv1beta1.ModeCluster

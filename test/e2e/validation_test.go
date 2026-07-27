@@ -53,13 +53,13 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 	})
 
 	Context("Invalid spec: ephemeral and storage both set", func() {
-		It("should reject a RedkeyCluster with both ephemeral=true and storage set", func() {
-			cluster := &redkeyv1beta1.RedkeyCluster{
+		It("should reject a Redkey with both ephemeral=true and storage set", func() {
+			cluster := &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalid-both-storage",
 					Namespace: clusterNs,
 				},
-				Spec: redkeyv1beta1.RedkeyClusterSpec{
+				Spec: redkeyv1beta1.RedkeySpec{
 					Primaries:            3,
 					ReplicasPerPrimary:   0,
 					Ephemeral:            true,
@@ -84,13 +84,13 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 	})
 
 	Context("Invalid spec: neither ephemeral nor storage", func() {
-		It("should reject a RedkeyCluster with neither ephemeral nor storage", func() {
-			cluster := &redkeyv1beta1.RedkeyCluster{
+		It("should reject a Redkey with neither ephemeral nor storage", func() {
+			cluster := &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalid-no-storage",
 					Namespace: clusterNs,
 				},
-				Spec: redkeyv1beta1.RedkeyClusterSpec{
+				Spec: redkeyv1beta1.RedkeySpec{
 					Primaries:          3,
 					ReplicasPerPrimary: 0,
 					Ephemeral:          false,
@@ -114,12 +114,12 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 
 	Context("Invalid spec: purgeKeysOnRebalance on non-ephemeral", func() {
 		It("should reject purgeKeysOnRebalance=true on a PVC cluster", func() {
-			cluster := &redkeyv1beta1.RedkeyCluster{
+			cluster := &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalid-purge-pvc",
 					Namespace: clusterNs,
 				},
-				Spec: redkeyv1beta1.RedkeyClusterSpec{
+				Spec: redkeyv1beta1.RedkeySpec{
 					Primaries:            3,
 					ReplicasPerPrimary:   0,
 					Ephemeral:            false,
@@ -149,12 +149,12 @@ var _ = Describe("Validation", Ordered, Label("validation"), func() {
 
 		It("should reject changes to immutable storage fields", func() {
 			By("creating a valid PVC cluster")
-			cluster := &redkeyv1beta1.RedkeyCluster{
+			cluster := &redkeyv1beta1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: clusterNs,
 				},
-				Spec: redkeyv1beta1.RedkeyClusterSpec{
+				Spec: redkeyv1beta1.RedkeySpec{
 					Primaries:            3,
 					ReplicasPerPrimary:   0,
 					Ephemeral:            false,

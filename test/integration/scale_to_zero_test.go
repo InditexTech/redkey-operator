@@ -24,17 +24,17 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 	const namespace = "default"
 	ctx := context.Background()
 
-	Context("Creating a RedkeyCluster with 0 primaries", Ordered, func() {
+	Context("Creating a Redkey with 0 primaries", Ordered, func() {
 		const clusterName = "zero-create"
 		namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 0,
 					Robin:     redisv1.RobinSpec{Image: "robin:latest"},
@@ -47,7 +47,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 			deleteCluster(ctx, clusterName, namespace)
 		})
 
-		It("should not create any RedkeyClusterConfig", func() {
+		It("should not create any RedkeyConfig", func() {
 			reconcileCluster(ctx, namespacedName)
 			configs := listConfigs(ctx, clusterName, namespace)
 			Expect(configs).To(BeEmpty())
@@ -70,7 +70,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 		})
 
 		It("should set status to Ready with 0 replicas", func() {
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			Expect(cluster.Status.Phase).To(Equal(redisv1.PhaseReady))
 			Expect(cluster.Status.Replicas).To(Equal(int32(0)))
@@ -84,7 +84,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 			configs := listConfigs(ctx, clusterName, namespace)
 			Expect(configs).To(BeEmpty())
 
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			Expect(cluster.Status.Phase).To(Equal(redisv1.PhaseReady))
 		})
@@ -115,7 +115,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 
 		It("should create a config with primaries=0 when scaled to zero", func() {
 			// Scale to 0
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Primaries = 0
 			Expect(k8sClient.Update(ctx, &cluster)).To(Succeed())
@@ -162,7 +162,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 		})
 
 		It("should set status to Ready with 0 replicas after cleanup", func() {
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			Expect(cluster.Status.Phase).To(Equal(redisv1.PhaseReady))
 			Expect(cluster.Status.Replicas).To(Equal(int32(0)))
@@ -176,12 +176,12 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 
 		BeforeAll(func() {
 			// Create a cluster with 0 primaries
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 0,
 					Robin:     redisv1.RobinSpec{Image: "robin:latest"},
@@ -197,7 +197,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 
 		It("should create configs and Robin when scaled up from zero", func() {
 			// Scale to 3
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Primaries = 3
 			Expect(k8sClient.Update(ctx, &cluster)).To(Succeed())
@@ -232,12 +232,12 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 		namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
 		BeforeAll(func() {
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 0,
 					Robin:     redisv1.RobinSpec{Image: "robin:latest"},
@@ -252,7 +252,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 		})
 
 		It("should have Ready=True condition with ScaledToZero reason", func() {
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 
 			var readyCond *metav1.Condition
@@ -268,7 +268,7 @@ var _ = Describe("Scale to Zero Reconciliation", func() {
 		})
 
 		It("should have ConfigPending=False and Error=False", func() {
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 
 			for _, cond := range cluster.Status.Conditions {

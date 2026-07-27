@@ -31,8 +31,8 @@ path = [
     "docs/images/redkey-operator-robin.png",
     "go.sum",
     "test/cmd/data_44kl.txt",
-    "config/crd/bases/redkey.inditex.dev_redkeyclusterconfigs.yaml",
-    "config/crd/bases/redkey.inditex.dev_redkeyclusters.yaml",
+    "config/crd/bases/redkey.inditex.dev_redkeyconfigs.yaml",
+    "config/crd/bases/redkey.inditex.dev_redkeys.yaml",
     "config/rbac/role.yaml",
     "docs/proposals/images/redkey-logo.png",
 ]

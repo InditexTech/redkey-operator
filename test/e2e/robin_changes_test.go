@@ -56,13 +56,13 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 		const clusterName = "robin-image-change"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should update the Robin Deployment when spec.robin.image changes", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -81,7 +81,7 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 
 			By("updating Robin image with a different tag")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -122,13 +122,13 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 		const clusterName = "robin-resources-change"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should update Robin Deployment resources when spec.robin.resources changes", func() {
 			By("creating a cluster with default Robin resources")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -143,7 +143,7 @@ var _ = Describe("Robin Deployment Changes", Ordered, Label("robin-changes"), fu
 
 			By("updating Robin resources")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 

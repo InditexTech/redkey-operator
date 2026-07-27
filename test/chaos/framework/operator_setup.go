@@ -249,22 +249,22 @@ func operatorPolicyRules() []rbacv1.PolicyRule {
 		},
 		{
 			APIGroups: []string{"redkey.inditex.dev"},
-			Resources: []string{"redkeyclusterconfigs"},
+			Resources: []string{"redkeyconfigs"},
 			Verbs:     []string{"create", "delete", "get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{"redkey.inditex.dev"},
-			Resources: []string{"redkeyclusterconfigs/status", "redkeyclusters/scale", "redkeyclusters/status"},
+			Resources: []string{"redkeyconfigs/status", "redkeys/scale", "redkeys/status"},
 			Verbs:     []string{"get", "patch", "update"},
 		},
 		{
 			APIGroups: []string{"redkey.inditex.dev"},
-			Resources: []string{"redkeyclusters"},
+			Resources: []string{"redkeys"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 		},
 		{
 			APIGroups: []string{"redkey.inditex.dev"},
-			Resources: []string{"redkeyclusters/finalizers"},
+			Resources: []string{"redkeys/finalizers"},
 			Verbs:     []string{"update"},
 		},
 	}

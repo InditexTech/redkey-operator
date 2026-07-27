@@ -12,7 +12,7 @@ This document describes the Redis image/configuration upgrade mechanism implemen
 
 > **IMPORTANT**: This upgrade mechanism assumes **compatible images** (same major version or known-compatible minor/patch upgrades). For major version upgrades with breaking changes (e.g., Redis 7 → Redis 8 with incompatible RDB format), use the **side-by-side migration strategy** (create a destination cluster and migrate data externally).
 
-The mechanism triggers when a new `RedkeyClusterConfig` changes any field that alters the
+The mechanism triggers when a new `RedkeyConfig` changes any field that alters the
 Redis pod template while the cluster is in `Ready` status. This includes not only the
 `image`, `version`, and `redisConfig` fields, but also `resources`, `labels`,
 `annotations`, `override`, and `pdb`. Any of these changes recycles the pods through the
@@ -146,7 +146,7 @@ to reconcile retries and restarts.
 
 ## Observability
 
-During upgrade, the `RedkeyClusterConfig` status tracks progress:
+During upgrade, the `RedkeyConfig` status tracks progress:
 
 ```yaml
 status:
@@ -179,7 +179,7 @@ Robin logs all state transitions with structured fields including partition numb
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -188,4 +188,4 @@ spec:
   image: redis:7.4.2  # Change from redis:7.2.5
 ```
 
-The operator creates a new `RedkeyClusterConfig` with the updated image. Robin detects the change, transitions to `Upgrading`, and executes the Rolling N+1 strategy (since `purgeKeysOnRebalance` is not set to `true`).
+The operator creates a new `RedkeyConfig` with the updated image. Robin detects the change, transitions to `Upgrading`, and executes the Rolling N+1 strategy (since `purgeKeysOnRebalance` is not set to `true`).

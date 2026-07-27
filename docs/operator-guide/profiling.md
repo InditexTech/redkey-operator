@@ -192,15 +192,15 @@ go tool pprof http://localhost:6060/debug/pprof/heap
 
 ## Profiling Robin
 
-Robin exposes pprof on the same port as Prometheus metrics (**8080** by default). It supports **hot-toggle without restart** via the RedkeyCluster CRD.
+Robin exposes pprof on the same port as Prometheus metrics (**8080** by default). It supports **hot-toggle without restart** via the Redkey CRD.
 
 ### Enabling via CRD (recommended — hot-toggle)
 
-Set `spec.robin.config.profiling.enabled: true` in the RedkeyCluster resource:
+Set `spec.robin.config.profiling.enabled: true` in the Redkey resource:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -210,7 +210,7 @@ spec:
         enabled: true
 ```
 
-The operator propagates this to the `RedkeyClusterConfig` CRD. Robin's reconciler picks it up on the next cycle (default 30s) and **activates pprof endpoints without restart**. To disable, set `enabled: false` or remove the field.
+The operator propagates this to the `RedkeyConfig` CRD. Robin's reconciler picks it up on the next cycle (default 30s) and **activates pprof endpoints without restart**. To disable, set `enabled: false` or remove the field.
 
 ### Enabling via command-line flag (bootstrap default)
 

@@ -44,7 +44,7 @@ import (
 )
 
 const (
-	USER_AGENT_NAME    = "redkey-cluster-operator"
+	USER_AGENT_NAME    = "redkey-operator"
 	USER_AGENT_VERSION = "0.2.0"
 )
 
@@ -118,9 +118,9 @@ func main() {
 	flag.StringVar(&pprofAddr, "pprof-bind-address", ":6060",
 		"The address the pprof endpoint binds to (only used when --enable-pprof is set).")
 	flag.DurationVar(&resyncInterval, "resync-interval", 5*time.Minute,
-		"Periodic resync interval for the RedkeyCluster controller as a safety net (e.g. 5m, 10m).")
+		"Periodic resync interval for the Redkey controller as a safety net (e.g. 5m, 10m).")
 	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 10,
-		"Maximum number of RedkeyCluster reconciles to run concurrently. "+
+		"Maximum number of Redkey reconciles to run concurrently. "+
 			"Higher values prevent a slow or backing-off cluster from starving the others.")
 
 	// Keep console logs as the default output while preserving production log levels
@@ -274,13 +274,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.RedkeyClusterReconciler{
+	if err := (&controller.RedkeyReconciler{
 		Client:                  mgr.GetClient(),
 		Scheme:                  mgr.GetScheme(),
 		ResyncInterval:          resyncInterval,
 		MaxConcurrentReconciles: maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RedkeyCluster")
+		setupLog.Error(err, "unable to create controller", "controller", "Redkey")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

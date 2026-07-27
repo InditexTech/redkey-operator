@@ -47,7 +47,7 @@ func GetRobinImage() string {
 	return "redkey-robin:latest"
 }
 
-// ClusterOptions configures a RedkeyCluster for E2E testing.
+// ClusterOptions configures a Redkey for E2E testing.
 type ClusterOptions struct {
 	Name                 string
 	Namespace            string
@@ -149,14 +149,14 @@ func (o ClusterOptions) WithServiceOverride(override *redkeyv1beta1.PartialServi
 	return o
 }
 
-// BuildRedkeyCluster creates a RedkeyCluster object from the options.
-func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
-	cluster := &redkeyv1beta1.RedkeyCluster{
+// BuildRedkey creates a Redkey object from the options.
+func (o ClusterOptions) BuildRedkey() *redkeyv1beta1.Redkey {
+	cluster := &redkeyv1beta1.Redkey{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      o.Name,
 			Namespace: o.Namespace,
 		},
-		Spec: redkeyv1beta1.RedkeyClusterSpec{
+		Spec: redkeyv1beta1.RedkeySpec{
 			Primaries:          o.Primaries,
 			ReplicasPerPrimary: o.ReplicasPerPrimary,
 			Ephemeral:          o.Ephemeral,
@@ -203,7 +203,7 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 	}
 
 	if o.StatefulSetOverride != nil || o.ServiceOverride != nil {
-		cluster.Spec.Override = &redkeyv1beta1.RedkeyClusterOverrideSpec{
+		cluster.Spec.Override = &redkeyv1beta1.RedkeyOverrideSpec{
 			StatefulSet: o.StatefulSetOverride,
 			Service:     o.ServiceOverride,
 		}
@@ -214,13 +214,13 @@ func (o ClusterOptions) BuildRedkeyCluster() *redkeyv1beta1.RedkeyCluster {
 	return cluster
 }
 
-// CreateRedkeyCluster creates a RedkeyCluster in the given namespace.
-func CreateRedkeyCluster(
+// CreateRedkey creates a Redkey in the given namespace.
+func CreateRedkey(
 	ctx context.Context, c client.Client, opts ClusterOptions,
-) (*redkeyv1beta1.RedkeyCluster, error) {
-	cluster := opts.BuildRedkeyCluster()
+) (*redkeyv1beta1.Redkey, error) {
+	cluster := opts.BuildRedkey()
 	if err := c.Create(ctx, cluster); err != nil {
-		return nil, fmt.Errorf("creating RedkeyCluster %s/%s: %w", opts.Namespace, opts.Name, err)
+		return nil, fmt.Errorf("creating Redkey %s/%s: %w", opts.Namespace, opts.Name, err)
 	}
 	return cluster, nil
 }
@@ -253,7 +253,7 @@ func UpdateAuthSecret(ctx context.Context, c client.Client, namespace, name, new
 	return c.Update(ctx, secret)
 }
 
-// GetRedisPodNames returns the pod names for a RedkeyCluster's Redis StatefulSet.
+// GetRedisPodNames returns the pod names for a Redkey's Redis StatefulSet.
 func GetRedisPodNames(
 	ctx context.Context, c client.Client, clusterName, namespace string, expectedCount int,
 ) ([]string, error) {

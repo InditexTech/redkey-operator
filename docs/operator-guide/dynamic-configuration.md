@@ -40,12 +40,12 @@ for the full classification.
 
 ## How It Works
 
-The hot-reload mechanism relies on the `RedkeyClusterConfig` CRD as the communication channel between the Operator and Robin:
+The hot-reload mechanism relies on the `RedkeyConfig` CRD as the communication channel between the Operator and Robin:
 
 ```ascii
 ┌─────────────────────┐    creates     ┌────────────────────────┐
-│  User edits         │──────────────► │  RedkeyClusterConfig   │
-│  RedkeyCluster spec │   (Operator)   │  spec.robinConfig      │
+│  User edits         │──────────────► │  RedkeyConfig   │
+│  Redkey spec │   (Operator)   │  spec.robinConfig      │
 └─────────────────────┘                │  spec.auth             │
                                        └───────────┬────────────┘
                                                    │
@@ -67,11 +67,11 @@ The hot-reload mechanism relies on the `RedkeyClusterConfig` CRD as the communic
 
 ### Step by Step
 
-1. **User updates `spec.robin.config`** in the `RedkeyCluster` resource (for example, changes `reconciler.intervalSeconds`, `reconciler.intervalOnErrorSeconds`, or `reconciler.intervalOnWaitSeconds`).
+1. **User updates `spec.robin.config`** in the `Redkey` resource (for example, changes `reconciler.intervalSeconds`, `reconciler.intervalOnErrorSeconds`, or `reconciler.intervalOnWaitSeconds`).
 
-2. **Operator detects the change** and creates a new `RedkeyClusterConfig` with an incremented sequence number, carrying the updated `robinConfig`.
+2. **Operator detects the change** and creates a new `RedkeyConfig` with an incremented sequence number, carrying the updated `robinConfig`.
 
-3. **Robin's reconciler** picks up the new `RedkeyClusterConfig` on its next tick (within the current interval).
+3. **Robin's reconciler** picks up the new `RedkeyConfig` on its next tick (within the current interval).
 
 4. **Robin writes the new values** into its in-memory `RuntimeConfig` store — a thread-safe shared structure protected by a read-write mutex.
 
@@ -83,13 +83,13 @@ The hot-reload mechanism relies on the `RedkeyClusterConfig` CRD as the communic
 
 ### No Restart Required
 
-Unlike the legacy ConfigMap-based approach (which required Pod recreation via checksum annotations), the CRD-based `robinConfig` does **not** trigger a Deployment rollout. Robin continuously watches the `RedkeyClusterConfig` resources and applies changes in-flight.
+Unlike the legacy ConfigMap-based approach (which required Pod recreation via checksum annotations), the CRD-based `robinConfig` does **not** trigger a Deployment rollout. Robin continuously watches the `RedkeyConfig` resources and applies changes in-flight.
 
 ## Example: Changing Reconciler Intervals
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -104,7 +104,7 @@ spec:
 
 After applying this change:
 
-- The Operator creates a new `RedkeyClusterConfig` (e.g. sequence 5).
+- The Operator creates a new `RedkeyConfig` (e.g. sequence 5).
 - Robin processes it within the current interval (≤ 10s in this case).
 - From that point on, Robin sleeps 30 seconds when idle, 5 seconds after errors, and 10 seconds while waiting for readiness or cluster convergence.
 
@@ -149,15 +149,15 @@ See [Redis Authentication](authentication.md) for full details on auth configura
 
 | Event | Latency |
 | ----- | ------- |
-| User applies RedkeyCluster change | Immediate (kubectl/API) |
-| Operator creates new RedkeyClusterConfig | Operator reconcile interval |
+| User applies Redkey change | Immediate (kubectl/API) |
+| Operator creates new RedkeyConfig | Operator reconcile interval |
 | Robin picks up new config | Current Robin reconciler interval |
 
 The new values take effect on the **next cycle** of the affected component after being written to `RuntimeConfig`. There is no additional delay.
 
 ## Design Principles
 
-- **Pull-based**: Robin polls `RedkeyClusterConfig` resources. There is no push notification or webhook.
+- **Pull-based**: Robin polls `RedkeyConfig` resources. There is no push notification or webhook.
 - **Thread-safe**: `RuntimeConfig` uses a read-write mutex. The reconciler is the sole writer; other components only read.
-- **Atomic**: All settings from a single `RedkeyClusterConfig` are applied together in one write.
+- **Atomic**: All settings from a single `RedkeyConfig` are applied together in one write.
 - **Monotonic**: Configs carry a sequence number. Robin always applies the highest-sequence config, ignoring stale ones.

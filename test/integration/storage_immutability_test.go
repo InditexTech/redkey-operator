@@ -16,22 +16,22 @@ import (
 	redisv1 "github.com/inditextech/redkeyoperator/api/v1beta1"
 )
 
-// These tests exercise the CEL immutability rules declared on RedkeyClusterSpec
+// These tests exercise the CEL immutability rules declared on RedkeySpec
 // (ephemeral, storage, storageClassName, accessModes). The rules are enforced by the
 // envtest API server, so attempts to change those fields after creation must be rejected.
-var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
+var _ = Describe("Redkey storage immutability (CEL)", func() {
 	const namespace = "default"
 
 	ctx := context.Background()
 
-	newPersistentCluster := func(name string) *redisv1.RedkeyCluster {
+	newPersistentCluster := func(name string) *redisv1.Redkey {
 		purgeKeys := false
-		return &redisv1.RedkeyCluster{
+		return &redisv1.Redkey{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
 			},
-			Spec: redisv1.RedkeyClusterSpec{
+			Spec: redisv1.RedkeySpec{
 				Primaries:            3,
 				Ephemeral:            false,
 				Storage:              "1Gi",
@@ -49,7 +49,7 @@ var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 		DeferCleanup(func() { deleteCluster(ctx, name, namespace) })
 
-		var fetched redisv1.RedkeyCluster
+		var fetched redisv1.Redkey
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &fetched)).To(Succeed())
 		fetched.Spec.Storage = "2Gi"
 		err := k8sClient.Update(ctx, &fetched)
@@ -63,7 +63,7 @@ var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 		DeferCleanup(func() { deleteCluster(ctx, name, namespace) })
 
-		var fetched redisv1.RedkeyCluster
+		var fetched redisv1.Redkey
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &fetched)).To(Succeed())
 		fetched.Spec.Ephemeral = true
 		err := k8sClient.Update(ctx, &fetched)
@@ -77,7 +77,7 @@ var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 		DeferCleanup(func() { deleteCluster(ctx, name, namespace) })
 
-		var fetched redisv1.RedkeyCluster
+		var fetched redisv1.Redkey
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &fetched)).To(Succeed())
 		fetched.Spec.StorageClassName = "fast"
 		err := k8sClient.Update(ctx, &fetched)
@@ -91,7 +91,7 @@ var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 		DeferCleanup(func() { deleteCluster(ctx, name, namespace) })
 
-		var fetched redisv1.RedkeyCluster
+		var fetched redisv1.Redkey
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &fetched)).To(Succeed())
 		fetched.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany}
 		err := k8sClient.Update(ctx, &fetched)
@@ -105,7 +105,7 @@ var _ = Describe("RedkeyCluster storage immutability (CEL)", func() {
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 		DeferCleanup(func() { deleteCluster(ctx, name, namespace) })
 
-		var fetched redisv1.RedkeyCluster
+		var fetched redisv1.Redkey
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &fetched)).To(Succeed())
 		fetched.Spec.Primaries = 5
 		Expect(k8sClient.Update(ctx, &fetched)).To(Succeed())

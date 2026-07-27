@@ -25,7 +25,7 @@ var _ = Describe("Configuration Creation", func() {
 
 	ctx := context.Background()
 
-	Context("When reconciling a new RedkeyCluster", Ordered, func() {
+	Context("When reconciling a new Redkey", Ordered, func() {
 		const clusterName = "config-create-basic"
 		namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
@@ -57,7 +57,7 @@ var _ = Describe("Configuration Creation", func() {
 
 		It("should create a new config when cluster spec changes", func() {
 			By("updating the cluster spec")
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cluster)).To(Succeed())
@@ -82,12 +82,12 @@ var _ = Describe("Configuration Creation", func() {
 			purgeKeys := true
 			labels := map[string]string{"team": "platform"}
 			annotations := map[string]string{"prometheus.io/scrape": "true"}
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Primaries:            3,
 					ReplicasPerPrimary:   1,
 					Ephemeral:            true,
@@ -157,12 +157,12 @@ var _ = Describe("Configuration Creation", func() {
 			collectionIntervalSeconds := 60
 			redisInfoKeys := []string{"connected_clients", "total_commands_processed"}
 			metricsLabels := map[string]string{"env": "prod", "team": "platform"}
-			cluster := &redisv1.RedkeyCluster{
+			cluster := &redisv1.Redkey{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      clusterName,
 					Namespace: namespace,
 				},
-				Spec: redisv1.RedkeyClusterSpec{
+				Spec: redisv1.RedkeySpec{
 					Ephemeral: true,
 					Primaries: 3,
 					Robin: redisv1.RobinSpec{
@@ -258,7 +258,7 @@ var _ = Describe("Configuration Creation", func() {
 			configs := listConfigs(ctx, clusterName, namespace)
 			Expect(configs).To(HaveLen(1))
 			Expect(configs[0].OwnerReferences).NotTo(BeEmpty())
-			Expect(configs[0].OwnerReferences[0].Kind).To(Equal("RedkeyCluster"))
+			Expect(configs[0].OwnerReferences[0].Kind).To(Equal("Redkey"))
 			Expect(configs[0].OwnerReferences[0].Name).To(Equal(clusterName))
 
 			// Verify it's a controller reference
@@ -285,7 +285,7 @@ var _ = Describe("Configuration Creation", func() {
 			reconcileCluster(ctx, namespacedName)
 
 			By("second spec change - creates config seq=2")
-			var cluster redisv1.RedkeyCluster
+			var cluster redisv1.Redkey
 			Expect(k8sClient.Get(ctx, namespacedName, &cluster)).To(Succeed())
 			cluster.Spec.Primaries = 5
 			Expect(k8sClient.Update(ctx, &cluster)).To(Succeed())
@@ -308,7 +308,7 @@ var _ = Describe("Configuration Creation", func() {
 		})
 	})
 
-	Context("When reconciling a deleted RedkeyCluster", func() {
+	Context("When reconciling a deleted Redkey", func() {
 		const clusterName = "config-create-notfound"
 		namespacedName := types.NamespacedName{Name: clusterName, Namespace: namespace}
 
@@ -318,7 +318,7 @@ var _ = Describe("Configuration Creation", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
-			var configList redisv1.RedkeyClusterConfigList
+			var configList redisv1.RedkeyConfigList
 			Expect(k8sClient.List(ctx, &configList,
 				client.InNamespace(namespace),
 				client.MatchingLabels{controller.ClusterLabel: clusterName},

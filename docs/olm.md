@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Test Operator deployment in Kubernetes using OLM
 
-We will describe how to deploy the Redkey Operator in a Kubernetes cluster using Operator Lifecycle Manager (OLM). Starting from OLM installation, we will deploy the operator and then create a RedkeyCluster resource to verify that the operator is working correctly.
+We will describe how to deploy the Redkey Operator in a Kubernetes cluster using Operator Lifecycle Manager (OLM). Starting from OLM installation, we will deploy the operator and then create a Redkey resource to verify that the operator is working correctly.
 
 ## Table of Contents
 
@@ -145,16 +145,16 @@ localhost-5005-redkey-operator-bundle-v0-2-0                      1/1     Runnin
 redkey-operator-controller-manager-9764b7b87-g58nk                1/1     Running     0          13s
 ```
 
-Now you can proceed to create a `RedkeyCluster` resource to verify that the operator is working correctly.
+Now you can proceed to create a `Redkey` resource to verify that the operator is working correctly.
 
 ```shell
 make deploy-sample-ephemeral
 ```
 
-and then check the status of the `RedkeyCluster`:
+and then check the status of the `Redkey`:
 
 ```shell
-$ kubectl get rkcl
+$ kubectl get rk
 NAME                    MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   PHASE
 redkey-cluster-sample   cluster   3           0          true        true        Configuring
 ```
@@ -300,16 +300,16 @@ redkey-operator-749595567c-qdq4g   1/1     Running   0          72s
 
 #### Deploy a Redkey Cluster using the Operator
 
-Use the included sample manifests to create a `RedkeyCluster` by executing the following command:
+Use the included sample manifests to create a `Redkey` by executing the following command:
 
 ```shell
 make deploy-sample-ephemeral
 ```
 
-You can check the status of the `RedkeyCluster` to see if it is being created correctly:
+You can check the status of the `Redkey` to see if it is being created correctly:
 
 ```shell
-$ kubectl get rkcl -o wide -w
+$ kubectl get rk -o wide -w
 NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS         SUBSTATUS   PARTITION
 redis-cluster-ephemeral   cluster   3           0          true        true                  false
 redis-cluster-ephemeral   cluster   3           0          true        true                  false

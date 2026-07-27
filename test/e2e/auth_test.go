@@ -66,7 +66,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a cluster with auth and propagate the auth secret to active config", func() {
@@ -74,9 +74,9 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			err := framework.CreateAuthSecret(ctx, k8sClient, clusterNs, secretName, password)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("creating the RedkeyCluster with auth")
+			By("creating the Redkey with auth")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -127,13 +127,13 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should add authentication to a running cluster without auth", func() {
 			By("creating a cluster without authentication")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -154,7 +154,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("updating the cluster to enable authentication")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -195,7 +195,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should remove authentication from a running cluster with auth", func() {
@@ -205,7 +205,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 
 			By("creating a cluster with authentication")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -222,7 +222,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("updating the cluster to remove authentication")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -257,7 +257,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should detect password change in Secret and update Redis nodes", func() {
@@ -267,7 +267,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 
 			By("creating a cluster with authentication")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready phase")
@@ -319,13 +319,13 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should add authentication to a replica cluster applying requirepass and masterauth", func() {
 			By("creating a cluster with replicas but no auth")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithReplicas(1)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -348,7 +348,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("updating the cluster to enable authentication")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			cluster.Spec.Auth = redkeyv1beta1.RedisAuth{SecretName: secretName}
@@ -416,7 +416,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should remove authentication from a replica cluster and maintain replication", func() {
@@ -428,7 +428,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithReplicas(1).
 				WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -447,7 +447,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("removing authentication")
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: clusterNs}, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			cluster.Spec.Auth = redkeyv1beta1.RedisAuth{}
@@ -498,7 +498,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should rotate password in a replica cluster maintaining replication", func() {
@@ -510,7 +510,7 @@ var _ = Describe("Authentication", Ordered, Label("auth"), func() {
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithReplicas(1).
 				WithAuth(secretName)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")

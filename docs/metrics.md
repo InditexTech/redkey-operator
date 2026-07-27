@@ -37,7 +37,7 @@ The Redkey Operator controller-manager exposes a Prometheus-compatible `/metrics
 The metrics endpoint publishes two categories of metrics:
 
 1. **Standard controller-runtime metrics** — operational health of the reconciler, work queues, and the Kubernetes API client.
-2. **Custom business metrics** (proposed) — domain-specific signals about RedkeyCluster lifecycle, configuration changes, and readiness latency.
+2. **Custom business metrics** (proposed) — domain-specific signals about Redkey lifecycle, configuration changes, and readiness latency.
 
 ## Enabling and Disabling Metrics
 
@@ -229,7 +229,7 @@ These metrics are automatically exposed by controller-runtime and require no add
 
 These standard metrics cover the **operational health** of the operator process. The most useful signals for production alerting are:
 
-- **`controller_runtime_reconcile_errors_total`** — the most direct signal that the reconciler is failing. Filter by the `redkeycluster` controller name.
+- **`controller_runtime_reconcile_errors_total`** — the most direct signal that the reconciler is failing. Filter by the `redkey` controller name.
 - **`controller_runtime_reconcile_time_seconds`** — reconcile latency. A rising trend without a corresponding increase in load may indicate slow API calls or heavier logic.
 - **`controller_runtime_reconcile_total`** — useful for distinguishing normal reconcile volume from requeue storms.
 - **`workqueue_depth` and `workqueue_retries_total`** — backlog and retries. A growing queue that does not drain indicates the controller is saturated or blocked.

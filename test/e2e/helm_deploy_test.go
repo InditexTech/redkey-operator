@@ -60,13 +60,13 @@ var _ = Describe("Helm Deployment", Ordered, Label("helm"), func() {
 		framework.CollectDebugInfoOnFailure(k8sClient, clusterNs)
 	})
 
-	It("should deploy a cluster using the redkey-cluster Helm chart and reach Ready", func() {
+	It("should deploy a cluster using the redkey Helm chart and reach Ready", func() {
 		projectDir, err := utils.GetProjectDir()
 		Expect(err).NotTo(HaveOccurred())
 
-		chartPath := filepath.Join(projectDir, "charts", "redkey-cluster")
+		chartPath := filepath.Join(projectDir, "charts", "redkey")
 
-		By("installing the redkey-cluster Helm chart")
+		By("installing the redkey Helm chart")
 		values := map[string]string{
 			"cluster.primaries":          "3",
 			"cluster.replicasPerPrimary": "0",

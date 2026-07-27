@@ -64,8 +64,8 @@ func setupChaosNamespace(prefix string, primaries int32, purgeKeysOnRebalance bo
 
 	By(fmt.Sprintf("creating Redis cluster with %d primaries (purge=%v)", primaries, purgeKeysOnRebalance))
 	opts := framework.DefaultClusterOptions(clusterName, namespace.Name, primaries, purgeKeysOnRebalance)
-	_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
-	Expect(err).NotTo(HaveOccurred(), "failed to create RedkeyCluster")
+	_, err = framework.CreateRedkey(ctx, k8sClient, opts)
+	Expect(err).NotTo(HaveOccurred(), "failed to create Redkey")
 
 	By("waiting for cluster to be ready")
 	Expect(framework.WaitForChaosReady(
@@ -463,7 +463,7 @@ func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnR
 			fmt.Sprintf("iteration %d/%d: cluster did not converge after disruption (scale-up)", i, chaosIterations))
 		d.pause()
 
-		cluster, err := framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
+		cluster, err := framework.GetRedkey(ctx, k8sClient, namespace, clusterName)
 		Expect(err).NotTo(HaveOccurred(),
 			fmt.Sprintf("iteration %d/%d: failed to get cluster after scale-up recovery", i, chaosIterations))
 		Expect(cluster.Spec.Primaries).To(Equal(newSize),
@@ -488,7 +488,7 @@ func runScalingChaos(rng *rand.Rand, namespace, clusterName string, purgeKeysOnR
 			fmt.Sprintf("iteration %d/%d: cluster did not converge after disruption (scale-down)", i, chaosIterations))
 		d.pause()
 
-		cluster, err = framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
+		cluster, err = framework.GetRedkey(ctx, k8sClient, namespace, clusterName)
 		Expect(err).NotTo(HaveOccurred(),
 			fmt.Sprintf("iteration %d/%d: failed to get cluster after scale-down recovery", i, chaosIterations))
 		Expect(cluster.Spec.Primaries).To(Equal(downSize),
@@ -622,7 +622,7 @@ func runFullChaos(rng *rand.Rand, namespace, clusterName string) string {
 		d.pause()
 
 		if scaled {
-			cluster, err := framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
+			cluster, err := framework.GetRedkey(ctx, k8sClient, namespace, clusterName)
 			Expect(err).NotTo(HaveOccurred(),
 				fmt.Sprintf("iteration %d/%d: failed to get cluster after recovery", i, chaosIterations))
 			Expect(cluster.Spec.Primaries).To(Equal(newSize),
@@ -654,7 +654,7 @@ func runFullChaos(rng *rand.Rand, namespace, clusterName string) string {
 func collectDiagnostics(namespace string) {
 	GinkgoWriter.Printf("\n=== COLLECTING DIAGNOSTICS FOR NAMESPACE %s ===\n", namespace)
 
-	cluster, err := framework.GetRedkeyCluster(ctx, k8sClient, namespace, clusterName)
+	cluster, err := framework.GetRedkey(ctx, k8sClient, namespace, clusterName)
 	if err == nil {
 		GinkgoWriter.Printf("Cluster phase: %s (status: %s)\n", cluster.Status.Phase, cluster.Status.Status)
 		GinkgoWriter.Printf("Cluster conditions: %+v\n", cluster.Status.Conditions)

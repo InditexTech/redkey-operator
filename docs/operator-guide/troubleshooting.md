@@ -176,8 +176,8 @@ fi
 cluster_redis=$1
 echo "Meeting all with all nodes: " $cluster_redis
 
-for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
-    for ip in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].status.podIP'); do
+for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
+    for ip in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].status.podIP'); do
         oc exec $pod -- redis-cli cluster meet $ip 3689
     done
 done
@@ -242,7 +242,7 @@ if [ -z "$1" ]; then
 fi
 cluster_redis=$1
 echo "Forgetting disconnect in: " $cluster_redis
-for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
+for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
     for node in $(oc exec $pod -- cat /tmp/nodes.conf | egrep '(fail|disconnected)' | cut -f1 -d" "); do
         oc exec  $pod -- redis-cli cluster forget $node
     done

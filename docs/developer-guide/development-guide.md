@@ -102,7 +102,7 @@ First required step is to install the CRDs in the cluster:
 make install
 ```
 
-This will create the CRDs `RedkeyCluster` and `RedkeyClusterConfiguration` in the cluster, which are required to deploy the Redkey Operator and create Redkey Cluster instances.
+This will create the CRDs `Redkey` and `RedkeyConfiguration` in the cluster, which are required to deploy the Redkey Operator and create Redkey Cluster instances.
 
 #### Run the Operator from your local machine
 
@@ -177,18 +177,18 @@ make deploy-sample-replicas
 make deploy-sample-auth
 ```
 
-The sample manifests are in `config/samples/{ephemeral,storage,replicas,auth}/redkeycluster.yaml`. You can modify them to test different configurations.
+The sample manifests are in `config/samples/{ephemeral,storage,replicas,auth}/redkey.yaml`. You can modify them to test different configurations.
 
 ### Interact with the Redkey Cluster
 
 You can interact with the Redkey Cluster using `kubectl` to edit the manifest, check the status of the cluster and its nodes, and access the Redis instances.
 
-In order to launch a Redkey Cluster reconcile loop, you can edit the RedkeyCluster manifest with `kubectl edit redkeycluster <cluster-name>` and edit any field in the `spec` section. This will trigger a reconcile loop and you can see the changes reflected in the cluster.
+In order to launch a Redkey Cluster reconcile loop, you can edit the Redkey manifest with `kubectl edit redkey <cluster-name>` and edit any field in the `spec` section. This will trigger a reconcile loop and you can see the changes reflected in the cluster.
 
-To simulate Robin interactions with the `RedkeyClusterConfiguration` instances you can edit the `status` section with:
+To simulate Robin interactions with the `RedkeyConfiguration` instances you can edit the `status` section with:
 
 ```shell
-kubectl patch redkeyclusterconfig redkey-cluster-ephemeral-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
+kubectl patch redkeyconfig redkey-cluster-ephemeral-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
 ```
 
 ### Cleanup

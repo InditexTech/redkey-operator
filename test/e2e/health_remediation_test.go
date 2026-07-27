@@ -56,13 +56,13 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		const clusterName = "health-meet-forget"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should recover when a node is forgotten from the cluster", func() {
 			By("creating an ephemeral cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -121,13 +121,13 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		const clusterName = "health-slot-fix"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should detect and fix missing slots", func() {
 			By("creating an ephemeral cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -172,14 +172,14 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		const clusterName = "health-rebalance"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should rebalance when slot distribution is uneven", func() {
 
 			By("creating an ephemeral cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -269,13 +269,13 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		const clusterName = "health-pod-delete"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should recover when a Redis pod is deleted", func() {
 			By("creating an ephemeral cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -349,7 +349,7 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		)
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should recover a forgotten node in an authenticated cluster with replicas", func() {
@@ -361,7 +361,7 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).
 				WithAuth(secretName).
 				WithReplicas(1)
-			_, err = framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err = framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -425,13 +425,13 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 		const clusterName = "health-pod-pvc"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should recover a deleted pod in a PVC cluster preserving data", func() {
 			By("creating a PVC cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")

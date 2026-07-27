@@ -35,13 +35,13 @@ A **Redkey Cluster** is a key/value cluster built from either the [Redis officia
 
 **Redkey Operator** deploys and manages Redkey clusters on Kubernetes by implementing the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
 
-It extends the Kubernetes API with a controller that reconciles the desired state declared in the `RedkeyCluster` resource, manages the Kubernetes objects required by the cluster, coordinates Redis-side operations through Redkey Robin, and keeps the cluster healthy during lifecycle changes.
+It extends the Kubernetes API with a controller that reconciles the desired state declared in the `Redkey` resource, manages the Kubernetes objects required by the cluster, coordinates Redis-side operations through Redkey Robin, and keeps the cluster healthy during lifecycle changes.
 
 Redkey Operator is built using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) and [operator-sdk](https://github.com/operator-framework/operator-sdk).
 
 ## Key Features
 
-- Deploy Redkey clusters from a single `RedkeyCluster` custom resource using Redis or Valkey images
+- Deploy Redkey clusters from a single `Redkey` custom resource using Redis or Valkey images
 - Configure topology with a selectable number of primaries and replicas per primary
 - Run ephemeral or persistent clusters with configurable storage size, storage class, access modes, and PVC cleanup behavior
 - Scale clusters up and down while reassigning slots and preserving cluster balance
@@ -74,10 +74,10 @@ helm install redkey-operator ./charts/redkey-operator
 Install a sample Redkey Cluster using the provided Helm chart:
 
 ```bash
-helm install my-redkey-cluster ./charts/redkey-cluster
+helm install my-redkey-cluster ./charts/redkey
 ```
 
-Take a look at the [charts/README.md](./charts/README.md) for more details on how to use the Helm charts, including how to enable the post-install hook in the redkey-cluster chart to wait for the cluster to be ready after installation.
+Take a look at the [charts/README.md](./charts/README.md) for more details on how to use the Helm charts, including how to enable the post-install hook in the redkey chart to wait for the cluster to be ready after installation.
 
 ### Using Makefile
 

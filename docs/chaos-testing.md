@@ -187,7 +187,7 @@ the pod inventory, and the last log lines of the operator, Redis and Robin pods.
 `CHAOS_KEEP_NAMESPACE_ON_FAILED=true` to keep the failed namespace alive and inspect it directly:
 
 ```shell
-kubectl get redkeycluster,pods -n <namespace>
+kubectl get redkey,pods -n <namespace>
 kubectl exec -n <namespace> <redis-pod> -- redis-cli --cluster check localhost:6379
 kubectl logs -n <namespace> -l control-plane=redkey-operator
 kubectl logs -n <namespace> -l redkey.inditex.dev/component=robin

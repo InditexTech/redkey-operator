@@ -14,7 +14,7 @@ The minimum configuration for the correct operation of this function is:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -28,7 +28,7 @@ If this feature is enabled, this additional configuration should be added to `re
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -49,7 +49,7 @@ spec:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -62,7 +62,7 @@ Redkey Operator will create 6 pods, 3 primaries and 3 replicas (one for each pri
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -74,7 +74,7 @@ Redkey Operator will create 15 pods, 5 primaries and 10 replicas (two for each p
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...
@@ -86,7 +86,7 @@ Redkey Operator will create 5 pods, 5 primaries and no replicas.
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 ...
 spec:
   ...

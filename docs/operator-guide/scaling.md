@@ -9,9 +9,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 ![Redkey Operator icon](../images/redkey-logo-128.png)
 
 Redkey clusters can be scaled **up** (more capacity / availability) or **down** (fewer
-nodes) by changing the topology fields of the `RedkeyCluster` resource. Scaling is
+nodes) by changing the topology fields of the `Redkey` resource. Scaling is
 orchestrated entirely by **Redkey Robin** — the operator only records the desired
-topology in a new `RedkeyClusterConfig`, and Robin drives the cluster through the
+topology in a new `RedkeyConfig`, and Robin drives the cluster through the
 necessary Redis cluster operations.
 
 > Robin owns the StatefulSet during scaling. It adjusts the replica count, migrates
@@ -20,7 +20,7 @@ necessary Redis cluster operations.
 
 ## Triggering a scale operation
 
-Scaling is triggered by updating either field of the `RedkeyCluster` spec:
+Scaling is triggered by updating either field of the `Redkey` spec:
 
 | Field | Effect |
 | :--- | :--- |
@@ -29,15 +29,15 @@ Scaling is triggered by updating either field of the `RedkeyCluster` spec:
 
 ### Using `kubectl scale`
 
-The `RedkeyCluster` CRD exposes a **scale subresource**, so you can change the number of
+The `Redkey` CRD exposes a **scale subresource**, so you can change the number of
 primaries with the standard Kubernetes scaling interface:
 
 ```bash
 # Scale the cluster to 5 primaries
-kubectl scale redkeycluster my-cluster --replicas=5
+kubectl scale redkey my-cluster --replicas=5
 
 # Verify
-kubectl get redkeycluster my-cluster
+kubectl get redkey my-cluster
 ```
 
 The `--replicas` flag maps to `spec.primaries`. The current number of primaries is
@@ -200,7 +200,7 @@ verify your client is configured accordingly.
 ## Scale to zero
 
 A Redkey cluster can be **scaled to zero primaries**, which removes all Redis
-infrastructure from the namespace while preserving the `RedkeyCluster` resource itself.
+infrastructure from the namespace while preserving the `Redkey` resource itself.
 This is useful for development/staging environments, cost savings during off-peak hours,
 or as a building block for external autoscalers.
 
@@ -209,14 +209,14 @@ or as a building block for external autoscalers.
 | Scenario | Effect |
 | :--- | :--- |
 | **Create with `spec.primaries: 0`** | No-op: the operator creates **nothing** — no Robin, no RBAC, no StatefulSet, no configs. Status is set to `Ready` with `replicas: 0`. |
-| **Scale from >0 to 0** | The operator creates a `RedkeyClusterConfig` with `primaries: 0`. Robin deletes the StatefulSet, Service, ConfigMap, and PDB. If `spec.deletePVC: true`, PVCs are also deleted. Once Robin marks the config as Applied, the operator cleans up Robin's Deployment, RBAC, and all configs. |
+| **Scale from >0 to 0** | The operator creates a `RedkeyConfig` with `primaries: 0`. Robin deletes the StatefulSet, Service, ConfigMap, and PDB. If `spec.deletePVC: true`, PVCs are also deleted. Once Robin marks the config as Applied, the operator cleans up Robin's Deployment, RBAC, and all configs. |
 | **Scale from 0 to >0** | Normal creation path: the operator creates RBAC, Robin Deployment, and a new config. Robin creates all cluster objects from scratch. |
 
 ### Example
 
 ```yaml
-apiVersion: redis.inditex.dev/v1beta1
-kind: RedkeyCluster
+apiVersion: redkey.inditex.dev/v1beta1
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -230,10 +230,10 @@ Or using `kubectl scale`:
 
 ```bash
 # Scale to zero
-kubectl scale redkeycluster my-cluster --replicas=0
+kubectl scale redkey my-cluster --replicas=0
 
 # Scale back up
-kubectl scale redkeycluster my-cluster --replicas=3
+kubectl scale redkey my-cluster --replicas=3
 ```
 
 ### PVC handling

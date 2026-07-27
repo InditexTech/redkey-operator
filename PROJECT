@@ -19,16 +19,16 @@ resources:
     namespaced: true
   controller: true
   domain: inditex.dev
-  group: redis
-  kind: RedkeyCluster
+  group: redkey
+  kind: Redkey
   path: github.com/inditextech/redkeyoperator/api/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
     namespaced: true
   domain: inditex.dev
-  group: redis
-  kind: RedkeyClusterConfig
+  group: redkey
+  kind: RedkeyConfig
   path: github.com/inditextech/redkeyoperator/api/v1beta1
   version: v1beta1
 version: "3"

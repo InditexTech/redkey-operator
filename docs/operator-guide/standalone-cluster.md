@@ -14,7 +14,7 @@ Set the `mode` field to `standalone` when creating the cluster:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: redis-standalone
   namespace: my-namespace
@@ -58,10 +58,10 @@ Standalone instances can be scaled to zero to release compute resources (for exa
 
 ```bash
 # Scale down to zero
-kubectl patch redkeycluster redis-standalone --type merge -p '{"spec":{"primaries":0}}'
+kubectl patch redkey redis-standalone --type merge -p '{"spec":{"primaries":0}}'
 
 # Scale back up to one
-kubectl patch redkeycluster redis-standalone --type merge -p '{"spec":{"primaries":1}}'
+kubectl patch redkey redis-standalone --type merge -p '{"spec":{"primaries":1}}'
 ```
 
 Scaling to zero removes the StatefulSet and the running pod. Scaling beyond one primary is rejected by validation.
@@ -75,10 +75,10 @@ change:
 
 ```bash
 # Change the Redis image
-kubectl patch redkeycluster redis-standalone --type merge -p '{"spec":{"image":"redis:8"}}'
+kubectl patch redkey redis-standalone --type merge -p '{"spec":{"image":"redis:8"}}'
 
 # Change the Redis configuration
-kubectl patch redkeycluster redis-standalone --type merge \
+kubectl patch redkey redis-standalone --type merge \
   -p '{"spec":{"redisConfig":"maxmemory 256mb\nmaxmemory-policy allkeys-lru"}}'
 ```
 

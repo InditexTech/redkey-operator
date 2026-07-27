@@ -20,7 +20,7 @@ namePrefix: redkey-operator-
 resources:
 # CRDs are intentionally NOT included here so that `make undeploy` (which deletes
 # everything built from config/default) does not remove the CRDs and, with them,
-# the RedkeyCluster resources. CRDs are managed separately via `make install` /
+# the Redkey resources. CRDs are managed separately via `make install` /
 # `make uninstall` (config/crd), and `make deploy` installs them as a prerequisite.
 - ../rbac
 - ../manager

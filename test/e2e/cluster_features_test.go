@@ -57,7 +57,7 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 		const clusterName = "features-pdb"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should create a PDB when configured in the cluster spec", func() {
@@ -67,7 +67,7 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 				Enabled:            true,
 				PdbSizeUnavailable: intstr.FromInt32(1),
 			}
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -100,12 +100,12 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 			By("verifying PDB has owner reference")
 			ownerFound := false
 			for _, ref := range pdb.OwnerReferences {
-				if ref.Kind == "RedkeyCluster" && ref.Name == clusterName {
+				if ref.Kind == "Redkey" && ref.Name == clusterName {
 					ownerFound = true
 					break
 				}
 			}
-			Expect(ownerFound).To(BeTrue(), "PDB should have OwnerReference to RedkeyCluster")
+			Expect(ownerFound).To(BeTrue(), "PDB should have OwnerReference to Redkey")
 
 			By("verifying the cluster remains healthy")
 			podNames, err := framework.GetRedisPodNames(ctx, k8sClient, clusterName, clusterNs, 3)
@@ -119,7 +119,7 @@ var _ = Describe("Cluster Features", Ordered, Label("features"), func() {
 		const clusterName = "features-redis-config"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should apply custom redis.conf parameters to all nodes", func() {
@@ -132,7 +132,7 @@ appendonly no
 save ""
 tcp-keepalive 120
 hz 20`
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -181,13 +181,13 @@ hz 20`
 		const clusterName = "features-data-integrity"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should preserve data during meet/forget and slot fix remediation", func() {
 			By("creating an ephemeral cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -260,13 +260,13 @@ hz 20`
 		const clusterName = "features-robin-metrics"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should expose Redis cluster metrics via Robin's /metrics endpoint", func() {
 			By("creating a cluster")
 			opts := framework.DefaultClusterOptions(clusterName, clusterNs)
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -322,7 +322,7 @@ hz 20`
 		const clusterName = "features-profiling"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should enable and disable pprof endpoints at runtime via RobinConfig", func() {
@@ -333,7 +333,7 @@ hz 20`
 					Enabled: new(false),
 				},
 			}
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -368,7 +368,7 @@ hz 20`
 
 			By("enabling profiling via spec update")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -404,7 +404,7 @@ hz 20`
 		const clusterName = "features-profiling-disable"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should disable pprof at runtime without restarting Robin", func() {
@@ -415,7 +415,7 @@ hz 20`
 					Enabled: new(true),
 				},
 			}
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")
@@ -449,7 +449,7 @@ hz 20`
 
 			By("disabling profiling via spec update")
 			key := types.NamespacedName{Name: clusterName, Namespace: clusterNs}
-			cluster := &redkeyv1beta1.RedkeyCluster{}
+			cluster := &redkeyv1beta1.Redkey{}
 			err = k8sClient.Get(ctx, key, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			cluster.Spec.Robin.Config.Profiling.Enabled = new(false)
@@ -483,7 +483,7 @@ hz 20`
 		const clusterName = "features-profiling-restart"
 
 		AfterAll(func() {
-			_ = framework.DeleteRedkeyCluster(ctx, k8sClient, clusterName, clusterNs)
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
 		})
 
 		It("should re-enable pprof after Robin pod is recreated", func() {
@@ -494,7 +494,7 @@ hz 20`
 					Enabled: new(true),
 				},
 			}
-			_, err := framework.CreateRedkeyCluster(ctx, k8sClient, opts)
+			_, err := framework.CreateRedkey(ctx, k8sClient, opts)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the cluster to reach Ready")

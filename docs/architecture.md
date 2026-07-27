@@ -15,17 +15,17 @@ This document describes the architecture of the Redkey system, which manages Red
   - [Redkey Operator](#redkey-operator)
   - [Redkey Robin](#redkey-robin)
 - [Custom Resource Definitions](#custom-resource-definitions)
-  - [RedkeyCluster](#redkeycluster)
-  - [RedkeyClusterConfig](#redkeyclusterconfig)
+  - [Redkey](#redkey)
+  - [RedkeyConfig](#redkeyconfig)
 - [Communication Model](#communication-model)
 - [Sequenced Configuration Changes](#sequenced-configuration-changes)
   - [Configuration Lifecycle](#configuration-lifecycle)
   - [Skip-If-Superseded Policy](#skip-if-superseded-policy)
   - [Cleanup](#cleanup)
 - [State Machines](#state-machines)
-  - [RedkeyClusterConfig — Configuration Phase](#redkeyclusterconfig--configuration-phase)
-  - [RedkeyClusterConfig — Cluster Operational Status](#redkeyclusterconfig--cluster-operational-status)
-  - [RedkeyCluster — Aggregated Phase](#redkeycluster--aggregated-phase)
+  - [RedkeyConfig — Configuration Phase](#redkeyconfig--configuration-phase)
+  - [RedkeyConfig — Cluster Operational Status](#redkeyconfig--cluster-operational-status)
+  - [Redkey — Aggregated Phase](#redkey--aggregated-phase)
 - [RBAC Model](#rbac-model)
 - [Reconciliation Flows](#reconciliation-flows)
   - [Operator Reconciliation](#operator-reconciliation)
@@ -40,8 +40,8 @@ A **Redkey Cluster** is a key/value cluster built from either [Redis](https://hu
 
 The architecture follows a clear separation of concerns:
 
-- **Redkey Operator** is a lightweight umbrella coordinator that watches `RedkeyCluster` custom resources and translates user intent into sequenced `RedkeyClusterConfig` CRs. It manages the Robin Deployment and its RBAC resources, aggregates status back to the user-facing CR, and cleans up superseded configurations.
-- **Redkey Robin** is the self-contained operator for a single cluster instance. It owns all Kubernetes resource management (StatefulSet, Service, PDB, ConfigMap) and all Redis/Valkey operations (cluster formation, scaling, upgrades, rebalancing, health checks). It reads desired state from `RedkeyClusterConfig` and writes status back via the status subresource.
+- **Redkey Operator** is a lightweight umbrella coordinator that watches `Redkey` custom resources and translates user intent into sequenced `RedkeyConfig` CRs. It manages the Robin Deployment and its RBAC resources, aggregates status back to the user-facing CR, and cleans up superseded configurations.
+- **Redkey Robin** is the self-contained operator for a single cluster instance. It owns all Kubernetes resource management (StatefulSet, Service, PDB, ConfigMap) and all Redis/Valkey operations (cluster formation, scaling, upgrades, rebalancing, health checks). It reads desired state from `RedkeyConfig` and writes status back via the status subresource.
 
 Inter-component communication is fully declarative and Kubernetes-native — there is no REST API or synchronous HTTP coupling between the two components.
 
@@ -51,44 +51,44 @@ Inter-component communication is fully declarative and Kubernetes-native — the
 
 ### Redkey Operator
 
-The Operator is a single controller that reconciles `RedkeyCluster` CRs. Its responsibilities are deliberately minimal:
+The Operator is a single controller that reconciles `Redkey` CRs. Its responsibilities are deliberately minimal:
 
 | Responsibility | Description |
 | -------------- | ----------- |
-| **Robin Deployment management** | Ensures the Robin `Deployment` exists and matches the desired spec derived from `spec.robin` in the `RedkeyCluster` CR. Detects drift and patches when needed. |
-| **RBAC resource management** | Creates a dedicated `ServiceAccount`, `Role`, and `RoleBinding` per cluster, all owned by the `RedkeyCluster` CR for automatic garbage collection. |
-| **Sequenced config creation** | On every relevant `RedkeyCluster` spec change, increments a sequence counter and creates a new `RedkeyClusterConfig` CR carrying the full desired cluster state. |
-| **Status aggregation** | Reads the status of the highest-sequence `RedkeyClusterConfig` and mirrors a simplified summary to `RedkeyCluster.status`. |
-| **Config cleanup** | Deletes superseded `RedkeyClusterConfig` CRs (those with terminal `configPhase` that are no longer the current baseline). |
+| **Robin Deployment management** | Ensures the Robin `Deployment` exists and matches the desired spec derived from `spec.robin` in the `Redkey` CR. Detects drift and patches when needed. |
+| **RBAC resource management** | Creates a dedicated `ServiceAccount`, `Role`, and `RoleBinding` per cluster, all owned by the `Redkey` CR for automatic garbage collection. |
+| **Sequenced config creation** | On every relevant `Redkey` spec change, increments a sequence counter and creates a new `RedkeyConfig` CR carrying the full desired cluster state. |
+| **Status aggregation** | Reads the status of the highest-sequence `RedkeyConfig` and mirrors a simplified summary to `Redkey.status`. |
+| **Config cleanup** | Deletes superseded `RedkeyConfig` CRs (those with terminal `configPhase` that are no longer the current baseline). |
 
 The Operator does **not** create or manage StatefulSets, Services, PodDisruptionBudgets, or Redis ConfigMaps. It does **not** call any HTTP API.
 
 ### Redkey Robin
 
-Robin is deployed 1:1 per `RedkeyCluster` as a `Deployment` managed by the Operator. It is the single component that holds all cluster knowledge:
+Robin is deployed 1:1 per `Redkey` as a `Deployment` managed by the Operator. It is the single component that holds all cluster knowledge:
 
 | Responsibility | Description |
 | -------------- | ----------- |
 | **K8s resource lifecycle** | Creates, updates, and deletes the `StatefulSet`, headless `Service`, `PodDisruptionBudget`, and `redis.conf` `ConfigMap` for the Redis/Valkey pods. |
 | **Redis/Valkey management** | Manages the cluster topology at the Redis level: `CLUSTER MEET`, `CLUSTER REPLICATE`, `CLUSTER FORGET`, slot assignment, resharding, rebalancing, failovers, and version upgrades. |
-| **Config processing** | Polls `RedkeyClusterConfig` CRs and processes them sequentially by `spec.sequence`, driving each config through `Pending → InProgress → Applied`. |
+| **Config processing** | Polls `RedkeyConfig` CRs and processes them sequentially by `spec.sequence`, driving each config through `Pending → InProgress → Applied`. |
 | **Health verification** | Verifies K8s resources match expected state and repairs drift. Checks Redis cluster health (node membership, slot coverage, replication, balance) and fixes issues autonomously. |
-| **Status reporting** | Writes operational status to the active `RedkeyClusterConfig.status` subresource. |
+| **Status reporting** | Writes operational status to the active `RedkeyConfig.status` subresource. |
 | **Metrics** | Collects Redis `INFO` metrics from all nodes and exposes them as Prometheus metrics at `/metrics`. |
 
 ---
 
 ## Custom Resource Definitions
 
-### RedkeyCluster
+### Redkey
 
-`RedkeyCluster` is the user-facing API. Users declare their desired cluster state here.
+`Redkey` is the user-facing API. Users declare their desired cluster state here.
 
 **Spec** — defines the desired cluster topology and configuration:
 
 ```yaml
 apiVersion: redkey.inditex.dev/v1beta1
-kind: RedkeyCluster
+kind: Redkey
 metadata:
   name: my-cluster
 spec:
@@ -121,7 +121,7 @@ spec:
         intervalOnWaitSeconds: 10
 ```
 
-**Status** — a simplified, aggregated view derived from `RedkeyClusterConfig`:
+**Status** — a simplified, aggregated view derived from `RedkeyConfig`:
 
 | Field | Description |
 | ----- | ----------- |
@@ -131,9 +131,9 @@ spec:
 | `nodes` | Per-node status map (role, IP, replication status) |
 | `conditions` | Lifecycle: `Ready`, `ConfigPending`, `Error`; plus the aggregated [health conditions](redkey-cluster-status.md#cluster-health-conditions) (`Healthy`, `MembershipHealthy`, `SlotsCovered`, `SlotsBalanced`, `ReplicasBalanced`, `ClusterCheckPassing`) |
 
-### RedkeyClusterConfig
+### RedkeyConfig
 
-`RedkeyClusterConfig` is the communication channel between the Operator and Robin. Each instance represents a sequenced desired-state snapshot.
+`RedkeyConfig` is the communication channel between the Operator and Robin. Each instance represents a sequenced desired-state snapshot.
 
 **Spec** (written exclusively by the Operator):
 
@@ -170,27 +170,27 @@ spec:
 
 ## Communication Model
 
-All communication between the Operator and Robin flows through the Kubernetes API via `RedkeyClusterConfig` CRs. There is no direct network communication between the two components.
+All communication between the Operator and Robin flows through the Kubernetes API via `RedkeyConfig` CRs. There is no direct network communication between the two components.
 
 ```ascii
 ┌──────────────────────────────────────────────────────────────────────┐
 │                         Kubernetes Cluster                           │
 │                                                                      │
 │  User                                                                │
-│   │  apply RedkeyCluster CR                                          │
+│   │  apply Redkey CR                                          │
 │   ▼                                                                  │
 │  ┌──────────────────────────────────────────────────────────────┐    │
 │  │                       Redkey Operator                        │    │
-│  │  - Watches RedkeyCluster CR events                           │    │
-│  │  - Creates new RedkeyClusterConfig per change                │    │
+│  │  - Watches Redkey CR events                           │    │
+│  │  - Creates new RedkeyConfig per change                │    │
 │  │  - Manages Robin Deployment                                  │    │
-│  │  - Mirrors highest-sequence status → RedkeyCluster           │    │
+│  │  - Mirrors highest-sequence status → Redkey           │    │
 │  │  - Cleans up superseded configs                              │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 │       │ creates new CRs       ▲ reads status    │ deletes old CRs    │
 │       ▼                       │                 ▼                    │
 │  ┌──────────────────────────────────────────────────────────────┐    │
-│  │             RedkeyClusterConfig CRs (sequenced)              │    │
+│  │             RedkeyConfig CRs (sequenced)              │    │
 │  │  mycluster-1 (Applied)  ← current baseline                   │    │
 │  │  mycluster-2 (Pending)  ← next change                        │    │
 │  │  mycluster-3 (Pending)  ← queued change                      │    │
@@ -224,15 +224,15 @@ This design eliminates synchronous, network-dependent coupling. The Operator wri
 
 ## Sequenced Configuration Changes
 
-Rather than updating a single `RedkeyClusterConfig` in-place, the Operator creates a **new** CR for each configuration change. This produces an ordered sequence of desired states that Robin processes one at a time.
+Rather than updating a single `RedkeyConfig` in-place, the Operator creates a **new** CR for each configuration change. This produces an ordered sequence of desired states that Robin processes one at a time.
 
 ### Naming and Ordering
 
-Each `RedkeyClusterConfig` is named `<cluster-name>-<sequence>` (e.g. `mycluster-3`) and carries the counter in `spec.sequence`. All configs for the same cluster share the label `redkey.inditex.dev/cluster: <cluster-name>`, enabling efficient listing. The Operator tracks the current generation of the `RedkeyCluster` CR via an annotation (`redkey.inditex.dev/cluster-generation`) on each config to avoid creating duplicate configs for the same generation.
+Each `RedkeyConfig` is named `<cluster-name>-<sequence>` (e.g. `mycluster-3`) and carries the counter in `spec.sequence`. All configs for the same cluster share the label `redkey.inditex.dev/cluster: <cluster-name>`, enabling efficient listing. The Operator tracks the current generation of the `Redkey` CR via an annotation (`redkey.inditex.dev/cluster-generation`) on each config to avoid creating duplicate configs for the same generation.
 
 ### Configuration Lifecycle
 
-Each `RedkeyClusterConfig` transitions through the following phases in `status.configPhase`:
+Each `RedkeyConfig` transitions through the following phases in `status.configPhase`:
 
 ```ascii
 Pending  ──►  InProgress  ──►  Applied  ──►  (deleted by Operator)
@@ -249,7 +249,7 @@ Pending  ──►  Superseded  ──►  (deleted by Operator)
 
 ### Skip-If-Superseded Policy
 
-The `skipIfSuperseded` field is configured on the `RedkeyCluster` spec and propagated by the Operator to each `RedkeyClusterConfig` it creates. When `spec.skipIfSuperseded` is `true` and Robin detects that a newer config with a higher sequence is also `Pending`, Robin may skip the current config by transitioning it directly from `Pending` to `Superseded` without executing any changes.
+The `skipIfSuperseded` field is configured on the `Redkey` spec and propagated by the Operator to each `RedkeyConfig` it creates. When `spec.skipIfSuperseded` is `true` and Robin detects that a newer config with a higher sequence is also `Pending`, Robin may skip the current config by transitioning it directly from `Pending` to `Superseded` without executing any changes.
 
 This is useful when intermediate states are not needed. For example, if two consecutive scaling changes are queued (`primaries: 3 → 5 → 7`), only the final target (`7`) matters.
 
@@ -257,7 +257,7 @@ This is useful when intermediate states are not needed. For example, if two cons
 
 The Operator cleans up superseded configs during each reconciliation cycle:
 
-1. Lists all `RedkeyClusterConfig` CRs for the cluster (using the label selector).
+1. Lists all `RedkeyConfig` CRs for the cluster (using the label selector).
 2. Iterates over configs sorted by sequence (ascending).
 3. Deletes contiguous configs in a terminal phase (`Applied` or `Superseded`) from the beginning of the list, stopping at the first non-terminal config.
 4. Always preserves the highest-sequence config (the current baseline or an in-progress change).
@@ -292,7 +292,7 @@ t=30                                  mycluster-3 → Applied
 
 ## State Machines
 
-### RedkeyClusterConfig — Configuration Phase
+### RedkeyConfig — Configuration Phase
 
 Tracks the lifecycle of each configuration change as processed by Robin.
 
@@ -325,7 +325,7 @@ Tracks the lifecycle of each configuration change as processed by Robin.
 | `Pending → Superseded` | `skipIfSuperseded: true` and a higher-sequence `Pending` config exists |
 | `InProgress → Applied` | Robin completes all K8s resource and Redis operations for this config |
 
-### RedkeyClusterConfig — Cluster Operational Status
+### RedkeyConfig — Cluster Operational Status
 
 Tracks the operational state of the Redis/Valkey cluster as reported by Robin in `status.status`.
 
@@ -377,9 +377,9 @@ Tracks the operational state of the Redis/Valkey cluster as reported by Robin in
 | `Error` | An unrecoverable issue was detected. Robin attempts recovery. |
 | `Maintenance` | Manual maintenance mode. |
 
-### RedkeyCluster — Aggregated Phase
+### Redkey — Aggregated Phase
 
-The Operator computes a simplified phase for `RedkeyCluster.status.phase` from the highest-sequence config:
+The Operator computes a simplified phase for `Redkey.status.phase` from the highest-sequence config:
 
 ```ascii
                   ┌─────────────┐
@@ -395,7 +395,7 @@ The Operator computes a simplified phase for `RedkeyCluster.status.phase` from t
                   └─────────────┘
 ```
 
-| Highest-Sequence Config State | `RedkeyCluster.status.phase` | `ConfigPending` Condition |
+| Highest-Sequence Config State | `Redkey.status.phase` | `ConfigPending` Condition |
 | ----------------------------- | ---------------------------- | ------------------------- |
 | `configPhase: Pending` | `Configuring` | `True` |
 | `configPhase: InProgress` | `Configuring` | `True` |
@@ -412,7 +412,7 @@ The Operator computes a simplified phase for `RedkeyCluster.status.phase` from t
 
 ## RBAC Model
 
-The architecture enforces strict ownership boundaries at the RBAC level. The `RedkeyClusterConfig` CRD has a status subresource, which means writes to the spec and writes to the status are independent API calls controlled by separate RBAC rules.
+The architecture enforces strict ownership boundaries at the RBAC level. The `RedkeyConfig` CRD has a status subresource, which means writes to the spec and writes to the status are independent API calls controlled by separate RBAC rules.
 
 ### Operator Permissions
 
@@ -420,10 +420,10 @@ The Operator's `ClusterRole` grants:
 
 | Resource | Verbs | Purpose |
 | -------- | ----- | ------- |
-| `RedkeyCluster` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Full lifecycle management |
-| `RedkeyCluster/status` | `get`, `update`, `patch` | Write aggregated status |
-| `RedkeyClusterConfig` | `get`, `list`, `watch`, `create`, `delete` | Create new configs, delete superseded |
-| `RedkeyClusterConfig/status` | `get`, `update`, `patch` | Read Robin's reported status |
+| `Redkey` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Full lifecycle management |
+| `Redkey/status` | `get`, `update`, `patch` | Write aggregated status |
+| `RedkeyConfig` | `get`, `list`, `watch`, `create`, `delete` | Create new configs, delete superseded |
+| `RedkeyConfig/status` | `get`, `update`, `patch` | Read Robin's reported status |
 | `Deployments` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Manage Robin Deployment |
 | `ServiceAccounts`, `Roles`, `RoleBindings` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Manage per-cluster RBAC |
 
@@ -437,10 +437,10 @@ Each Robin instance gets a scoped `Role` created by the Operator:
 | `Services`, `ConfigMaps` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Manage headless Service and redis.conf |
 | `PodDisruptionBudgets` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Manage PDB |
 | `Secrets` | `get` | Read-only access for auth credentials |
-| `RedkeyClusterConfig` | `get`, `list`, `watch` | Read desired spec |
-| `RedkeyClusterConfig/status` | `update`, `patch` | Write operational status |
+| `RedkeyConfig` | `get`, `list`, `watch` | Read desired spec |
+| `RedkeyConfig/status` | `update`, `patch` | Write operational status |
 
-Robin is explicitly **denied** write access to the `RedkeyClusterConfig` main resource — it cannot alter the desired spec set by the Operator.
+Robin is explicitly **denied** write access to the `RedkeyConfig` main resource — it cannot alter the desired spec set by the Operator.
 
 ---
 
@@ -448,7 +448,7 @@ Robin is explicitly **denied** write access to the `RedkeyClusterConfig` main re
 
 ### Operator Reconciliation
 
-The Operator is event-driven via watches on `RedkeyCluster` and its owned resources (`RedkeyClusterConfig`, `Deployment`, `ServiceAccount`, `Role`, `RoleBinding`). A periodic resync (configurable via `--resync-interval`, default 5 minutes) acts as a safety net.
+The Operator is event-driven via watches on `Redkey` and its owned resources (`RedkeyConfig`, `Deployment`, `ServiceAccount`, `Role`, `RoleBinding`). A periodic resync (configurable via `--resync-interval`, default 5 minutes) acts as a safety net.
 
 The controller processes its work queue with multiple concurrent workers (configurable via `--max-concurrent-reconciles`, default 10) so a single slow or backing-off cluster cannot starve reconciliation of the others.
 
@@ -456,7 +456,7 @@ On each reconciliation:
 
 ```ascii
 ┌─────────────────────────────────┐
-│   Fetch RedkeyCluster CR        │
+│   Fetch Redkey CR        │
 │   (exit if not found — GC)      │
 └──────────┬──────────────────────┘
            │
@@ -472,7 +472,7 @@ On each reconciliation:
 └──────────┬──────────────────────┘
            │
 ┌──────────▼──────────────────────┐
-│   List RedkeyClusterConfigs     │
+│   List RedkeyConfigs     │
 │   (sorted by sequence)          │
 └──────────┬──────────────────────┘
            │
@@ -491,7 +491,7 @@ On each reconciliation:
 ┌──────────▼──────────────────────┐
 │   Aggregate status              │
 │   (highest-seq config status    │
-│    → RedkeyCluster status)      │
+│    → Redkey status)      │
 └──────────┬──────────────────────┘
            │
 ┌──────────▼──────────────────────┐
@@ -507,7 +507,7 @@ On each tick:
 
 ```ascii
 ┌─────────────────────────────────────┐
-│  List RedkeyClusterConfigs          │
+│  List RedkeyConfigs          │
 │  (by label, sorted by sequence)     │
 └──────────┬──────────────────────────┘
            │
@@ -542,7 +542,7 @@ On each tick:
            │
 ┌──────────▼──────────────────────────┐
 │  Write status to active             │
-│  RedkeyClusterConfig.status         │
+│  RedkeyConfig.status         │
 └──────────┬──────────────────────────┘
            │
 ┌──────────▼──────────────────────────┐
@@ -557,20 +557,20 @@ On each tick:
 The following diagram shows resource ownership in the system:
 
 ```ascii
-RedkeyCluster (user-facing CR)
+Redkey (user-facing CR)
 │
 ├── owned by Operator:
-│   ├── RedkeyClusterConfig (sequenced, one per spec change)
+│   ├── RedkeyConfig (sequenced, one per spec change)
 │   ├── Deployment (<cluster>-robin)
 │   ├── ServiceAccount (<cluster>-robin)
 │   ├── Role (<cluster>-robin)
 │   └── RoleBinding (<cluster>-robin)
 │
-└── managed by Robin (reads spec from RedkeyClusterConfig):
+└── managed by Robin (reads spec from RedkeyConfig):
     ├── StatefulSet (<cluster>)
     ├── Service (<cluster>, headless)
     ├── ConfigMap (<cluster>, redis.conf)
     └── PodDisruptionBudget (<cluster>)
 ```
 
-Operator-owned resources carry `ownerReferences` pointing to the `RedkeyCluster` CR, so they are automatically garbage-collected by Kubernetes when the CR is deleted.
+Operator-owned resources carry `ownerReferences` pointing to the `Redkey` CR, so they are automatically garbage-collected by Kubernetes when the CR is deleted.

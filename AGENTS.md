@@ -16,8 +16,8 @@ Reference guide for AI agents and automated tools working on the Redkey Operator
 
 It implements the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) and extends the Kubernetes API with two custom resources:
 
-- **`RedkeyCluster`** — declares the desired state of a Redis/Valkey cluster (topology, storage, scaling, authentication, etc.).
-- **`RedkeyClusterConfig`** — tracks individual configuration revisions applied to a cluster.
+- **`Redkey`** — declares the desired state of a Redis/Valkey cluster (topology, storage, scaling, authentication, etc.).
+- **`RedkeyConfig`** — tracks individual configuration revisions applied to a cluster.
 
 The operator reconciles the declared state, manages the lifecycle of Kubernetes objects (StatefulSets, Services, PodDisruptionBudgets, PVCs), and coordinates Redis-side operations through **Redkey Robin**.
 
@@ -29,7 +29,7 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 | Framework | [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) + [operator-sdk](https://github.com/operator-framework/operator-sdk) |
 | Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21.0 |
 | Target platform | Kubernetes v1.33 (also OpenShift v4.11+) |
-| Packaging | Helm charts (`charts/redkey-operator`, `charts/redkey-cluster`) + OLM bundle |
+| Packaging | Helm charts (`charts/redkey-operator`, `charts/redkey`) + OLM bundle |
 | Testing | Go `testing`, [Ginkgo v2](https://github.com/onsi/ginkgo) + [Gomega](https://github.com/onsi/gomega), [envtest](https://sigs.k8s.io/controller-runtime/tools/setup-envtest) |
 | Linting | [golangci-lint](https://github.com/golangci/golangci-lint) v2.1.0 |
 
@@ -51,7 +51,7 @@ Key paths to understand before changing code:
 Operational assumptions:
 
 - The operator is stateless; durable state lives in Kubernetes resources.
-- `RedkeyClusterConfig` is the revision-tracking resource used to coordinate applied and pending cluster changes.
+- `RedkeyConfig` is the revision-tracking resource used to coordinate applied and pending cluster changes.
 - Redkey Robin is part of the runtime architecture; operator changes that affect rollout orchestration may require checking Robin integration paths too.
 - Generated artifacts matter in this repository: API or manifest changes are not complete until `make generate` and `make manifests` have been run.
 
@@ -218,7 +218,7 @@ These tests are not part of `make test-all`. Run them when the change affects de
 make setup-kind       # creates Kind cluster + local registry on port 5005
 make install          # installs CRDs into the current kubeconfig cluster
 make run              # runs the controller locally against the cluster
-make deploy-samples   # deploys the sample RedkeyCluster resource
+make deploy-samples   # deploys the sample Redkey resource
 make cleanup-kind     # tears down the Kind cluster
 ```
 
@@ -233,9 +233,9 @@ make cleanup-kind     # tears down the Kind cluster
 - All code must pass `go fmt`, `go vet`, and `golangci-lint` before being merged.
 - API types live in `api/v1beta1/`. After changing them, always run `make generate && make manifests`.
 - Controller logic lives in `internal/controller/`. Files are split by concern:
-  - `redkeycluster_controller.go` — main reconcile loop
-  - `redkeycluster_config.go` — `RedkeyClusterConfig` lifecycle
-  - `redkeycluster_robin.go` — Redkey Robin integration
+  - `redkey_controller.go` — main reconcile loop
+  - `redkey_config.go` — `RedkeyConfig` lifecycle
+  - `redkey_robin.go` — Redkey Robin integration
 - Tests mirror their subject file with a `_test.go` suffix in the same package.
 - Integration tests live under `test/integration/`; e2e tests live under `test/e2e/`.
 - Use `go.uber.org/zap` through the controller-runtime logger; do not use `fmt.Print*` for operational output.
@@ -244,7 +244,7 @@ make cleanup-kind     # tears down the Kind cluster
 
 - The operator is stateless: all state is persisted in Kubernetes resources.
 - Reconcile functions must be idempotent.
-- `RedkeyClusterConfig` objects carry the annotation `redkey.inditex.dev/cluster-generation` to correlate config revisions with the parent cluster generation.
+- `RedkeyConfig` objects carry the annotation `redkey.inditex.dev/cluster-generation` to correlate config revisions with the parent cluster generation.
 - Cleanup logic retains the last `ConfigPhaseApplied` config and any newer configs; do not assume older configs survive cleanup.
 - REUSE compliance is required: every source file must have an `SPDX-FileCopyrightText` and `SPDX-License-Identifier` header. See `REUSE.toml` and `hack/boilerplate.go.txt`.
 
@@ -256,7 +256,7 @@ The upgrade lifecycle is split between the operator and Robin. Understanding the
 
 ### Operator Responsibilities (this repo)
 
-1. **Trigger**: When any spec field that affects the Redis pod template changes — `image`, `version`, `redisConfig`, `resources`, `labels`, `annotations`, `override`, or `pdb` — the operator creates a new `RedkeyClusterConfig` with the updated spec. Robin then recycles the pods (it compares `controller-revision-hash` against the StatefulSet `UpdateRevision`, so it is not limited to image changes). Topology fields (`primaries`, `replicasPerPrimary`) drive scaling instead, and `robin.*` changes are handled as a Robin hot-reload.
+1. **Trigger**: When any spec field that affects the Redis pod template changes — `image`, `version`, `redisConfig`, `resources`, `labels`, `annotations`, `override`, or `pdb` — the operator creates a new `RedkeyConfig` with the updated spec. Robin then recycles the pods (it compares `controller-revision-hash` against the StatefulSet `UpdateRevision`, so it is not limited to image changes). Topology fields (`primaries`, `replicasPerPrimary`) drive scaling instead, and `robin.*` changes are handled as a Robin hot-reload.
 2. **Config Checksum**: A SHA-256 checksum annotation (`redkey.inditex.dev/config-checksum`, 16 hex chars) is set on the pod template to ensure StatefulSet detects changes even when only `redisConfig` differs.
 3. **Robin Deployment**: The operator ensures a Robin Deployment exists per cluster that watches for config changes. The Robin image is specified via Helm values or the operator container environment.
 
@@ -266,7 +266,7 @@ Robin owns the entire upgrade execution:
 - Strategy selection: Fast vs Rolling N+1
 - StatefulSet manipulation (scale, template updates with OnDelete strategy, manual pod deletion)
 - Redis cluster commands (`CLUSTER MEET`, `CLUSTER REPLICATE`, `CLUSTER FORGET`, `--cluster reshard`, `--cluster fix`)
-- Status/substatus updates on the `RedkeyClusterConfig`
+- Status/substatus updates on the `RedkeyConfig`
 - **HA preservation**: Only drained primaries (0 slots) and their specific replicas are recycled. Replicas of active primaries are never touched.
 
 ### Key CRD Constants for Upgrade (defined in `api/v1beta1/`)
