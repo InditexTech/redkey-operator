@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "redkey-operator.fullname" . }}-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "redkey-operator.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+    - path: /metrics
+      port: {{ ternary "https" "http" .Values.metrics.secure }}
+      scheme: {{ ternary "https" "http" .Values.metrics.secure }}
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      {{- if .Values.metrics.secure }}
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+      {{- end }}
+  selector:
+    matchLabels:
+      {{- include "redkey-operator.selectorLabels" . | nindent 6 }}
+{{- end }}

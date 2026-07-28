@@ -29,14 +29,26 @@ skipIfSuperseded: true
 # auth:
 #   secret: my-redis-secret
 
-labels:
-  team: a-team
-  custom: custom-label
+# Labels/annotations propagated to all managed objects and their pods (Redis
+# StatefulSet/Service/ConfigMap/PDB, Robin Deployment and its RBAC).
+labels: {}
+annotations: {}
 
-# Annotations to propagate to Redis pods
-# annotations:
-#   prometheus.io/scrape: "true"
-#   custom-annotation: custom-value
+# Labels/annotations set ONLY on the Redkey CR object metadata (NOT propagated to
+# children). Use for platform integrations that read the CR directly.
+crLabels: {}
+crAnnotations: {}
+
+# Labels/annotations applied ONLY to the Redis pods (equivalent to the old operator's
+# inditex.com/nodes-extra-labels / nodes-extra-annotations), e.g. for log scraping.
+# Implemented via the StatefulSet pod-template override; global .Values.labels /
+# .Values.annotations are merged in so they are preserved on the Redis pods.
+# redisPodLabels:
+#   log-scrape: "true"
+# redisPodAnnotations:
+#   log-format: "lineformat"
+redisPodLabels: {}
+redisPodAnnotations: {}
 
 config: |
   maxmemory 90mb
@@ -71,6 +83,19 @@ robin:
     limits:
       cpu: 1
       memory: 200Mi
+  # Extra labels/annotations to place on the Robin pod (the metrics/lifecycle manager).
+  # Global .Values.labels / .Values.annotations are preserved on the Robin pod.
+  podLabels: {}
+  podAnnotations: {}
+
+  # Prometheus scraping of Robin metrics (exposed at :8080/metrics).
+  # When enabled, the prometheus.io/* annotations below are added to the Robin pod.
+  # Global .Values.annotations are also preserved on the Robin pod.
+  metricsScraping:
+    enabled: true
+    port: "8080"
+    path: /metrics
+    scheme: http
   config:
     reconciler:
       intervalSeconds: 30

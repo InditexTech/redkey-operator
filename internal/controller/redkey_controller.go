@@ -67,7 +67,9 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	var cluster redisv1.Redkey
 	if err := r.Get(ctx, req.NamespacedName, &cluster); err != nil {
 		if errors.IsNotFound(err) {
-			// Redkey deleted — owned resources are garbage collected automatically
+			// Redkey deleted — owned resources are garbage collected automatically.
+			// Drop its fleet-state metrics so no stale series linger.
+			deleteRedkeyMetrics(req.NamespacedName)
 			log.Info("Redkey resource not found. Ignoring since object must be deleted.", "namespace", req.Namespace, "name", req.Name)
 			return ctrl.Result{}, nil
 		}
@@ -78,7 +80,11 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// This handles both creation with 0 primaries (no-op) and scaling from >0 to 0
 	// (delegate cleanup to Robin via a RedkeyConfig with primaries=0).
 	if cluster.Spec.Primaries == 0 {
-		return r.reconcileScaleToZero(ctx, &cluster)
+		res, err := r.reconcileScaleToZero(ctx, &cluster)
+		if err == nil {
+			recordRedkeyMetrics(&cluster, nil)
+		}
+		return res, err
 	}
 
 	// Ensure RBAC resources exist for Robin
@@ -134,6 +140,13 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	log.V(1).Info("Reconciling Redkey End", "namespace", req.Namespace, "name", req.Name)
+
+	// Refresh the fleet-state metrics from the freshly aggregated status.
+	var activeConfig *redisv1.RedkeyConfig
+	if len(configs) > 0 {
+		activeConfig = selectActiveConfig(configs)
+	}
+	recordRedkeyMetrics(&cluster, activeConfig)
 
 	// Periodic requeue as a safety net against bugs in the informer cache or missed events.
 	// The controller should be fully event-driven under normal operation, so this is just a fallback.

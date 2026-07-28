@@ -92,14 +92,15 @@ func main() {
 	var resyncInterval time.Duration
 	var maxConcurrentReconciles int
 	var tlsOpts []func(*tls.Config)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
-		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metrics endpoint binds to. "+
+		"Use :8080 for HTTP (default) or :8443 for HTTPS, or set to 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", true,
-		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", false,
+		"If set, the metrics endpoint is served securely via HTTPS with authentication. "+
+			"By default the endpoint is served over plain HTTP without authentication.")
 	flag.StringVar(&watchNamespaces, "watch-namespaces", "",
 		"Comma-separated list of namespaces to watch. If empty, watches all namespaces (cluster-scoped).")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")

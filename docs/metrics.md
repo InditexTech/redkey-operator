@@ -32,7 +32,7 @@ This document describes the metrics exposure mechanism implemented in the Redkey
 
 ## Overview
 
-The Redkey Operator controller-manager exposes a Prometheus-compatible `/metrics` endpoint powered by [controller-runtime's metrics server](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/metrics/server). By default, this endpoint serves over **HTTPS on port 8443** with authentication and authorization enforced via Kubernetes TokenReview and SubjectAccessReview APIs.
+The Redkey Operator controller-manager exposes a Prometheus-compatible `/metrics` endpoint powered by [controller-runtime's metrics server](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/metrics/server). By default, this endpoint serves over **plain HTTP on port 8080** with no authentication, so it works out of the box with Prometheus setups that scrape by pod annotations. Serving over **HTTPS on port 8443** with authentication and authorization (enforced via Kubernetes TokenReview and SubjectAccessReview APIs) is available as an explicit opt-in.
 
 The metrics endpoint publishes two categories of metrics:
 
@@ -47,37 +47,55 @@ The controller-manager binary accepts the following flags to control metrics beh
 
 | Flag | Default | Description |
 | ---- | ------- | ----------- |
-| `--metrics-bind-address` | `0` (disabled) | Address the metrics endpoint binds to. Use `:8443` for HTTPS or `:8080` for HTTP. Set to `0` to disable. |
-| `--metrics-secure` | `true` | Serve metrics over HTTPS. Set to `false` to use plain HTTP. |
+| `--metrics-bind-address` | `:8080` | Address the metrics endpoint binds to. Use `:8080` for HTTP (default) or `:8443` for HTTPS. Set to `0` to disable. |
+| `--metrics-secure` | `false` | Serve metrics over HTTPS with authentication. Set to `true` to opt into HTTPS. |
 | `--metrics-cert-path` | `""` | Directory containing custom TLS certificates for the metrics server. |
 | `--metrics-cert-name` | `tls.crt` | Certificate file name within `--metrics-cert-path`. |
 | `--metrics-cert-key` | `tls.key` | Key file name within `--metrics-cert-path`. |
 
-When `--metrics-secure=true` (the default), the server uses controller-runtime's `filters.WithAuthenticationAndAuthorization` filter, which requires clients to present a valid bearer token with permission to `GET /metrics`.
+With the defaults (`--metrics-secure=false`), the endpoint is served over plain HTTP without authentication. When `--metrics-secure=true`, the server uses controller-runtime's `filters.WithAuthenticationAndAuthorization` filter, which requires clients to present a valid bearer token with permission to `GET /metrics`.
 
-When no custom certificate is provided via `--metrics-cert-path`, controller-runtime automatically generates self-signed certificates. This is suitable for development but **not recommended for production**.
+When serving over HTTPS and no custom certificate is provided via `--metrics-cert-path`, controller-runtime automatically generates self-signed certificates. This is suitable for development but **not recommended for production**.
 
 ### Kustomize Configuration
 
-The default deployment enables metrics via the kustomize patch in `config/default/manager_metrics_patch.yaml`:
+The default deployment exposes metrics via the kustomize patch in `config/default/manager_metrics_patch.yaml`:
 
 ```yaml
 - op: add
   path: /spec/template/spec/containers/0/args/0
-  value: --metrics-bind-address=:8443
+  value: --metrics-bind-address=:8080
 ```
 
 To **disable metrics**, remove this patch from `config/default/kustomization.yaml` or set the value to `--metrics-bind-address=0`.
 
-To **use cert-manager certificates**, uncomment the `[METRICS-WITH-CERTS]` section in `config/default/kustomization.yaml`, which adds the `cert_metrics_manager_patch.yaml` patch to mount certificates from a cert-manager-managed Secret.
+To **serve over HTTPS with authentication**, set the value to `--metrics-bind-address=:8443` and add a second arg `--metrics-secure=true`. To **use cert-manager certificates**, uncomment the `[METRICS-WITH-CERTS]` section in `config/default/kustomization.yaml`, which adds the `cert_metrics_manager_patch.yaml` patch to mount certificates from a cert-manager-managed Secret.
 
 ### Helm Chart
 
-When deploying via the Helm chart (`charts/redkey-operator`), metrics are enabled by default through the Deployment args. You can override the metrics bind address and TLS settings through the chart values or by customizing the Deployment template.
+When deploying via the Helm chart (`charts/redkey-operator`), metrics are enabled by default over plain HTTP on port 8080, and the operator pod is annotated for Prometheus annotation-based scraping. The `metrics` block in `values.yaml` controls the behavior:
+
+```yaml
+metrics:
+  enabled: true      # expose the /metrics endpoint
+  port: 8080         # bind/expose port
+  secure: false      # set true for HTTPS + authentication
+  service:
+    enabled: true    # create a Service pointing at the metrics port
+  serviceMonitor:
+    enabled: false   # create a Prometheus Operator ServiceMonitor
+    labels: {}
+    interval: 30s
+  annotations:       # annotation-based scraping (no Prometheus Operator)
+    enabled: true    # add prometheus.io/* scrape annotations to the pod
+    path: /metrics   # port and scheme are derived from port/secure above
+```
+
+To opt into HTTPS with authentication, set `metrics.secure: true` (and typically `metrics.port: 8443`); the Service and ServiceMonitor switch to the `https` scheme with a bearer token automatically.
 
 ### RBAC for Metrics
 
-The following RBAC resources are required for the metrics endpoint to function with authentication:
+The following RBAC resources are required **only when serving metrics over HTTPS with authentication** (`--metrics-secure=true`):
 
 | Resource | Kind | Purpose |
 | -------- | ---- | ------- |
@@ -85,91 +103,60 @@ The following RBAC resources are required for the metrics endpoint to function w
 | `metrics-auth-rolebinding` | ClusterRoleBinding | Binds `metrics-auth-role` to the controller-manager ServiceAccount. |
 | `metrics-reader` | ClusterRole | Grants `GET` access to the `/metrics` non-resource URL. Bind this to any ServiceAccount or user that needs to scrape metrics. |
 
-These are included by default in `config/rbac/kustomization.yaml`. To disable authentication on the metrics endpoint, remove these resources and set `--metrics-secure=false`.
+These are included by default in `config/rbac/kustomization.yaml`. With the default plain-HTTP endpoint they are not needed by the scraper; they only matter once `--metrics-secure=true` is enabled.
 
 ### NetworkPolicy
 
-An optional NetworkPolicy (`config/network-policy/allow-metrics-traffic.yaml`) restricts access to the metrics port (`8443`) to pods running in namespaces labeled with `metrics: enabled`. To enable it, uncomment the `../network-policy` line in `config/default/kustomization.yaml`.
+An optional NetworkPolicy (`config/network-policy/allow-metrics-traffic.yaml`) restricts access to the metrics port (`8080`) to pods running in namespaces labeled with `metrics: enabled`. Because the default endpoint is unauthenticated, enabling this policy is **recommended in production**. To enable it, uncomment the `../network-policy` line in `config/default/kustomization.yaml`.
 
 ### Prometheus ServiceMonitor
 
-A ServiceMonitor for Prometheus Operator is provided in `config/prometheus/monitor.yaml`. It targets the metrics service on port `https` (8443) using bearer token authentication with `insecureSkipVerify: true` by default.
-
-For production, enable the TLS patch (`config/prometheus/monitor_tls_patch.yaml`) which configures proper certificate verification using the cert-manager-managed `metrics-server-cert` Secret.
+A ServiceMonitor for Prometheus Operator is provided in `config/prometheus/monitor.yaml`. It targets the metrics service on port `http` (8080) over plain HTTP by default. When serving metrics over HTTPS, update the endpoint to `scheme: https`, add `bearerTokenFile` and the appropriate `tlsConfig`.
 
 ## Querying Metrics
 
 ### Via Port-Forward
 
-From your local machine, forward the metrics service port and query it with `curl`:
+From your local machine, forward the metrics service port and query it with `curl`. With the default plain-HTTP endpoint no token is required:
 
 ```shell
-# Grant the controller ServiceAccount permission to read metrics
-kubectl create clusterrolebinding redkey-operator-metrics-binding \
-  --clusterrole=redkey-operator-metrics-reader \
-  --serviceaccount=redkey-operator:redkey-operator-controller-manager
-
 # Forward the metrics service port
 kubectl -n redkey-operator port-forward \
-  svc/redkey-operator-controller-manager-metrics-service 8443:8443
+  svc/redkey-operator-controller-manager-metrics-service 8080:8080
 ```
 
 In a separate terminal:
 
 ```shell
-# Get a bearer token
-TOKEN=$(kubectl -n redkey-operator create token redkey-operator-controller-manager)
-
 # Query all metrics
-curl -k -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8443/metrics
+curl http://127.0.0.1:8080/metrics
 
 # Quick-check reconcile metrics
-curl -k -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8443/metrics \
+curl -s http://127.0.0.1:8080/metrics \
   | grep controller_runtime_reconcile_total
 ```
 
+> **Note:** When serving over HTTPS (`--metrics-secure=true`), forward `8443:8443` and add a bearer token: grant the `metrics-reader` ClusterRole to the scraping ServiceAccount, then
+> `TOKEN=$(kubectl -n redkey-operator create token redkey-operator-controller-manager)` and
+> `curl -k -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8443/metrics`.
+
 ### From a Pod Inside the Cluster
 
-Launch a temporary pod in the operator namespace using the controller-manager's ServiceAccount:
+Launch a temporary pod in the operator namespace and curl the plain-HTTP endpoint:
 
-1. Grant metrics read access (if not already done):
+```shell
+kubectl -n redkey-operator run curl-metrics \
+  --restart=Never \
+  --image=curlimages/curl:latest \
+  -- curl -s http://redkey-operator-controller-manager-metrics-service.redkey-operator.svc.cluster.local:8080/metrics
+```
 
-    ```shell
-    kubectl create clusterrolebinding redkey-operator-metrics-binding \
-      --clusterrole=redkey-operator-metrics-reader \
-      --serviceaccount=redkey-operator:redkey-operator-controller-manager
-    ```
+Check the output and clean up:
 
-2. Run a temporary curl pod:
-
-    ```shell
-    kubectl -n redkey-operator run curl-metrics \
-      --restart=Never \
-      --image=curlimages/curl:latest \
-      --overrides='{
-        "apiVersion": "v1",
-        "spec": {
-          "serviceAccountName": "redkey-operator-controller-manager",
-          "containers": [{
-            "name": "curl",
-            "image": "curlimages/curl:latest",
-            "command": ["/bin/sh", "-c"],
-            "args": [
-              "TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); curl -k -H \"Authorization: Bearer ${TOKEN}\" https://redkey-operator-controller-manager-metrics-service.redkey-operator.svc.cluster.local:8443/metrics"
-            ]
-          }]
-        }
-      }'
-    ```
-
-3. Check the output and clean up:
-
-    ```shell
-    kubectl -n redkey-operator logs -f pod/curl-metrics
-    kubectl -n redkey-operator delete pod curl-metrics
-    ```
-
-> **Note:** Since the pod runs in the same namespace, you can also use the short service name: `https://redkey-operator-controller-manager-metrics-service:8443/metrics`.
+```shell
+kubectl -n redkey-operator logs -f pod/curl-metrics
+kubectl -n redkey-operator delete pod curl-metrics
+```
 
 > **Note:** If the `allow-metrics-traffic` NetworkPolicy is active, the source namespace must have the label `metrics: enabled`.
 
@@ -178,14 +165,14 @@ Launch a temporary pod in the operator namespace using the controller-manager's 
 To list all controller-runtime, workqueue, and REST client metric families:
 
 ```shell
-curl -sk -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8443/metrics \
+curl -s http://127.0.0.1:8080/metrics \
   | grep -E '^(# HELP|# TYPE|controller_runtime_|workqueue_|rest_client_)'
 ```
 
 To list only the unique metric names (no samples or labels):
 
 ```shell
-curl -sk -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8443/metrics \
+curl -s http://127.0.0.1:8080/metrics \
   | grep -E '^(controller_runtime_|workqueue_|rest_client_)' \
   | cut -d'{' -f1 \
   | cut -d' ' -f1 \

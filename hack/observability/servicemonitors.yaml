@@ -28,6 +28,10 @@ spec:
       tlsConfig:
         insecureSkipVerify: true
       interval: 15s
+      # Keep metric-exposed labels (e.g. the Redkey's own `namespace`/`name` on the
+      # redkey_phase / redkey_config_phase fleet metrics) instead of overwriting them with
+      # the operator pod's target labels.
+      honorLabels: true
       # Pin a stable, human-friendly job label instead of the default Service name.
       relabelings:
         - targetLabel: job

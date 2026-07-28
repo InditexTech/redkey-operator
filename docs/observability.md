@@ -144,8 +144,9 @@ This dashboard monitors the health and performance of the operator's controller-
 
 | Section | Panels |
 | ------- | ------ |
+| **Managed Redkey Fleet** | Total Redkeys, Ready, Configuring, Error (stats); phase and config-phase distribution; operation duration percentiles, operations by result, and operations in progress — from operator-exposed fleet metrics (`redkey_phase`, `redkey_config_phase`, `redkey_operation_*`), see [Managed Redkey Fleet metrics](#managed-redkey-fleet-metrics) |
 | **Overview** | Operator version (`redkey_operator_build_info`), uptime, leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
-| **Reconciliation Performance** | Count by result (`increase`), rate by result (stacked), duration percentiles (p50/p95/p99), terminal errors, reconciliations by controller, average reconcile duration (`rate(sum)/rate(count)`), non-terminal reconcile errors by controller |
+| **Reconciliation Performance** | Count by result (`increase`), rate by result (stacked), duration percentiles (p50/p95/p99), reconciliations by controller, average reconcile duration (`rate(sum)/rate(count)`), reconcile errors terminal vs non-terminal (`increase` by controller) |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
 | **Kubernetes API Client** | Requests by method & status (`increase()` per-interval counts), client errors (4xx / 5xx), request rate by method |
 | **Process & Go Runtime** | Process memory (RSS vs virtual), Go heap (in-use/idle/stack), process CPU usage (cores), goroutines, GC pause quantiles, open file descriptors vs max, Go allocation rate, GC cycles rate, live heap objects, OS threads, next-GC target vs heap in-use |
@@ -264,6 +265,61 @@ Robin exposes metrics with the `redkey_` prefix:
 - **Cluster health metrics** — `redkey_cluster_healthy`, `redkey_cluster_membership_ok`, `redkey_cluster_slots_covered_ok`, `redkey_cluster_balanced_ok`, `redkey_cluster_check_errors`, `redkey_cluster_check_warnings`
 - **Cluster node metrics** — `redkey_nodes_metrics` (per-node with role, slots, state labels)
 - **Cluster info metrics** — `redkey_cluster_metrics` (cluster-level info as labels)
+
+### Managed Redkey Fleet metrics
+
+The **control-plane state** of the Redkey fleet is exposed by the **operator itself**, on the same
+`/metrics` endpoint already scraped for the controller-runtime metrics. They are updated from the
+reconcile loop (event-driven, plus the periodic resync as a safety net): a Redkey's series are set
+from its freshly aggregated status, removed when the reconciler observes the deletion, and the
+in-memory registry starts clean on every operator restart.
+
+This is deliberately **not** done via kube-state-metrics CustomResourceState. Although that would
+avoid operator code, it requires configuring the *central* kube-state-metrics — which is not
+possible in locked-down production clusters where the observability stack is managed by another
+team. Exposing the metrics from the operator only needs the operator's **ServiceMonitor** (which
+teams can create in their own namespace), so it works identically in local and production
+environments.
+
+Scope is deliberately narrow — only state the operator owns:
+- **Lifecycle phase** (`redkey_phase`, `redkey_config_phase`) — control-plane state.
+- **Operation timing** (`redkey_operation_duration_seconds`, `redkey_operation_total`) — how long
+  scaling/upgrade/rebalance operations take and how they end, which nothing else measures.
+
+Data-plane health (cluster healthy, slots covered, balance, memory, ...) is **not** mirrored here:
+it is owned and published by Robin (`redkey_cluster_*`, shown in the Redkey Cluster dashboard).
+
+| Metric | Type | Source / meaning | Labels |
+| ------ | ---- | ---------------- | ------ |
+| `redkey_phase` | gauge (state set) | `Redkey.status.phase` — 1 on the active phase | `namespace`, `name`, `phase` (`Ready`/`Configuring`/`Error`) |
+| `redkey_config_phase` | gauge (state set) | active `RedkeyConfig.status.configPhase` — 1 on the active phase | `namespace`, `name`, `config_phase` (`Pending`/`InProgress`/`Superseded`/`Applied`) |
+| `redkey_operation_duration_seconds` | histogram | duration from start until the cluster settles back to Ready/Error | `operation` |
+| `redkey_operation_total` | counter | completed operations | `operation`, `result` (`success`/`error`/`superseded`) |
+| `redkey_operation_in_progress` | gauge | the operation a Redkey is running **right now** (1 while in flight; removed on settle) | `namespace`, `name`, `operation` |
+
+Because `redkey_phase`/`redkey_config_phase` carry the Redkey's own `namespace`/`name` labels, the
+operator's ServiceMonitor sets `honorLabels: true` so those are preserved instead of being
+overwritten by the operator pod's target labels.
+
+Example queries:
+- Redkeys currently in error: `redkey_phase{phase="Error"} == 1`
+- Fleet phase distribution: `sum by (phase) (redkey_phase)`
+- Total managed Redkeys: `count(redkey_phase{phase="Ready"})`
+- Upgrade duration p95: `histogram_quantile(0.95, sum by (le) (rate(redkey_operation_duration_seconds_bucket{operation="Upgrading"}[$__rate_interval])))`
+- Failed operations: `sum by (operation) (increase(redkey_operation_total{result="error"}[$__rate_interval]))`
+- Operations running right now: `redkey_operation_in_progress`
+
+> `redkey_operation_*` (duration/total) are recorded only when an operation **completes**, so an
+> in-flight operation appears in `redkey_operation_in_progress` (live) but not yet in the
+> counters/histogram. The completion metrics are also best-effort for very short operations: the
+> operator samples `status` on each reconcile, so an operation that starts and finishes between two
+> reconciles may not be timed. For precise, transition-accurate operation timing the natural owner
+> is Robin (which drives every transition); the operator's view is a convenient approximation.
+
+
+> These metrics arrive on the **kube-state-metrics** job (not Robin's), and require the Redkey CRDs
+> to be installed so their GroupVersionKind exists. `customResourceState.only` is **not** set, so
+> the standard `kube_*` metrics (used by the Kubernetes Container panels) keep flowing.
 
 ## Uninstallation
 

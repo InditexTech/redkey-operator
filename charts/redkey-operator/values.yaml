@@ -30,6 +30,36 @@ rbac:
 leaderElection:
   enabled: true
 
+# Metrics endpoint configuration.
+# By default the operator exposes /metrics over plain HTTP without authentication,
+# which works out of the box with Prometheus setups that scrape by pod annotations.
+# To serve metrics over HTTPS with Kubernetes TokenReview/SubjectAccessReview
+# authentication, set secure: true (port 8443 is the usual choice in that case).
+metrics:
+  # Expose the metrics endpoint. Set to false to disable it entirely.
+  enabled: true
+  # Port the metrics endpoint binds to and is exposed on.
+  port: 8080
+  # Serve metrics over HTTPS with authentication. Requires the metrics-auth RBAC
+  # (created when rbac.create is true) and, for verified TLS, cert-manager.
+  secure: false
+  # Create a Service pointing at the metrics port.
+  service:
+    enabled: true
+  # Create a Prometheus Operator ServiceMonitor. Requires the ServiceMonitor CRD.
+  serviceMonitor:
+    enabled: false
+    # Additional labels for the ServiceMonitor (e.g. to match your Prometheus selector).
+    labels: {}
+    interval: 30s
+  # Prometheus scrape annotations added to the operator pod. Useful for
+  # annotation-based scraping (no Prometheus Operator required). Ignored when
+  # you rely on the ServiceMonitor instead. The port and scheme are derived
+  # automatically from metrics.port and metrics.secure.
+  annotations:
+    enabled: true
+    path: /metrics
+
 podAnnotations: {}
 
 podSecurityContext:
