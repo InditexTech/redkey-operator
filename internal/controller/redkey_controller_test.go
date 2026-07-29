@@ -84,6 +84,10 @@ func (w *staticStatusWriter) Patch(ctx context.Context, obj client.Object, patch
 	return w.updateErr
 }
 
+func (w *staticStatusWriter) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
+	return w.updateErr
+}
+
 type statusUpdateErrClient struct {
 	client.Client
 	updateErr error

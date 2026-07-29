@@ -17,6 +17,7 @@ var (
 	GroupVersion = schema.GroupVersion{Group: "redkey.inditex.dev", Version: "v1beta1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
+	//nolint:staticcheck // scheme.Builder is the pattern scaffolded by kubebuilder v4; deprecation is advisory only.
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
 
 	// AddToScheme adds the types in this group-version to the given scheme.
