@@ -1,0 +1,142 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: redkey.inditex.dev/v1beta1
+kind: Redkey
+metadata:
+  annotations:
+    inditex.dev/description: "Ephemeral Redis Cluster for development purposes"
+  labels:
+    inditex.dev/name: redkey-cluster-ephemeral
+    inditex.dev/owner: a-team
+    inditex.dev/environment: development
+    app.kubernetes.io/managed-by: kustomize
+  name: redkey-cluster-ephemeral
+spec:
+  mode: cluster
+  primaries: 3
+  # replicasPerPrimary: 1
+  ephemeral: true
+  accessModes:
+    - ReadWriteOnce
+  image: redis:8-bookworm
+  purgeKeysOnRebalance: true
+  labels:
+    inditex.dev/team: a-team
+    inditex.dev/custom-label: custom-label
+  annotations:
+    inditex.dev/custom-annotation: custom-value
+  config: |
+    maxmemory 90mb
+    maxmemory-samples 5
+    maxmemory-policy allkeys-lru
+    protected-mode no
+    appendonly no
+    save ""
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  robin:
+    image: ghcr.io/inditextech/redkey-robin:latest
+    resources:
+      requests:
+        cpu: 200m
+        memory: 100Mi
+      limits:
+        cpu: 400m
+        memory: 200Mi
+    config:
+      reconciler:
+        intervalSeconds: 30
+        intervalOnErrorSeconds: 10
+        intervalOnWaitSeconds: 10
+      cluster:
+        connectionMaxRetries: 10
+        connectionBackOffSeconds: 10
+        clusterCommandTimeoutSeconds: 24
+        rebalanceTimeoutSeconds: 600
+        clusterMeetWaitSeconds: 5
+      metrics:
+        collectionIntervalSeconds: 60
+        redisInfoKeys:
+          - keyspace_hits
+          - evicted_keys
+          - connected_clients
+          - total_commands_processed
+          - keyspace_misses
+          - expired_keys
+          - redis_version
+          - used_memory_rss
+          - maxmemory
+          - used_cpu_sys
+          - used_cpu_sys_children
+          - used_cpu_user
+          - used_cpu_user_children
+          - total_net_input_bytes
+          - total_net_output_bytes
+          - aof_base_size
+          - aof_current_size
+          - mem_aof_buffer
+      profiling:
+        enabled: true
+  #   template:
+  #     metadata:
+  #       labels:
+  #         inditex.dev/test-label-override: "true"
+  #       annotations:
+  #         inditex.dev/test-annotation-override: "true"
+  #     spec:
+  #       containers:
+  #         - image: ghcr.io/inditextech/redkey-robin:latest
+  #           name: robin
+  #           imagePullPolicy: Always
+  #           ports:
+  #             - containerPort: 8080
+  #               name: prometheus
+  #               protocol: TCP
+  #           resources:
+  #             requests:
+  #               cpu: 500m
+  #               memory: 100Mi
+  #             limits:
+  #               cpu: 1
+  #               memory: 200Mi
+  # override:
+  #   service:
+  #     metadata:
+  #       annotations:
+  #         traffic.inditex.dev/weight: "80"
+  #       labels:
+  #         inditex.dev/test: "test"
+  #     spec:
+  #       ports:
+  #       - name: prometheus
+  #         port: 9090
+  #         targetPort: 9090
+  #         protocol: TCP
+  #   statefulSet:
+  #     metadata:
+  #       annotations:
+  #         traffic.inditex.dev/weight: "10"
+  #       labels:
+  #         inditex.dev/test: "test"
+  #     spec:
+  #       template:
+  #         spec:
+  #           containers:
+  #             - name: nginx
+  #               image: nginx
+  #           tolerations:
+  #             - key: "test"
+  #               operator: "Equal"
+  #               value: "test"
+  #               effect: "NoSchedule"
+  #           topologySpreadConstraints:
+  #             - maxSkew: 1
+  #               topologyKey: kubernetes.io/hostname
+  #               whenUnsatisfiable: DoNotSchedule
+  #               labelSelector:
+  #                 matchLabels:
+  #                   redkey.inditex.dev/cluster: redkey-cluster-ephemeral
+  #           terminationGracePeriodSeconds: 10

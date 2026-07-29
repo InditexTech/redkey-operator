@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// NOTE: This file is adapted from test/e2e/framework/namespace.go for chaos tests.
 package framework
 
 import (
@@ -11,91 +10,110 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
 )
 
 const (
-	defaultNamespaceWait = 100 * time.Second
-	defaultNamespacePoll = 1 * time.Second
+	namespacePollInterval = 2 * time.Second
+	namespaceWaitTimeout  = 120 * time.Second
 )
 
-// CreateNamespace creates a namespace with a GenerateName prefix and waits for it to be ready.
-func CreateNamespace(ctx context.Context, clientset kubernetes.Interface, prefix string) (*corev1.Namespace, error) {
+// CreateNamespace creates a namespace with a generated name and waits for it to be active.
+func CreateNamespace(ctx context.Context, c client.Client, prefix string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: prefix + "-",
+			Labels: map[string]string{
+				"pod-security.kubernetes.io/enforce": "privileged",
+				"pod-security.kubernetes.io/audit":   "privileged",
+				"pod-security.kubernetes.io/warn":    "privileged",
+			},
 		},
 	}
-	created, err := clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
+	if err := c.Create(ctx, ns); err != nil {
+		return nil, fmt.Errorf("creating namespace: %w", err)
 	}
 
-	err = wait.PollUntilContextTimeout(ctx, defaultNamespacePoll, defaultNamespaceWait, true, func(ctx context.Context) (bool, error) {
-		_, err := clientset.CoreV1().Namespaces().Get(ctx, created.Name, metav1.GetOptions{})
-		return err == nil, nil
-	})
+	err := wait.PollUntilContextTimeout(ctx, namespacePollInterval, namespaceWaitTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			var tmp corev1.Namespace
+			if err := c.Get(ctx, client.ObjectKey{Name: ns.Name}, &tmp); err != nil {
+				return false, nil
+			}
+			return tmp.Status.Phase == corev1.NamespaceActive, nil
+		})
 	if err != nil {
-		return nil, fmt.Errorf("failed to wait for namespace %s to be ready: %w", created.Name, err)
+		return nil, fmt.Errorf("namespace %s not ready: %w", ns.Name, err)
 	}
-	return created, nil
+	return ns, nil
 }
 
-// DeleteNamespace tears down everything in the namespace, including
-// RedkeyCluster CRs with finalizers, then deletes the namespace itself.
-func DeleteNamespace(ctx context.Context, clientset kubernetes.Interface, dc dynamic.Interface, ns *corev1.Namespace) error {
+// DeleteNamespace cleans up Redkey CRs (removing finalizers) and deletes the namespace.
+func DeleteNamespace(ctx context.Context, c client.Client, ns *corev1.Namespace) error {
 	if ns == nil {
 		return nil
 	}
 
-	// 1) Remove any RedkeyCluster CRs so their finalizers don't stall namespace deletion
-	rcList, err := dc.Resource(RedkeyClusterGVR).Namespace(ns.Name).List(ctx, metav1.ListOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("list RedkeyClusters in %s: %w", ns.Name, err)
-	}
+	// Remove any Redkey CRs so their finalizers don't stall deletion
+	var clusterList redkeyv1beta1.RedkeyList
+	if err := c.List(ctx, &clusterList, &client.ListOptions{Namespace: ns.Name}); err == nil {
+		for i := range clusterList.Items {
+			name := clusterList.Items[i].Name
+			namespace := clusterList.Items[i].Namespace
 
-	if rcList != nil {
-		for _, item := range rcList.Items {
-			name := item.GetName()
-
-			// Strip finalizers with retry
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				rc, err := dc.Resource(RedkeyClusterGVR).Namespace(ns.Name).Get(ctx, name, metav1.GetOptions{})
-				if err != nil {
+			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				rc := &redkeyv1beta1.Redkey{}
+				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rc); err != nil {
 					return err
 				}
-				rc.SetFinalizers(nil)
-				_, err = dc.Resource(RedkeyClusterGVR).Namespace(ns.Name).Update(ctx, rc, metav1.UpdateOptions{})
-				return err
+				rc.Finalizers = nil
+				return c.Update(ctx, rc)
 			})
-			if err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("removing finalizers from %s/%s: %w", ns.Name, name, err)
-			}
 
-			// Delete the CR immediately
-			if err := dc.Resource(RedkeyClusterGVR).Namespace(ns.Name).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("deleting RedkeyCluster %s/%s: %w", ns.Name, name, err)
-			}
+			_ = c.Delete(ctx, &redkeyv1beta1.Redkey{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			})
 		}
 	}
 
-	// 2) Delete the namespace
-	if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+	// Also remove finalizers from configs
+	var configList redkeyv1beta1.RedkeyConfigList
+	if err := c.List(ctx, &configList, &client.ListOptions{Namespace: ns.Name}); err == nil {
+		for i := range configList.Items {
+			name := configList.Items[i].Name
+			namespace := configList.Items[i].Namespace
+
+			_ = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				cfg := &redkeyv1beta1.RedkeyConfig{}
+				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cfg); err != nil {
+					return err
+				}
+				cfg.Finalizers = nil
+				return c.Update(ctx, cfg)
+			})
+		}
+	}
+
+	if err := c.Delete(ctx, ns); err != nil {
 		return fmt.Errorf("deleting namespace %s: %w", ns.Name, err)
 	}
 
-	// 3) Wait for the namespace to actually disappear
-	err = wait.PollUntilContextTimeout(ctx, defaultNamespacePoll, defaultNamespaceWait, true, func(ctx context.Context) (bool, error) {
-		_, err := clientset.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
-		return errors.IsNotFound(err), nil
-	})
+	err := wait.PollUntilContextTimeout(ctx, namespacePollInterval, namespaceWaitTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			err := c.Get(ctx, types.NamespacedName{Name: ns.Name}, &corev1.Namespace{})
+			if err != nil {
+				return true, nil // gone
+			}
+			return false, nil
+		})
 	if err != nil {
-		return fmt.Errorf("namespace %s should be gone: %w", ns.Name, err)
+		return fmt.Errorf("namespace %s still exists after timeout: %w", ns.Name, err)
 	}
 	return nil
 }

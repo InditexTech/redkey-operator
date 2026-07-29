@@ -15,88 +15,97 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	typeCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/homedir"
 )
 
-// Get the clientSet for kubernetes conection
-func getClientSet() (*kubernetes.Clientset, *rest.Config, error) {
-	// Get the KUBECONFIG environment variable
+// GetClientSet returns a Kubernetes clientset and rest config from KUBECONFIG or default.
+func GetClientSet() (*kubernetes.Clientset, *rest.Config, error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
-		// Get config file of kubernetes
 		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
 	}
 
-	// Create the rest.Config for kubernetes conection
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error loading config file of kubernetes: %v", err)
+		return nil, nil, fmt.Errorf("error loading kubeconfig: %w", err)
 	}
-	// Create the client for kubernetes conection
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating client of kubernetes: %v", err)
+		return nil, nil, fmt.Errorf("error creating kubernetes clientset: %w", err)
 	}
+
 	return clientset, config, nil
 }
 
-// Execute a command with exec by pod
-func remoteCommand(namespace string, podName string, command string) (string, string, error) {
+// ExecInPod executes a command in a pod and returns stdout and stderr.
+func ExecInPod(namespace, podName, command string) (string, string, error) {
+	return ExecInPodContainer(namespace, podName, "", command)
+}
+
+// ExecInPodContainer executes a command in a specific container of a pod.
+func ExecInPodContainer(namespace, podName, container, command string) (string, string, error) {
 	ctx := context.Background()
-	buf := &bytes.Buffer{}
-	errBuf := &bytes.Buffer{}
-	executor, err := remoteCommandExecutor(namespace, podName, command)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	executor, err := createExecutor(namespace, podName, container, command)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("creating executor: %w", err)
 	}
 
-	// Connect this process' std{in,out,err} to the remote shell process.
 	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  nil,
-		Stdout: buf,
-		Stderr: errBuf,
+		Stdout: stdout,
+		Stderr: stderr,
 		Tty:    false,
 	})
 	if err != nil {
-		return "", "", err
+		return stdout.String(), stderr.String(), fmt.Errorf(
+			"exec in pod %s/%s: %w (stderr: %s)", namespace, podName, err, stderr.String())
 	}
-	return buf.String(), errBuf.String(), nil
+
+	return stdout.String(), stderr.String(), nil
 }
 
-// Create the executor that allow execute commands in pods in a cluster of kubernetes
-func remoteCommandExecutor(namespace, podName, command string) (remotecommand.Executor, error) {
-	_, config, err := getClientSet()
-	if err != nil {
-		return nil, fmt.Errorf("error creating client of kubernetes: %v", err)
-	}
-
-	coreV1Client, err := typeCoreV1.NewForConfig(config)
+func createExecutor(namespace, podName, container, command string) (remotecommand.Executor, error) {
+	_, config, err := GetClientSet()
 	if err != nil {
 		return nil, err
 	}
 
-	request := coreV1Client.RESTClient().
+	coreClient, err := typedcorev1.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("creating core/v1 client: %w", err)
+	}
+
+	execOpts := &corev1.PodExecOptions{
+		TypeMeta: metav1.TypeMeta{},
+		Stdout:   true,
+		Stderr:   true,
+		TTY:      false,
+		Command:  []string{"/bin/sh", "-c", command},
+	}
+	if container != "" {
+		execOpts.Container = container
+	}
+
+	request := coreClient.RESTClient().
 		Post().
 		Namespace(namespace).
 		Resource("pods").
 		Name(podName).
 		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			TypeMeta: metav1.TypeMeta{},
-			Stdout:   true,
-			Stderr:   true,
-			TTY:      false,
-			Command:  []string{"/bin/sh", "-c", command},
-		}, scheme.ParameterCodec)
+		VersionedParams(execOpts, scheme.ParameterCodec)
 
 	executor, err := remotecommand.NewSPDYExecutor(config, "POST", request.URL())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating SPDY executor: %w", err)
 	}
+
 	return executor, nil
 }

@@ -21,7 +21,7 @@ In order to quickly deploy Redkey Operator into an existing Kubernetes cluster u
 
 Set the needed environment variables:
 
-```
+```shell
 export NAMESPACE=<target_namespace>
 export PROFILE=pro
 export IMG=<your_registry_hostname>:<your_registry_port>/redkey-operator:<image_tag>
@@ -34,22 +34,14 @@ export IMG=<your_registry_hostname>:<your_registry_port>/redkey-operator:<image_
 
 Build and publish the operator image:
 
-```
+```shell
 make docker-build
 make docker-push
 ```
 
-Prepare the manifest files to deploy the operator:
-
-```
-make process-manifests
-```
-
-This will generate the needed yaml files into the `deployment`.
-
 Finally, apply the manifest files to deploy the CRDs and the needed Kubernetes resources:
 
-```
+```shell
 make install
 make deploy
 ```

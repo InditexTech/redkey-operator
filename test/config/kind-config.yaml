@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
+nodes:
+- role: control-plane
+  # The e2e suites (hotreload, scaling, ...) run concurrently and each spec
+  # leaves its Redkey (3 redis + 1 robin pods) running until the suite's
+  # AfterAll. On a single node the default kubelet limit of 110 pods is exhausted,
+  # causing "FailedScheduling: Too many pods" and clusters stuck in Configuring.
+  # Raise the limit (a /24 per-node pod subnet allows up to ~254 pods).
+  kubeadmConfigPatches:
+  - |
+    kind: KubeletConfiguration
+    maxPods: 250

@@ -2,31 +2,37 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package chaos contains the Redkey operator chaos test suite. The suite deploys a dedicated,
+// namespace-scoped operator per chaos namespace (configured with --watch-namespaces) so that
+// parallel scenarios are fully isolated, then injects faults (pod deletions, topology corruption)
+// under sustained k6 load and verifies the cluster heals.
 package chaos
 
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
+	"github.com/inditextech/redkeyoperator/test/chaos/framework"
 )
 
 var (
+	k8sClient           client.Client
 	k8sClientset        kubernetes.Interface
-	dynamicClient       dynamic.Interface
 	ctx                 context.Context
 	cancel              context.CancelFunc
 	chaosIterations     int
 	chaosSeed           int64
-	chaosReadyTimeout   = 15 * time.Minute // if it is scaling 1 to 7, 3 pods deleted, k6 load, it was bigger than 10
+	chaosReadyTimeout   = 15 * time.Minute
 	skipDeleteNamespace bool
 )
 
@@ -35,48 +41,38 @@ func TestChaos(t *testing.T) {
 	RunSpecs(t, "Redkey Operator Chaos Test Suite", Label("chaos"))
 }
 
-// SynchronizedBeforeSuite ensures cluster-level setup runs once across all
-// parallel Ginkgo processes. The first process (process 1) performs the
-// one-time setup, and all processes then create their own Kubernetes client.
+// SynchronizedBeforeSuite runs cluster-level setup once across all parallel processes (process 1),
+// then every process builds its own Kubernetes clients.
 var _ = SynchronizedBeforeSuite(
 	func() []byte {
-		By("verifying CRD directory exists (process 1)")
-		crdDir := filepath.Join("..", "..", "deployment")
-		_, err := os.Stat(crdDir)
-		Expect(err).NotTo(HaveOccurred(), "CRD directory %q must exist", crdDir)
-
+		// CRDs are installed cluster-wide by the Makefile chaos target before the suite runs.
+		// Nothing process-global is required here.
 		return nil
 	},
 	func(_ []byte) {
-		By("creating Kubernetes clients")
+		By("building Kubernetes clients")
 
-		kubeconfig := os.Getenv("KUBECONFIG")
-		if kubeconfig == "" {
-			home, _ := os.UserHomeDir()
-			kubeconfig = filepath.Join(home, ".kube", "config")
-		}
-
-		cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-		Expect(err).NotTo(HaveOccurred(), "failed to load kubeconfig from %s", kubeconfig)
+		cfg, err := framework.RESTConfig()
+		Expect(err).NotTo(HaveOccurred(), "failed to load kubeconfig")
 		Expect(cfg).NotTo(BeNil())
 
-		// Create native kubernetes clientset
+		scheme := clientgoscheme.Scheme
+		Expect(redkeyv1beta1.AddToScheme(scheme)).To(Succeed())
+
+		k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
+		Expect(err).NotTo(HaveOccurred(), "failed to create controller-runtime client")
+		Expect(k8sClient).NotTo(BeNil())
+
 		k8sClientset, err = kubernetes.NewForConfig(cfg)
 		Expect(err).NotTo(HaveOccurred(), "failed to create Kubernetes clientset")
 		Expect(k8sClientset).NotTo(BeNil())
 
-		// Create dynamic client for CRD access
-		dynamicClient, err = dynamic.NewForConfig(cfg)
-		Expect(err).NotTo(HaveOccurred(), "failed to create dynamic client")
-		Expect(dynamicClient).NotTo(BeNil())
-
 		ctx, cancel = context.WithCancel(context.Background())
 
-		chaosIterations = parseInt(os.Getenv("CHAOS_ITERATIONS"), 3)
+		chaosIterations = framework.GetChaosIterations()
 
 		if seedStr := os.Getenv("CHAOS_SEED"); seedStr != "" {
-			seed, err := strconv.ParseInt(seedStr, 10, 64)
-			if err == nil {
+			if seed, perr := strconv.ParseInt(seedStr, 10, 64); perr == nil {
 				chaosSeed = seed
 			} else {
 				chaosSeed = GinkgoRandomSeed()
@@ -85,35 +81,19 @@ var _ = SynchronizedBeforeSuite(
 			chaosSeed = GinkgoRandomSeed()
 		}
 
-		if os.Getenv("CHAOS_KEEP_NAMESPACE_ON_FAILED") != "" {
-			skipDeleteNamespace = true
-		}
+		skipDeleteNamespace = framework.KeepNamespaceOnFailure()
 
-		GinkgoWriter.Printf("Chaos test configuration: iterations=%d, seed=%d, skipDeleteNamespace=%v\n", chaosIterations, chaosSeed, skipDeleteNamespace)
+		GinkgoWriter.Printf("Chaos test configuration: iterations=%d, seed=%d, skipDeleteNamespace=%v\n",
+			chaosIterations, chaosSeed, skipDeleteNamespace)
 	},
 )
 
-// SynchronizedAfterSuite ensures cleanup runs safely across all parallel processes.
+// SynchronizedAfterSuite cancels the shared context after all processes finish.
 var _ = SynchronizedAfterSuite(
 	func() {
-		By("cleaning up test context")
 		if cancel != nil {
 			cancel()
 		}
 	},
-	func() {
-		By("final cleanup complete")
-	},
+	func() {},
 )
-
-// parseInt parses an integer string and returns a default if parsing fails.
-func parseInt(s string, defaultVal int) int {
-	if s == "" {
-		return defaultVal
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultVal
-	}
-	return v
-}

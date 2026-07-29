@@ -16,18 +16,19 @@ on:
         description: Number of parallel processes for the E2E test suite
         default: '2'
         required: false
+      robin_ref:
+        description: Branch, tag or SHA to checkout from the Robin repository
+        default: main
+        required: false
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
-  OPERATOR_NAME: redkey-operator
   OPERATOR_VERSION: test-e2e
-  KUBECONFIG: ${{ github.workspace }}/.kube/config
+  KUBECONFIG: ${{ github.workspace }}/redkeyoperator/.kube/config
   LOCAL_CLUSTER_NAME: test-e2e-cluster
-  LOCAL_REGISTRY: test-e2e-registry
-  LOCAL_REGISTRY_PORT: 5001
 
 jobs:
   e2e-tests:
@@ -38,50 +39,84 @@ jobs:
         shell: bash -eu -o pipefail {0}
 
     steps:
-    - name: 📥  Checkout code
+    - name: Checkout operator code
       uses: actions/checkout@v4
+      with:
+        path: redkeyoperator
 
-    - name: 🏗️  Set up Go
+    - name: Resolve Robin ref
+      id: robin-ref
+      env:
+        INPUT_ROBIN_REF: ${{ github.event.inputs.robin_ref || '' }}
+        PR_HEAD_REF: ${{ github.head_ref || '' }}
+        PR_BODY: ${{ github.event.pull_request.body || '' }}
+      run: |
+        robin_ref="${INPUT_ROBIN_REF}"
+
+        if [[ -z "${robin_ref}" && -n "${PR_BODY}" ]]; then
+          robin_ref="$(printf '%s\n' "${PR_BODY}" | sed -nE 's/^robin-ref:[[:space:]]*(.+)$/\1/p' | head -n1)"
+        fi
+
+        if [[ -z "${robin_ref}" && -n "${PR_HEAD_REF}" ]]; then
+          if git ls-remote --exit-code --heads https://github.com/InditexTech/redkeyrobin.git "${PR_HEAD_REF}" >/dev/null 2>&1; then
+            robin_ref="${PR_HEAD_REF}"
+          fi
+        fi
+
+        robin_ref="${robin_ref:-main}"
+        echo "ref=${robin_ref}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout Robin code
+      uses: actions/checkout@v4
+      with:
+        repository: InditexTech/redkeyrobin
+        ref: ${{ steps.robin-ref.outputs.ref }}
+        path: redkeyrobin
+
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: go.mod
+        go-version-file: redkeyoperator/go.mod
         cache: true
 
-    - name: 🔧  Install kubectl
+    - name: Install kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: v1.30.0
 
-    - name: 🌱 Kubernetes KinD Cluster
-      id: kind
+    - name: Create Kind cluster
       uses: helm/kind-action@v1
       with:
         cluster_name: ${{ env.LOCAL_CLUSTER_NAME }}
-        registry: true
-        registry_name: ${{ env.LOCAL_REGISTRY }}
-        registry_port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-    - name: 🏗️  Build operator image
-      run: make docker-build IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
-        
-    - name: 📥 Push operator image
-      run: make docker-push IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }}
+    - name: Build operator image
+      working-directory: redkeyoperator
+      run: make docker-build IMG=redkey-operator:${{ env.OPERATOR_VERSION }}
 
-    - name: 📚  Install Ginkgo CLI
+    - name: Build Robin image
+      working-directory: redkeyrobin
+      run: make docker-build IMG=redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkeyoperator
+
+    - name: Install Ginkgo CLI
       run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
-    
-    - name: 📚 Install CRD
-      run: make install
 
-    - name: ✅  Run E2E test suite
+    - name: Run E2E test suite
+      working-directory: redkeyoperator
       env:
         TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
       run: |
         make test-e2e \
-          IMG=${{ steps.kind.outputs.LOCAL_REGISTRY }}/redkey-operator:${{ env.OPERATOR_VERSION }} \
+          IMAGE_OPERATOR=redkey-operator:${{ env.OPERATOR_VERSION }} \
+          IMAGE_ROBIN=redkey-robin:${{ env.OPERATOR_VERSION }} \
           TEST_PARALLEL_PROCESS=${{ env.TEST_PARALLEL_PROCESSES }} \
-          GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }}
+          GOMAXPROCS=${{ env.TEST_PARALLEL_PROCESSES }} \
+          E2E_RECONCILE_INTERVAL=5 \
+          E2E_POLL_INTERVAL=3 \
+          E2E_CREATION_TIMEOUT=420 \
+          E2E_HEALTH_TIMEOUT=420 \
+          E2E_UPGRADE_TIMEOUT=900 \
+          E2E_TIMEOUT=90m
 
-    - name: 🧹  Delete KinD cluster (always)
+    - name: Delete Kind cluster
       if: always()
       run: kind delete cluster --name ${{ env.LOCAL_CLUSTER_NAME }}

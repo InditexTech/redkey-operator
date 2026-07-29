@@ -6,317 +6,423 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Development Guide
 
-Quickly provision Redkey cluster environments in Kubernetes.
+We have created this guide to help you get started with the development of the Redkey Operator. It includes instructions on how to set up your local environment, deploy the operator, and run tests.
 
-The operator relies on Redkey cluster functionality to serve client requests.
+We tried to make it as comprehensive as possible, but if you have any questions or suggestions, please don't hesitate to reach out to us.
 
-## Local Development and Testing
+## Table of Contents
 
-A *local K8s cluster* can be used to deploy the Redkey Operator from a pre-built image or by directly compiling from the source code.
+- [Requirements](#requirements)
+- [Devcontainers](#devcontainers)
+- [Local development](#local-development)
+  - [Create your local Kubernetes cluster](#create-you-local-kubernetes-cluster)
+  - [Run the Operator in your local cluster](#run-the-operator-in-your-local-cluster)
+    - [Run the Operator from your local machine](#run-the-operator-from-your-local-machine)
+    - [Build and push the Operator image](#build-and-push-the-operator-image)
+    - [Build and push the Robin image](#build-and-push-the-robin-image)
+  - [Deploy an example Redkey Cluster](#deploy-an-example-redkey-cluster)
+  - [Cleanup](#cleanup)
+- [Local testing](#local-testing)
+  - [Unit tests](#unit-tests)
+  - [Integration tests](#integration-tests)
+  - [End-to-end tests](#end-to-end-tests)
+    - [GitHub Actions E2E workflow](#github-actions-e2e-workflow)
+    - [Parallel execution](#parallel-execution)
+    - [E2E environment variables](#e2e-environment-variables)
+    - [Resource optimization](#resource-optimization)
+    - [Available labels](#available-labels)
+  - [Chaos tests](#chaos-tests)
 
-This will help develop and test new features, fix bugs, and test releases locally.
+---
 
-As we will see below, you can use the `make` command to deploy the components and an example Redkey Cluster, or run the scripts that automate the basic workflows.
+## Requirements
 
-## Create your Kubernetes Cluster
+We recommend using a local Kubernetes cluster for development and testing. You can use tools like Kind, Docker Desktop, Rancher Desktop, or K3D to create a local cluster.
 
-This guide uses Kind, but feel free to use another Kubernetes cluster tool (e.g., Docker Desktop, Rancher Desktop, K3D).
+`Kind` is the tool we chose for this project, but we do our best to make the development guide compatible with other tools. The following sections will provide instructions for setting up a local Kubernetes cluster using `Kind`, but you can adapt them to your preferred tool.
 
-Deploy a k8s cluster with a trysted repository. You can use the following proposed script (from Kind website) or use the kind command (see the [official Kind Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/) for detailed usage guide):
+The main development operations can be accomplished with the `Makefile` commands. The required tools will be downloaded and installed in the `bin` directory by the corresponding `make` goals. However, you can also install them manually if you prefer and your installation will be used by the `Makefile` commands.
 
-``` sh
-scripts/kind-with-registry.sh
-```
+The required tools are:
 
-## Redkey Operator
+- [`Go`](https://go.dev/) — the programming language used to build the operator
+- [`Make`](https://www.gnu.org/software/make/) — used to run the development workflow commands defined in the `Makefile`
+- [`Docker`](https://docs.docker.com/) or [`Podman`](https://podman.io/) — container engine for building and pushing operator images
+- [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) — Kubernetes CLI for interacting with the cluster
+- [`oc`](https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html) — OpenShift CLI, required for OpenShift and OLM-based deployments
 
-### Deploy Redkey Operator from a custom image
+The tools that will be **downloaded and installed by `make`** in the `bin` directory are:
 
-Once your K8s cluster and registry are ready to use, make the image you want to use to deploy the Redkey Operator available. Your cluster must be configured to access your local registry.
+- [`kind`](https://sigs.k8s.io/kind) — local Kubernetes clusters using Docker
+- [`kustomize`](https://sigs.k8s.io/kustomize) — Kubernetes manifest customization
+- [`controller-gen`](https://sigs.k8s.io/controller-tools) — CRD and RBAC manifest generation
+- [`setup-envtest`](https://sigs.k8s.io/controller-runtime/tools/setup-envtest) (derived from `controller-runtime` module version) — downloads Kubernetes binaries for integration tests
+- [`golangci-lint`](https://github.com/golangci/golangci-lint) — Go linter aggregator
+- [`operator-sdk`](https://github.com/operator-framework/operator-sdk) — Operator SDK CLI for OLM bundle management
 
-> If you want to debug the operator, execute the `export PROFILE=debug` before the following make commands and read [Debugging Redkey Operator](#debugging-redkey-operator) below.
+The project is configured to use [`mise`](https://mise.jdx.dev/) or [`asdf`](https://asdf-vm.com/) for managing Go tool versions. If you have either of these tools installed, it will automatically use the Go version specified in the `.tools-version` file.
 
-Build and push the Redkey Operator image:
+## Devcontainers
+
+The project includes a `devcontainer` configuration for Visual Studio Code Remote Containers. This allows you to develop inside a containerized environment with all dependencies pre-installed and consistent across different machines.
+
+## Local development
+
+Base development cycle:
+
+- Create your local Kubernetes cluster (e.g., with Kind)
+- Edit the code and implement new features or fix bugs
+- Run the Operator in your local cluster
+- Deploy a Redkey Cluster to test your changes
+- Delete your local Kubernetes cluster when you are done
+
+By default, `Docker` is used as the container engine for building and pushing operator images. If you prefer to use `Podman`, set the `CONTAINER_ENGINE` environment variable to `podman` before running the `make` commands:
 
 ```shell
-make docker-build
-make docker-push
+export CONTAINER_ENGINE=podman
 ```
 
-> **To test a released Redkey Operator image**, you'll have to manually pull the image, tag, and push it in the local registry.
+### Create you local Kubernetes cluster
 
-Once the Redkey Operator is available in your local registry, deploy it into your K8s cluster:
+You can easyly create a local Kubernetes cluster with Kind using the following `make` command:
 
-1. Install the CRD (The `redkey-operator` or  `$NAMESPACE` if defined will be used)
+```shell
+make setup-kind
+```
+
+This will create a container registry and a Kind cluster configured to use it. The cluster will be named `redkey-operator` and the registry will be available at `localhost:5001`.
+
+Now you can access your cluster with `kubectl` and deploy the Redkey Operator to it. The `Makefile` includes commands to automate these steps, as well as deploying an example Redkey Cluster.
+
+### Run the Operator in your local cluster
+
+First required step is to install the CRDs in the cluster:
 
 ```shell
 make install
 ```
 
-2. Generate the manifests (generated in `deployment` directory) and deploy the Redkey Operator.
+This will create the CRDs `Redkey` and `RedkeyConfiguration` in the cluster, which are required to deploy the Redkey Operator and create Redkey Cluster instances.
+
+#### Run the Operator from your local machine
+
+The easiest way to run the Operator in your local cluster is to run the controller manager directly from your local machine. This way you can edit the code and see the changes reflected in the cluster without having to build and push a new image.
 
 ```shell
+make run
+```
+
+#### Build and push the Operator image
+
+If you prefer to run the Operator from a container image, you can build and push the image to your local registry with the following commands:
+
+```shell
+make docker-build
+make docker-push
 make deploy
 ```
 
-3. Deploy an example Redkey Cluster from `config/examples` folder. Just so you know, a Redkey Robin image is required; to know how it can be built, see [Redkey Robin](https://github.com/InditexTech/redkeyrobin).
+These commands will build the Operator image, push it to the local registry, and deploy it to your cluster in the `redkey-operator` namespace.
+
+When you need to publish a cross-platform image, use `make docker-buildx` instead. The release workflow for the Operator uses this target to publish `linux/amd64` and `linux/arm64` runtime images.
 
 ```shell
-# Create a rkcl/redis-cluster-ephemeral: 3 nodes, ephemeral: true and purgeKeysOnRebalance: true.
-make apply-rkcl
+make docker-buildx IMG=ghcr.io/inditextech/redkey-operator:<tag>
 ```
 
-### Makefile environment variables
+#### Build and push the Robin image
 
-To customize the make commands set the following variables:
+Robin lives in the sibling `redkeyrobin` repository and imports the API types from `redkeyoperator`. To build the Robin image from source, keep both repositories checked out side by side:
 
-| Variable        | Type       | Default                                        | Definition                             |
-|-----------------|------------|------------------------------------------------|----------------------------------------|
-| `PROFILE`       | dev, debug | dev                                            | determines image and operator deployed |
-| `IMG`           | string     | `localhost:5001/redkey-operator:${PROFILE}`    | the operator image  name               |
-| `NAMESPACE`     | string     | redkey-operator                                | the namespace to deploy resources in   |
-| `PROFILE_ROBIN` | dev, debug | dev                                            | determines robin image and deployed    |
-| `IMG_ROBIN`     | string     | `localhost:5001/redkey-robin:${PROFILE_ROBIN}` | the robin image                        |
+```text
+<workspace>/
+  redkeyoperator/
+  redkeyrobin/
+```
 
-
-### Debugging Redkey Operator
-
-If you followed the steps described above to deploy the Redkey Operator using the `debug` profile you'll have the CRD deployed and a redkey-operator pod running.
-
-This pod is created using a `golang` image with `Delve` installed on it. This will allow us to easily debug the manager code following these steps:
-
-#### 1. Prepare the Debug Pod
-
-Execute in a terminal (Use the go version as in .go-version file):
+Robin now builds from its own repository using a Docker BuildKit named context that points back to the operator checkout. From the operator repository, a typical local flow looks like this:
 
 ```shell
-make debug
+pushd ../redkeyrobin
+make docker-build IMG=localhost:5005/redkey-robin:dev OPERATOR_DIR=../redkeyoperator
+make docker-push IMG=localhost:5005/redkey-robin:dev
+popd
 ```
-Actions performed:
 
-- Build the manager binary.
-- Copy it to the redkey-operator pod.
-- Run the manager binary inside the pod with delve in remote mode.
+If your checkout names or paths differ, adjust `OPERATOR_DIR` accordingly.
 
-#### 2. Port Forward
-
-In another terminal forward the `40000` port to connect from the debugger:
+For cross-platform publication, Robin also provides `make docker-buildx`, and its release workflow publishes `linux/amd64` and `linux/arm64` images using the same mechanism:
 
 ```shell
-make port-forward
+pushd ../redkeyrobin
+make docker-buildx IMG=ghcr.io/inditextech/redkey-robin:<tag> OPERATOR_DIR=../redkeyoperator
+popd
 ```
 
-#### 3. Connect from your IDE to remote debugging
+### Deploy an example Redkey Cluster
 
-Attach the IDE/debugger to the debug session. If using VSCode, the configuration could be:
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Connect to server",
-            "type": "go",
-            "request": "attach",
-            "mode": "remote",
-            "remotePath": "${workspaceFolder}",
-            "port": 40000,
-            "host": "127.0.0.1",
-            "trace": "verbose"
-        }
-     ]
-}
-```
-
-
-## Cleanup
-
-Delete the operator and all associated resources with:
+You can deploy example Redkey Clusters from the `config/samples` folder. Each sample demonstrates a different feature:
 
 ```shell
-make delete-rkcl
+# Ephemeral cluster (3 primaries, no persistence, purgeKeysOnRebalance: true)
+make deploy-sample-ephemeral
+
+# Cluster with persistent storage (AOF + RDB snapshots, purgeKeysOnRebalance: false)
+make deploy-sample-storage
+
+# Cluster with replicas (3 primaries + 1 replica each)
+make deploy-sample-replicas
+
+# Cluster with Redis authentication (includes a sample Secret)
+make deploy-sample-auth
+```
+
+The sample manifests are in `config/samples/{ephemeral,storage,replicas,auth}/redkey.yaml`. You can modify them to test different configurations.
+
+### Interact with the Redkey Cluster
+
+You can interact with the Redkey Cluster using `kubectl` to edit the manifest, check the status of the cluster and its nodes, and access the Redis instances.
+
+In order to launch a Redkey Cluster reconcile loop, you can edit the Redkey manifest with `kubectl edit redkey <cluster-name>` and edit any field in the `spec` section. This will trigger a reconcile loop and you can see the changes reflected in the cluster.
+
+To simulate Robin interactions with the `RedkeyConfiguration` instances you can edit the `status` section with:
+
+```shell
+kubectl patch redkeyconfig redkey-cluster-ephemeral-1 --subresource=status --type merge -p '{"status": {"configPhase" : "Applied", "nodes": {}, "status": "Ready", "substatus": {"status": "", "upgradingPartition": 0}}}'
+```
+
+### Cleanup
+
+To delete an example Redkey Cluster, run the corresponding undeploy target:
+
+```shell
+make undeploy-sample-ephemeral
+make undeploy-sample-storage
+make undeploy-sample-replicas
+make undeploy-sample-auth
+```
+
+To delete the Operator and all associated resources from your cluster, you can run the following commands:
+
+```shell
 make undeploy
-make uninstall
-kubectl delete ns redkey-operator
 ```
 
-## Tests
+To remove the CRDs from your cluster, you can run:
 
-Run unit tests:
+```shell
+make uninstall
+```
+
+To remove the Kind cluster and the local registry, you can run:
+
+```shell
+make kind-cleanup
+```
+
+### Observability (Prometheus & Grafana)
+
+You can deploy a full observability stack (Prometheus + Grafana) with pre-configured dashboards for the Redkey Operator and Robin metrics:
+
+```shell
+make observability-install
+```
+
+This installs `kube-prometheus-stack` via Helm, configures scraping for both the operator and Robin, and provisions Grafana dashboards. Access Grafana at `http://localhost:30300` (credentials: `admin` / `redkey`).
+
+To remove it:
+
+```shell
+make observability-uninstall
+```
+
+For full details, see the [Observability documentation](../observability.md).
+
+## Local testing
+
+To ensure the quality of the code and the functionality of the Operator, we have implemented a set of tests that can be run locally. These tests include:
+
+- Unit tests
+- Integration tests
+- End-to-end tests
+- Chaos tests
+
+### Unit tests
+
+Unit tests are designed to test individual functions and methods in isolation. They are fast to run and provide quick feedback on the correctness of the code.
+
+They are usually ran with the majority of the `make` commands, but you can also run them separately with:
 
 ```shell
 make test
 ```
 
-End-to-end requires a Kubernetes cluster, such as kind. Run it:
+### Integration tests
+
+Integration tests verify the interactions between different components of the Operator, ensuring they work together as expected.
+
+We provide a suite of integration tests that use the `envtest` framework to simulate a Kubernetes API server and test the Operator's reconciliation logic without needing a full cluster. This allows for faster feedback during development while still providing confidence that the Operator's core logic is functioning correctly.
+
+The suite is located in the `test/integration` directory and can be run with:
 
 ```shell
-make test-e2e
+make test-integration
 ```
 
-Or run only an E2E test:
+You can run Unit and Integration tests together with:
 
 ```shell
-make test-e2e GINKGO_EXTRA_OPTS='--focus="sets and clears custom labels"'
+make test-all
 ```
+
+### End-to-end tests
+
+E2E tests simulate real-world scenarios, testing the Operator's functionality from start to finish, including interactions with the Kubernetes API and the Redkey cluster.
+
+The E2E tests are located in the `test/e2e` directory. We need a Kubernetes cluster to run them, so make sure the operator and Robin images are already built locally before executing the following command. `make test-e2e` will create the Kind cluster if needed and load both images into it.
+
+```shell
+make test-e2e IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
+```
+
+To run only a subset of specs, pass a Ginkgo label filter through `LABEL`:
+
+```shell
+make test-e2e IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev LABEL=creation
+```
+
+We provide an easy way to prepare and clean up the local Kind cluster:
+
+```shell
+# Create the Kind cluster ahead of time if you want to keep it between runs
+make setup-test-e2e
+
+# Cleanup the Kind cluster
+make cleanup-test-e2e
+```
+
+#### GitHub Actions E2E workflow
+
+The `.github/workflows/e2e-tests.yml` workflow in this repository checks out `redkeyoperator/` and `redkeyrobin/` side by side under `${{ github.workspace }}`. Robin is then built from its own repository with `OPERATOR_DIR=../redkeyoperator`.
+
+This layout is important: nesting the Robin checkout inside the operator repository breaks `controller-gen paths="./..."` and similar targets because the operator tooling starts scanning the nested Robin module and hits Robin's `replace ../redkeyoperator` directive.
+
+When the workflow needs a Robin ref, it resolves it in this order:
+
+1. The `workflow_dispatch` input `robin_ref`.
+2. A line in the pull request body with the form `robin-ref: <ref>`.
+3. A branch in `InditexTech/redkeyrobin` with the same name as the operator pull request branch, if it exists.
+4. `main`.
+
+To force the workflow to test a specific Robin branch from an operator pull request, add a line like this to the PR body:
+
+```text
+robin-ref: feature/full-cluster-management
+```
+
+#### Parallel execution
+
+E2E tests support parallel execution via Ginkgo's `-procs` flag. Each top-level
+`Describe` block runs in its own isolated namespace, making most specs safe for
+concurrent execution. Tests that interact with global operator state (Manager,
+Operator Resources, Helm Deployment) are marked `Serial` and will never run
+concurrently with other specs.
+
+To run tests in parallel, set `TEST_PARALLEL_PROCESS`:
+
+```shell
+make test-e2e TEST_PARALLEL_PROCESS=2 IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
+```
+
+When `TEST_PARALLEL_PROCESS=1` (default), tests run serially — this is
+recommended for local development to minimize resource usage. In CI (GitHub
+Actions), the default is `2` to balance speed and resource constraints on
+`ubuntu-24.04` runners (4 vCPUs, 16 GB RAM).
+
+#### E2E environment variables
+
+The following environment variables control E2E test behavior and can be passed
+to `make test-e2e` or exported in your shell:
+
+| Variable | Default | Description |
+| -------- | ------- | ----------- |
+| `TEST_PARALLEL_PROCESS` | `1` | Number of parallel Ginkgo processes. Set to `2` in CI. Each parallel process creates its own namespace with a full Redis cluster, so higher values require proportionally more cluster resources. |
+| `GOMAXPROCS` | *(Go default)* | Go runtime parallelism. Should match `TEST_PARALLEL_PROCESS` for optimal performance. |
+| `E2E_RECONCILE_INTERVAL` | `5` | Robin reconcile loop interval in seconds. Applies to **all three intervals** (normal, on-error, on-wait). Controls how frequently Robin checks and reconciles the Redis cluster state. Lower values make clusters reach Ready faster but increase CPU usage. |
+| `E2E_POLL_INTERVAL` | `3` | Polling interval in seconds for test wait helpers (`WaitForClusterReady`, `WaitForClusterPhase`, etc.). Controls how often the test framework checks whether a condition has been met. |
+| `E2E_CREATION_TIMEOUT` | `180` | Maximum seconds to wait for a cluster to reach Ready state after creation. Increase if tests timeout during cluster creation on slow environments. |
+| `E2E_HEALTH_TIMEOUT` | `600` | Maximum seconds to wait for health-related operations (remediation, node recovery, pod restart). Increase for tests that involve pod deletions or network disruptions. |
+| `IMAGE_OPERATOR` | `localhost:5005/redkey-operator:$(VERSION)` | Operator image loaded into Kind and deployed by the suite. |
+| `IMAGE_ROBIN` | `localhost:5005/redkey-robin:$(ROBIN_VERSION)` | Robin image used by the operator when creating Robin deployments. |
+| `REDIS_IMAGE` | `redis:8-bookworm` | Redis image for cluster nodes. |
+| `CERT_MANAGER_INSTALL_SKIP` | *(unset)* | Set to `true` to skip CertManager installation (if already present). |
+| `OPERATOR_DEPLOY_SKIP` | *(unset)* | Set to `true` to skip operator deployment (if already deployed manually). |
+| `LABEL` | *(unset)* | Ginkgo label filter to run a subset of specs (e.g. `creation`, `helm`, `health`). |
+
+#### Resource optimization
+
+The E2E framework uses minimal resource requests to allow multiple clusters to
+coexist on a single Kind node without overcommitting:
+
+| Component | CPU request | CPU limit | Memory request | Memory limit |
+| --------- | ----------- | --------- | -------------- | ------------ |
+| Redis pod | 10m | 100m | 32Mi | 64Mi |
+| Robin pod | 10m | 100m | 32Mi | 64Mi |
+| Operator manager | 10m | 500m | 64Mi | 128Mi |
+
+The Robin reconciler is configured with aggressive intervals during tests
+(`reconcileInterval=5s`, `reconcileIntervalOnError=3s`, `reconcileIntervalOnWait=3s`,
+`clusterMeetWait=2s`) to minimize time waiting for clusters to converge. These
+values can be tuned via `E2E_RECONCILE_INTERVAL`.
+
+#### Available labels
+
+Each test file has a Ginkgo label for selective execution:
+
+| Label | File | Description |
+| ----- | ---- | ----------- |
+| `creation` | `cluster_creation_test.go` | Cluster creation and Ready state |
+| `features` | `cluster_features_test.go`, `additional_features_test.go` | PDB, labels, custom configs, profiling, redis config propagation |
+| `lifecycle` | `cluster_lifecycle_test.go` | Cascading deletion |
+| `hotreload` | `config_hotreload_test.go` | Runtime config changes (reconciler, cluster, metrics) |
+| `helm` | `helm_deploy_test.go` | Helm chart deployment (Serial) |
+| `health` | `health_remediation_test.go`, `health_remediation_matrix_test.go` | Meet/forget, slot fix, rebalance across all cluster types |
+| `manager` | `manager_test.go` | Operator pod and metrics (Serial) |
+| `operator-resources` | `operator_resources_test.go` | Robin deployment/RBAC (Serial) |
+| `resilience` | `resilience_test.go` | Robin pod restart recovery |
+| `robin-changes` | `robin_changes_test.go` | Robin image and resources updates |
+| `superseding` | `superseding_test.go` | Config superseding behavior |
+| `validation` | `validation_test.go` | Webhook/admission validations |
+| `auth` | `auth_test.go` | Authentication scenarios (with and without replicas, password rotation) |
+| `auth+upgrade` | `auth_and_upgrade_test.go` | Combined auth + rolling/fast upgrade scenarios |
 
 ### Chaos tests
 
-Chaos tests validate operator resilience under disruptive conditions: random pod
+Chaos tests validate cluster resilience under disruptive conditions: random pod
 deletions, scaling, operator restarts, and topology corruption — all while the
-cluster is under k6 write/read load. They live in `test/chaos/` and run via:
+cluster is under continuous k6 write/read load. A background disruptor deletes
+pods **continuously throughout each operation and its recovery** (paused only
+around verification), so faults overlap with the operator/Robin work instead of
+firing once per iteration. They live in `test/chaos/` and each spec runs in its
+own namespace with a dedicated, namespace-scoped operator (`--watch-namespaces`)
+so parallel specs stay isolated.
+
+Build the k6 load image once, then run the suite (it creates the Kind cluster,
+loads the operator/Robin/k6 images, installs the CRDs and runs the tests):
 
 ```shell
-make test-chaos
+make k6-build
+make test-chaos IMAGE_OPERATOR=localhost:5005/redkey-operator:dev IMAGE_ROBIN=localhost:5005/redkey-robin:dev
 ```
 
-Run a single scenario:
+Run a subset of scenarios with a Ginkgo label filter:
 
 ```shell
-make test-chaos GINKGO_EXTRA_OPTS='--focus="survives continuous scaling"'
+make test-chaos LABEL=topology
 ```
 
-#### Chaos test environment variables
-
-The chaos suite runs multiple Ginkgo processes in parallel, each creating its
-own isolated namespace with an operator, Robin, and a Redis cluster. The
-following variables control test behavior and should be set in your shell or
-`.envrc` before running `make test-chaos`:
-
-```shell
-export TEST_PARALLEL_PROCESS=8
-export GOMAXPROCS=8
-export CHAOS_KEEP_NAMESPACE_ON_FAILED=true
-export IMG_ROBIN=localhost:5001/redkey-robin:0.1.0
-```
-
-| Variable                        | Default                          | Description                                                                                                                                                                                                                                                                                   |
-|---------------------------------|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TEST_PARALLEL_PROCESS`         | `8`                              | Number of parallel Ginkgo processes (`-procs`). Each process runs a separate test spec in its own namespace. Higher values run more specs concurrently but require more cluster resources. This also applies to E2E tests.                                                                     |
-| `GOMAXPROCS`                    | `8`                              | Go runtime parallelism. Should match `TEST_PARALLEL_PROCESS` so each Ginkgo process has a dedicated OS thread. Setting this lower than `TEST_PARALLEL_PROCESS` causes goroutine contention; setting it higher wastes CPU without benefit.                                                      |
-| `CHAOS_ITERATIONS`              | `10`                             | Number of chaos loop iterations per test spec. Each iteration performs disruptive actions (scale, delete pods, etc.) and waits for recovery. More iterations increase coverage but extend the total run time proportionally.                                                                    |
-| `CHAOS_TIMEOUT`                 | `100m`                           | Maximum wall-clock time Ginkgo allows for the entire chaos suite (`--timeout`). Must be large enough to accommodate `CHAOS_ITERATIONS` x recovery time x number of specs / `TEST_PARALLEL_PROCESS`. With 10 iterations and 8 parallel processes, 100 minutes is typically sufficient.          |
-| `CHAOS_SEED`                    | *(auto: Ginkgo random seed)*     | Fixed random seed for reproducibility. When a chaos run fails, the seed is printed in the output so you can replay the exact sequence of random actions.                                                                                                                                      |
-| `CHAOS_KEEP_NAMESPACE_ON_FAILED`| *(unset)*                        | When set to any non-empty value, failed test namespaces are preserved instead of deleted. This allows post-mortem inspection of pods, logs, and cluster state with `kubectl`. Remember to clean up namespaces manually afterwards.                                                             |
-| `IMG_ROBIN`                     | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)` | Robin sidecar image. For local development, point this to your local registry (e.g. `localhost:5001/redkey-robin:0.1.0`). Passed to tests as `ROBIN_IMAGE` via `GINKGO_ENV`.                                                                                              |
-| `K6_IMG`                        | `localhost:5001/redkey-k6:dev`   | k6 load generator image (built with xk6-redis extension). Build it with `make k6-build` before running chaos tests.                                                                                                                                                                          |
-
-#### Relationship between parallelism and timeouts
-
-`TEST_PARALLEL_PROCESS` controls how many test specs run concurrently. The chaos
-suite has 8 specs (4 scenarios x 2 `purgeKeysOnRebalance` modes), so with
-`TEST_PARALLEL_PROCESS=8` all specs run in parallel and the total wall-clock
-time equals roughly the duration of the slowest single spec.
-
-`CHAOS_TIMEOUT` must account for the worst case: if one spec takes longer than
-expected (e.g. slow recovery after a scale-down), the timeout must be generous
-enough to avoid killing a spec mid-recovery. As a rule of thumb:
-
-- With `CHAOS_ITERATIONS=10` and `TEST_PARALLEL_PROCESS=8`: `CHAOS_TIMEOUT=100m`
-- With `CHAOS_ITERATIONS=5` and `TEST_PARALLEL_PROCESS=4`: `CHAOS_TIMEOUT=60m`
-
-`GOMAXPROCS` should always match `TEST_PARALLEL_PROCESS`. Each Ginkgo process
-creates its own Kubernetes clients with independent rate limiters (QPS=5,
-Burst=10), so they don't contend on API access — but they do share CPU.
-
-## How to test the operator with CRC and operator-sdk locally (OLM deployment)
-
-These commands allow us to deploy with OLM the Redkey Operator in a OC cluster in local environment
-
-### Prerequisites
-
-1. OpenShift 4.x (full installation or CRC)
-2. oc command
-3. docker or podman commands
-4. bash (to access environment variables)
-5. operator-sdk command
-
-### Start new CRC cluster
-
-Download the latest release of CRC. https://console.redhat.com/openshift/create/local
-
-Please note the OpenShift version in your project.
-
-Set up the new CRC
-
-```shell
-crc setup
-```
-
-Start the new CRC instance:
-
-```shell
-crc start
-```
-
-### Local Registry
-
-Ensure that the internal image registry is accessible by checking for a route. The following command can be used with OpenShift 4:
-
-```shell
-oc get route -n openshift-image-registry
-```
-
-If the route is not exposed, the following command can be run:
-
-```shell
-oc patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
-```
-
-We will dynamically create an environment variable with the name of the route to the OpenShift registry. The route will have “/openshift” appended, as this is a project that all users can access:
-
-```shell
-REGISTRY="$(oc get route/default-route -n openshift-image-registry -o=jsonpath='{.spec.host}')/openshift"
-```
-
-we need to log in to the OpenShift internal registry
-
-```shell
-docker login -u kubeadmin -p $(oc whoami -t) ${REGISTRY}
-```
-
-The output should end with:
-
-```shell
-Login Succeeded
-```
-
-### OLM Integration Bundle
-
-Export environment variables
-
-```shell
-export IMG=${REGISTRY}/redkey-operator:$VERSION // location where your operator image is hosted
-export BUNDLE_IMG=${REGISTRY}/redkey-operator-bundle:$VERSION // location where your bundle will be hosted
-```
-
-Create a image with the operator
-
-```shell
-make docker-build docker-push
-```
-
-Create a bundle from the root directory of your project
-
-```shell
-make bundle
-```
-
-Build and push the bundle image
-
-```shell
-make bundle-build bundle-push
-```
-
-create a secret inside the namespace where you would like to install the bundle
-
-```shell
-kubectl create secret docker-registry regcred --docker-server="${REGISTRY}" --docker-username="kubeadmin" \
-    --docker-password=$(oc whoami -t) --dry-run=client -o yaml -n ${namespace} | kubectl apply -f -
-```
-
-Install the bundle with OLM
-
-```shell
-operator-sdk run bundle $BUNDLE_IMG --skip-tls-verify --pull-secret-name regcred
-```
+The chaos environment variables (`CHAOS_ITERATIONS`, `CHAOS_SEED`,
+`CHAOS_K6_VUS`, `CHAOS_DISRUPTION_INTERVAL`,
+`CHAOS_KEEP_NAMESPACE_ON_FAILED`, `K6_IMG`, …), the full list of scenarios, the
+continuous disruption model, and the per-namespace operator isolation model are
+documented in the dedicated [Chaos Testing guide](../chaos-testing.md).

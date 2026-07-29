@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# Helm values for kube-prometheus-stack deployed in the Kind dev cluster.
+# This provides Prometheus + Grafana with pre-configured scraping for
+# Redkey Operator and Redkey Robin metrics.
+
+# -- Prometheus configuration
+prometheus:
+  prometheusSpec:
+    # Lower resource requirements for local dev
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Scrape all ServiceMonitors/PodMonitors regardless of labels
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    # Discover ServiceMonitors/PodMonitors in ALL namespaces
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    # Retain data for 24h in dev
+    retention: 24h
+    storageSpec: {}
+    # Scrape targets are discovered exclusively via the ServiceMonitor (operator)
+    # and PodMonitor (Robin) defined in servicemonitors.yaml. Each pins a stable
+    # `job` label (redkey-operator / redkey-robin) via relabelings.
+
+# -- Grafana configuration
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: redkey
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  # Grafana 13+ takes longer to initialize
+  readinessProbe:
+    initialDelaySeconds: 60
+    timeoutSeconds: 5
+  livenessProbe:
+    initialDelaySeconds: 90
+    timeoutSeconds: 5
+  service:
+    type: NodePort
+    nodePort: 30300
+  # Load dashboards from ConfigMaps with the label grafana_dashboard=1
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: false
+  # The default Prometheus datasource is auto-provisioned by kube-prometheus-stack.
+  # No need to define it here.
+
+# -- Disable components not needed for local dev
+alertmanager:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+# -- Prometheus Operator settings
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

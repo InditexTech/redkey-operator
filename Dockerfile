@@ -5,10 +5,12 @@
 ### Build stage
 
 # Define the desired Golang version
-ARG GOLANG_VERSION=1.25.8
+ARG GOLANG_VERSION=1.26.5
 
 # Use an official Golang image with a specific version based on Debian
 FROM golang:${GOLANG_VERSION}-trixie AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -19,15 +21,16 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY cmd/ cmd/
+COPY cmd/main.go cmd/main.go
 COPY api/ api/
-COPY v1client/ v1client/
-COPY controllers/ controllers/
 COPY internal/ internal/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o manager ./cmd/
-
+# the GOARCH has not a default value to allow the binary be built according to the host where the command
+# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
+# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
+# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
 
 ### Final stage
 
@@ -43,4 +46,5 @@ LABEL org.opencontainers.image.source="https://github.com/inditextech/redkeyoper
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
+
 ENTRYPOINT ["/manager"]

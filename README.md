@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-<div align="center">
-
 # Redkey Operator
 
-**Seamless Redkey Cluster Management on Kubernetes**
+![Redkey Operator icon](docs/images/redkey-logo-512.png)
+
+Seamless Redkey Cluster Management on Kubernetes
 
 [![GitHub License](https://img.shields.io/github/license/InditexTech/redkeyoperator)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkeyoperator)](https://github.com/InditexTech/redkeyoperator/releases)
@@ -27,44 +27,41 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 [🚀 Quick Start](#quick-start) • [📖 Documentation](./docs) • [🤝 Contributing](./CONTRIBUTING.md) • [📝 License](./LICENSE)
 
-![Redkey Operator icon](docs/images/redkey-logo-50.png)
-
-</div>
-
 ---
 
 ## Overview
 
-A **Redkey Cluster** is a key/value cluster using either [Redis Official Image](https://hub.docker.com/_/redis) or [Valkey Official Image](https://hub.docker.com/r/valkey/valkey/) images to create its nodes (note that all cluster nodes must use the same image).
+A **Redkey Cluster** is a key/value cluster built from either the [Redis official image](https://hub.docker.com/_/redis) or the [Valkey official image](https://hub.docker.com/r/valkey/valkey/). All nodes in the same cluster must use the same image family.
 
-**Redkey Operator** is the easiest way to deploy and manage a Redkey Cluster in Kubernetes implementing the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+**Redkey Operator** deploys and manages Redkey clusters on Kubernetes by implementing the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
 
-This operator implements a controller that extends the Kubernetes API allowing to seamlessly deploy a Redkey cluster, monitor the deployed resources implementing a reconciliation loop, logging events, manage cluster scaling and recover from errors.
+It extends the Kubernetes API with a controller that reconciles the desired state declared in the `Redkey` resource, manages the Kubernetes objects required by the cluster, coordinates Redis-side operations through Redkey Robin, and keeps the cluster healthy during lifecycle changes.
 
-Redkey operator is built using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) and [operator-sdk](https://github.com/operator-framework/operator-sdk).
+Redkey Operator is built using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) and [operator-sdk](https://github.com/operator-framework/operator-sdk).
 
 ## Key Features
 
-- Redkey Cluster creation
-- Cluster scaling up and down
-- Cluster upgrading
-  - Update node pods image
-  - Update Redis configuration
-  - Update node pods resources
-- Ensure cluster health
-- Slots allocation
-- Ephemeral cluster (pure cache-like behavior) or using persistence
-- RedisGraph support
+- Deploy Redkey clusters from a single `Redkey` custom resource using Redis or Valkey images
+- Configure topology with a selectable number of primaries and replicas per primary
+- Run ephemeral or persistent clusters with configurable storage size, storage class, access modes, and PVC cleanup behavior
+- Scale clusters up and down while reassigning slots and preserving cluster balance
+- Choose between fast operations and key-preserving rebalance flows through `purgeKeysOnRebalance`
+- Roll out changes to node image, Redis configuration, and pod resources
+- Continuously reconcile cluster state, surface status and substatus, and recover from unhealthy conditions
+- Configure authentication, labels, PodDisruptionBudgets, and Kubernetes resource requests and limits
+- Deploy and tune Redkey Robin for Redis-side orchestration, health supervision, and metrics collection
+- Override generated StatefulSet and Service manifests for platform-specific customization
+- Use RedisGraph-compatible images when the workload requires it
 
 ## Quick Start
 
 ### Using Helm Charts
 
-Prerrequisites:
+Prerequisites:
 
-- A running Kubernetes cluster (v1.24+)
-- kubectl (v1.24+)
-- Helm (v3.0+)(v4.0+ required for post-install hook feature in redkey-cluster chart)
+- A running Kubernetes cluster (currently tested with Kubernetes v1.33)
+- `kubectl` matching the cluster version
+- Helm (v3.0+)
 
 The project provides Helm charts to easily deploy the Redkey Operator and a sample Redkey Cluster. The charts are located in the `charts` directory of the repository.
 
@@ -77,48 +74,62 @@ helm install redkey-operator ./charts/redkey-operator
 Install a sample Redkey Cluster using the provided Helm chart:
 
 ```bash
-helm install my-redkey-cluster ./charts/redkey-cluster
+helm install my-redkey-cluster ./charts/redkey
 ```
 
-Take a look at the [charts/README.md](./charts/README.md) for more details on how to use the Helm charts, including how to enable the post-install hook in the redkey-cluster chart to wait for the cluster to be ready after installation.
+Take a look at the [charts/README.md](./charts/README.md) for more details on how to use the Helm charts, including how to enable the post-install hook in the redkey chart to wait for the cluster to be ready after installation.
 
 ### Using Makefile
 
-Prerrequisites:
+Prerequisites:
 
-- A running Kubernetes cluster (v1.24+)
-- kubectl (v1.24+)
+- A running Kubernetes cluster (Kubernetes v1.33+ recommended)
+- `kubectl` matching the cluster version
 - Make
-- Go (project configured to easily install using asdf or mise)
+- Go 1.26.5 (project configured to install easily using asdf or mise)
 
 The operator can be installed using the provided Makefile. The following steps will guide you through the installation and deployment of a sample Redkey Cluster. Redkey Operator can be installed in any namespace, but for this quick start we will use the `redkey-operator` namespace.
 
-1. Clone the repository to your local machine:
+Clone the repository to your local machine:
 
 ```bash
 git clone https://github.com/InditexTech/redkeyoperator.git
 cd redkeyoperator
 ```
 
-2. Generate and install the CRDs:
+Generate and install the CRDs:
 
 ```bash
 make install
 ```
 
-3. Deploy the operator in the cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the repo releases for available versions):
+Deploy the operator in the cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the repo releases for available versions):
 
 ```bash
 make deploy IMG=ghcr.io/inditextech/redkey-operator:${VERSION}
 ```
 
-4. Create a Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkeyrobin) repo releases for available versions):
+Create a sample Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkeyrobin) repo releases for available versions):
 
 ```bash
-make apply-rkcl IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+# Ephemeral cluster (3 primaries, no persistence)
+make deploy-sample-ephemeral IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with persistent storage (AOF + RDB)
+make deploy-sample-storage IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with replicas (3 primaries + 1 replica each)
+make deploy-sample-replicas IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
+
+# Cluster with Redis authentication
+make deploy-sample-auth IMG_ROBIN=ghcr.io/inditextech/redkey-robin:${VERSION}
 ```
 
+The official release workflows publish both Redkey Operator and Redkey Robin runtime images to GHCR as multi-arch manifests for `linux/amd64` and `linux/arm64`.
+
 ## Documentation
+
+Discover the architecture and design of Redkey Operator in the [architecture document](./docs/architecture.md).
 
 Refer to [operator guide](./docs/operator-guide/toc.md) to have an overview of the main Redis configuration and management options, and a troubleshooting guide.
 
@@ -138,9 +149,14 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 
 ## Versions
 
-- Go version (https://github.com/golang/go): v1.25.8
-- Operator SDK version (https://github.com/operator-framework/operator-sdk): v1.42.0
-- Kubernetes Controller Tools version (https://github.com/kubernetes-sigs/controller-tools): v0.18.0
+The source of truth for the development toolchain lives in `go.mod`, `Makefile`, and `Dockerfile`.
+
+- [Go](https://github.com/golang/go): 4
+- [Operator SDK](https://github.com/operator-framework/operator-sdk): v1.42.2
+- [Kubernetes Controller Tools](https://github.com/kubernetes-sigs/controller-tools): v0.18.0
+- [Kustomize](https://github.com/kubernetes-sigs/kustomize): v5.6.0
+- [Kind](https://github.com/kubernetes-sigs/kind): v0.22.0
+- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.33.0 / v1.33
 
 ## License
 

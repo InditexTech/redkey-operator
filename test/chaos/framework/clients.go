@@ -2,6 +2,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package framework provides helper functions for the Redkey chaos test suite.
+// It mirrors the structure of test/e2e/framework but adds chaos-specific
+// helpers: per-namespace operator deployment, fault injection (pod deletion,
+// topology corruption) and k6 load generation.
 package framework
 
 import (
@@ -23,36 +27,41 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-// Label selectors for Redis operator components.
+// Label keys used by the operator/Robin on the resources they manage.
 const (
-	redisComponentLabel = "redis.redkeycluster.operator/component"
-	clusterNameLabel    = "redkey-cluster-name"
+	clusterLabel   = "redkey.inditex.dev/cluster"
+	componentLabel = "redkey.inditex.dev/component"
+
+	// operatorLabelSelector matches the per-namespace operator Deployment that the
+	// chaos suite deploys. It must stay in sync with the labels set in
+	// operator_setup.go.
+	operatorLabelSelector = "control-plane=redkey-operator"
 )
 
 // RedisPodsSelector returns the label selector for Redis pods in a cluster.
 func RedisPodsSelector(clusterName string) string {
-	return fmt.Sprintf("%s=%s,%s=redis", clusterNameLabel, clusterName, redisComponentLabel)
+	return fmt.Sprintf("%s=%s,%s=redis", clusterLabel, clusterName, componentLabel)
 }
 
 // RobinPodsSelector returns the label selector for Robin pods in a cluster.
 func RobinPodsSelector(clusterName string) string {
-	return fmt.Sprintf("%s=%s,%s=robin", clusterNameLabel, clusterName, redisComponentLabel)
+	return fmt.Sprintf("%s=%s,%s=robin", clusterLabel, clusterName, componentLabel)
 }
 
-// OperatorPodsSelector returns the label selector for operator pods.
+// OperatorPodsSelector returns the label selector for the per-namespace operator pods.
 func OperatorPodsSelector() string {
-	return "control-plane=redkey-operator"
+	return operatorLabelSelector
 }
 
-// Cached REST config for RemoteCommand.
+// Cached REST config used by RemoteCommand and the suite clients.
 var (
 	cachedConfig *rest.Config
 	configOnce   sync.Once
 	configErr    error
 )
 
-// getCachedConfig returns a cached REST config, creating it once.
-func getCachedConfig() (*rest.Config, error) {
+// RESTConfig returns a cached REST config built from KUBECONFIG (or ~/.kube/config).
+func RESTConfig() (*rest.Config, error) {
 	configOnce.Do(func() {
 		kubeconfig := os.Getenv("KUBECONFIG")
 		if kubeconfig == "" {
@@ -63,10 +72,9 @@ func getCachedConfig() (*rest.Config, error) {
 	return cachedConfig, configErr
 }
 
-// RemoteCommand executes a command in a pod and returns stdout, stderr, error.
-// Uses a cached REST config for efficiency.
+// RemoteCommand executes a command in a pod and returns stdout, stderr and error.
 func RemoteCommand(ctx context.Context, namespace, podName, command string) (string, string, error) {
-	config, err := getCachedConfig()
+	config, err := RESTConfig()
 	if err != nil {
 		return "", "", fmt.Errorf("get config: %w", err)
 	}
@@ -109,8 +117,13 @@ func RemoteCommand(ctx context.Context, namespace, podName, command string) (str
 	return buf.String(), errBuf.String(), nil
 }
 
-// GetPodLogs returns the last N lines of logs from pods matching the selector.
-func GetPodLogs(ctx context.Context, clientset kubernetes.Interface, namespace, labelSelector string, tailLines int64) (string, error) {
+// GetPodLogs returns the last N lines of logs from the first pod matching the selector.
+func GetPodLogs(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	namespace, labelSelector string,
+	tailLines int64,
+) (string, error) {
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
@@ -122,18 +135,15 @@ func GetPodLogs(ctx context.Context, clientset kubernetes.Interface, namespace, 
 		return "", fmt.Errorf("no pods found matching %s", labelSelector)
 	}
 
-	// Get logs from the first pod
 	pod := pods.Items[0]
-	opts := &corev1.PodLogOptions{
-		TailLines: &tailLines,
-	}
+	opts := &corev1.PodLogOptions{TailLines: &tailLines}
 
 	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, opts)
 	stream, err := req.Stream(ctx)
 	if err != nil {
 		return "", fmt.Errorf("stream logs from %s: %w", pod.Name, err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, stream); err != nil {
@@ -141,4 +151,11 @@ func GetPodLogs(ctx context.Context, clientset kubernetes.Interface, namespace, 
 	}
 
 	return buf.String(), nil
+}
+
+func trimNewline(s string) string {
+	for len(s) > 0 && (s[len(s)-1] == '\n' || s[len(s)-1] == '\r') {
+		s = s[:len(s)-1]
+	}
+	return s
 }

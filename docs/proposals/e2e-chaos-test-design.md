@@ -48,6 +48,15 @@ The main chaos loop validates:
 2. **k6 load running throughout** the chaos duration
 3. **Recovery verification** after each disruption
 
+> **Implementation update — continuous background disruptor (M2).** The implemented suite is more
+> aggressive than the legacy script: instead of a single pod deletion per iteration, a long-lived
+> **background disruptor** goroutine deletes pods at a randomized cadence
+> (`CHAOS_DISRUPTION_INTERVAL`) **continuously while each operation is in flight and recovering**. It
+> is paused only around each verification checkpoint (so `WaitForChaosReady` can converge) and during
+> a configurable calm window (`CHAOS_STABILIZATION_WINDOW`) that lets k6 drive traffic against the
+> healthy cluster before the next operation. Each scenario drives a focused disruptor (redis /
+> operator / robin / mixed). See the [Chaos Testing guide](../chaos-testing.md#continuous-disruption-model).
+
 ### 2.2 Test Scenarios Covered
 
 | Script                                   | Behavior Validated                                    | Failure Scenario                                             |
@@ -119,11 +128,11 @@ Describe("Chaos Under Load", func() {
 ```gherkin
 Given a 5-primary Redis cluster with k6 load running
 When  the chaos loop executes for the configured duration:
-      - Scale to random(5, 15) primaries
-      - Delete random(1, currentPrimaries/2) pods
-      - Wait for Ready status
-      - Scale down to random(3, 5) primaries
-      - Wait for Ready status
+      - Scale to random(3, 10) primaries
+      - A background disruptor deletes random redis pods continuously during the scale and recovery
+      - Pause the disruptor and wait for Ready status
+      - Scale down to random(3, 5) primaries under continuous disruption
+      - Pause the disruptor and wait for Ready status
 Then  the cluster status is OK
       All 16384 slots are assigned
       k6 completes without fatal errors
@@ -133,11 +142,10 @@ Then  the cluster status is OK
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include:
-      - Delete operator pod (deployment recreates it)
-      - Delete random redis pods
-      - Scale cluster up/down
-      - Wait for Ready after each action
+When  a background disruptor continuously:
+      - Deletes the operator pod (deployment recreates it)
+      - Deletes random redis pods
+      then it is paused and the cluster is left to reach Ready
 Then  the operator recovers and heals the cluster
       k6 completes successfully
 ```
@@ -146,10 +154,10 @@ Then  the operator recovers and heals the cluster
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include:
-      - Delete robin pods from random redis pods
-      - Delete random redis pods
-      - Wait for Ready after each action
+When  a background disruptor continuously:
+      - Deletes robin pods
+      - Deletes random redis pods
+      then it is paused and the cluster is left to reach Ready
 Then  robin pods are recreated
       Cluster heals to Ready status
 ```
@@ -158,12 +166,12 @@ Then  robin pods are recreated
 
 ```gherkin
 Given a ready Redis cluster with k6 load running
-When  chaos actions include random combinations of:
-      - Delete operator pod
-      - Delete robin pods
-      - Delete redis pods
-      - Scale cluster up/down
-      - Wait for Ready between major disruptions
+When  a background disruptor continuously deletes a random mix of:
+      - operator pod
+      - robin pods
+      - redis pods
+      while the loop periodically scales the cluster up/down,
+      then it is paused between major disruptions to let the cluster reach Ready
 Then  all components recover
       Cluster reaches Ready status
       k6 completes with acceptable error rate
@@ -226,7 +234,7 @@ The chaos tests require a stronger `WaitForReady` than the current E2E helper. T
 func WaitForChaosReady(ctx context.Context, client client.Client, namespace, clusterName string, timeout time.Duration) error {
     return wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
         // 1. Check CR status
-        cluster := &redkeyv1.RedkeyCluster{}
+        cluster := &redkeyv1.Redkey{}
         if err := client.Get(ctx, types.NamespacedName{Name: clusterName, Namespace: namespace}, cluster); err != nil {
             return false, nil
         }
@@ -238,7 +246,7 @@ func WaitForChaosReady(ctx context.Context, client client.Client, namespace, clu
         pods := &corev1.PodList{}
         if err := client.List(ctx, pods,
             client.InNamespace(namespace),
-            client.MatchingLabels{"redis.redkeycluster.operator/component": "redis"}); err != nil {
+            client.MatchingLabels{"redis.redkey.operator/component": "redis"}); err != nil {
             return false, nil
         }
 
@@ -334,7 +342,7 @@ test/chaos/
 ├── chaos_suite_test.go       # Main chaos test scenarios (BDD style)
 ├── helpers.go                # Test-level helper functions
 ├── framework/
-│   ├── cluster.go            # RedkeyCluster creation helpers
+│   ├── cluster.go            # Redkey creation helpers
 │   ├── k6.go                 # k6 Job creation and monitoring
 │   ├── namespace.go          # Namespace creation/deletion helpers
 │   ├── operator.go           # Operator scaling helpers (ScaleOperatorDown/Up)
@@ -365,7 +373,7 @@ test/chaos/
 │  BeforeEach (per test):                                         │
 │    1. Create isolated namespace                                 │
 │    2. Deploy operator in namespace                              │
-│    3. Create RedkeyCluster (N primaries + robin)                │
+│    3. Create Redkey (N primaries + robin)                │
 │    4. Wait for Ready status                                     │
 │                                                                 │
 │  Test Body (BDD style):                                         │
@@ -384,7 +392,7 @@ test/chaos/
 │  AfterEach:                                                     │
 │    1. Collect logs on failure (operator, k6, redis pods)        │
 │    2. Delete k6 Job (if exists)                                 │
-│    3. Delete RedkeyCluster (remove finalizers)                  │
+│    3. Delete Redkey (remove finalizers)                  │
 │    4. Delete namespace                                          │
 │                                                                 │
 │  AfterSuite:                                                    │
@@ -492,8 +500,8 @@ func verifyK6Completed(c client.Client, namespace, jobName string, timeout time.
 | `CHAOS_SEED`             | *(auto: Ginkgo random seed)*                         | Fixed random seed for reproducibility.                                                                         |
 | `CHAOS_TIMEOUT`          | `100m`                                               | Maximum Ginkgo suite timeout (`--timeout`). Must accommodate iterations x recovery time / parallelism.         |
 | `CHAOS_PACKAGES`         | `./test/chaos`                                       | Go test packages for the chaos suite.                                                                          |
-| `IMG`                    | `localhost:5001/redkey-operator:$(VERSION)`           | Operator image. Passed to tests as `OPERATOR_IMAGE`.                                                           |
-| `IMG_ROBIN`              | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)`  | Robin image. Passed to tests as `ROBIN_IMAGE`.                                                                 |
+| `IMG`                    | `localhost:5001/redkey-operator:$(VERSION)`           | Default operator image build tag. Used as fallback for `IMAGE_OPERATOR`.                                       |
+| `IMG_ROBIN`              | `ghcr.io/inditextech/redkey-robin:$(ROBIN_VERSION)`  | Legacy Robin image variable. Prefer `IMAGE_ROBIN` for E2E runs.                                                |
 | `REDIS_IMAGE`            | `redis:8.4.0`                                        | Redis image used for cluster pods.                                                                             |
 | `GINKGO_EXTRA_OPTS`      | *(empty)*                                            | Extra Ginkgo flags (e.g. `--focus="..."`, `--label-filter=...`).                                               |
 
@@ -503,8 +511,8 @@ func verifyK6Completed(c client.Client, namespace, jobName string, timeout time.
 |-----------------------------------|---------------------------|------------------------------------------------------------------------------------------|
 | `CHAOS_KEEP_NAMESPACE_ON_FAILED`  | *(unset)*                 | When non-empty, preserves failed test namespaces for post-mortem inspection.              |
 | `KUBECONFIG`                      | `~/.kube/config`          | Path to kubeconfig file.                                                                 |
-| `OPERATOR_IMAGE`                  | `localhost:5001/redkey-operator:dev` | Operator image (set automatically by `GINKGO_ENV` from `IMG`).                  |
-| `ROBIN_IMAGE`                     | `localhost:5001/redkey-robin:dev`    | Robin image (set automatically by `GINKGO_ENV` from `IMG_ROBIN`).               |
+| `IMAGE_OPERATOR`                  | `localhost:5001/redkey-operator:dev` | Operator image loaded into Kind and deployed by the E2E suite.                  |
+| `IMAGE_ROBIN`                     | `localhost:5001/redkey-robin:dev`    | Robin image loaded into Kind and injected into the operator deployment.          |
 
 ### Recommended `.envrc` for local development
 

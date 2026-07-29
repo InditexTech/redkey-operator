@@ -1,0 +1,144 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: redkey.inditex.dev/v1beta1
+kind: Redkey
+metadata:
+  name: {{ include "redkey.name" . }}
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+    {{- with .Values.crLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.crAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.mode }}
+  mode: {{ .Values.mode }}
+  {{- end }}
+  primaries: {{ .Values.primaries }}
+  replicasPerPrimary: {{ .Values.replicasPerPrimary }}
+  ephemeral: {{ .Values.ephemeral }}
+  {{- if .Values.purgeKeysOnRebalance }}
+  purgeKeysOnRebalance: {{ .Values.purgeKeysOnRebalance }}
+  {{- end }}
+  skipIfSuperseded: {{ .Values.skipIfSuperseded }}
+  image: {{ .Values.image }}
+  {{- if .Values.version }}
+  version: {{ .Values.version | quote }}
+  {{- end }}
+  {{- if and (not .Values.ephemeral) .Values.storage }}
+  storage: {{ .Values.storage }}
+  {{- end }}
+  {{- if and (not .Values.ephemeral) .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  accessModes:
+    {{- toYaml .Values.accessModes | nindent 4 }}
+  {{- if .Values.deletePVC }}
+  deletePVC: {{ .Values.deletePVC }}
+  {{- end }}
+  {{- if .Values.backup }}
+  backup: {{ .Values.backup }}
+  {{- end }}
+  {{- if .Values.auth }}
+  auth:
+    {{- toYaml .Values.auth | nindent 4 }}
+  {{- end }}
+  {{- if .Values.labels }}
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
+  {{- end }}
+  {{- if .Values.annotations }}
+  annotations:
+    {{- toYaml .Values.annotations | nindent 4 }}
+  {{- end }}
+  {{- if .Values.config }}
+  config: |
+    {{- .Values.config | nindent 4 }}
+  {{- end }}
+  {{- if .Values.resources }}
+  resources:
+    {{- toYaml .Values.resources | nindent 4 }}
+  {{- end }}
+  {{- if .Values.pdb }}
+  pdb:
+    {{- toYaml .Values.pdb | nindent 4 }}
+  {{- end }}
+  {{- /* Build the override block. redisPodLabels / redisPodAnnotations are applied
+         ONLY to the Redis pods via the StatefulSet pod-template override. Because that
+         override REPLACES (not merges) the pod labels/annotations, the global
+         .Values.labels / .Values.annotations and anything already present in
+         .Values.override are folded in so nothing is lost on the Redis pods. */}}
+  {{- $override := .Values.override | default dict }}
+  {{- if or .Values.redisPodLabels .Values.redisPodAnnotations }}
+  {{- $tplMeta := dict }}
+  {{- if .Values.redisPodLabels }}
+  {{- $existingPodLabels := dig "statefulSet" "spec" "template" "metadata" "labels" dict $override }}
+  {{- $podLabels := dict }}
+  {{- range $k, $v := (.Values.labels | default dict) }}{{- $_ := set $podLabels $k $v }}{{- end }}
+  {{- range $k, $v := $existingPodLabels }}{{- $_ := set $podLabels $k $v }}{{- end }}
+  {{- range $k, $v := .Values.redisPodLabels }}{{- $_ := set $podLabels $k $v }}{{- end }}
+  {{- $_ := set $tplMeta "labels" $podLabels }}
+  {{- end }}
+  {{- if .Values.redisPodAnnotations }}
+  {{- $existingPodAnn := dig "statefulSet" "spec" "template" "metadata" "annotations" dict $override }}
+  {{- $podAnn := dict }}
+  {{- range $k, $v := (.Values.annotations | default dict) }}{{- $_ := set $podAnn $k $v }}{{- end }}
+  {{- range $k, $v := $existingPodAnn }}{{- $_ := set $podAnn $k $v }}{{- end }}
+  {{- range $k, $v := .Values.redisPodAnnotations }}{{- $_ := set $podAnn $k $v }}{{- end }}
+  {{- $_ := set $tplMeta "annotations" $podAnn }}
+  {{- end }}
+  {{- $generated := dict "statefulSet" (dict "spec" (dict "template" (dict "metadata" $tplMeta))) }}
+  {{- $override = mergeOverwrite (deepCopy $override) $generated }}
+  {{- end }}
+  {{- if $override }}
+  override:
+    {{- toYaml $override | nindent 4 }}
+  {{- end }}
+  robin:
+    image: {{ .Values.robin.image }}
+    {{- if .Values.robin.resources }}
+    resources:
+      {{- toYaml .Values.robin.resources | nindent 6 }}
+    {{- end }}
+    {{- /* Robin pod metadata. spec.robin.template.metadata.{labels,annotations} REPLACE
+           (not merge) the Robin pod metadata, so the global .Values.labels /
+           .Values.annotations are folded in here to preserve them. Annotations may also
+           include the optional Prometheus scrape (robin.metricsScraping) and passthrough
+           (robin.podAnnotations); labels come from the passthrough (robin.podLabels). */}}
+    {{- $robinExtraAnn := dict }}
+    {{- range $k, $v := (.Values.robin.podAnnotations | default dict) }}
+    {{- $_ := set $robinExtraAnn $k $v }}
+    {{- end }}
+    {{- with .Values.robin.metricsScraping }}
+    {{- if .enabled }}
+    {{- $_ := set $robinExtraAnn "prometheus.io/scrape" "true" }}
+    {{- $_ := set $robinExtraAnn "prometheus.io/port" (.port | default "8080" | toString) }}
+    {{- $_ := set $robinExtraAnn "prometheus.io/path" (.path | default "/metrics") }}
+    {{- $_ := set $robinExtraAnn "prometheus.io/scheme" (.scheme | default "http") }}
+    {{- end }}
+    {{- end }}
+    {{- $robinExtraLabels := .Values.robin.podLabels | default dict }}
+    {{- if or $robinExtraAnn $robinExtraLabels }}
+    template:
+      metadata:
+        {{- if $robinExtraLabels }}
+        {{- $robinLabels := dict }}
+        {{- range $k, $v := (.Values.labels | default dict) }}{{- $_ := set $robinLabels $k $v }}{{- end }}
+        {{- range $k, $v := $robinExtraLabels }}{{- $_ := set $robinLabels $k $v }}{{- end }}
+        labels:
+          {{- toYaml $robinLabels | nindent 10 }}
+        {{- end }}
+        {{- if $robinExtraAnn }}
+        {{- $robinAnnotations := dict }}
+        {{- range $k, $v := (.Values.annotations | default dict) }}{{- $_ := set $robinAnnotations $k $v }}{{- end }}
+        {{- range $k, $v := $robinExtraAnn }}{{- $_ := set $robinAnnotations $k $v }}{{- end }}
+        annotations:
+          {{- toYaml $robinAnnotations | nindent 10 }}
+        {{- end }}
+    {{- end }}
+    config:
+      {{- toYaml .Values.robin.config | nindent 6 }}

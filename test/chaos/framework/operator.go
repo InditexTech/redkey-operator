@@ -7,7 +7,6 @@ package framework
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,33 +17,20 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-const (
-	operatorDeploymentName = "redkey-operator"
-	operatorScaleTimeout   = 2 * time.Minute
+const operatorScaleTimeout = 2 * time.Minute
 
-	defaultOperatorImage = "localhost:5001/redkey-operator:dev"
-)
-
-// GetOperatorImage returns the operator image from environment or default.
-func GetOperatorImage() string {
-	if img := os.Getenv("OPERATOR_IMAGE"); img != "" {
-		return img
-	}
-	return defaultOperatorImage
-}
-
-// ScaleOperatorDown scales the operator deployment to 0 replicas and waits for termination.
+// ScaleOperatorDown scales the per-namespace operator deployment to 0 replicas and waits
+// for its pods to terminate.
 func ScaleOperatorDown(ctx context.Context, clientset kubernetes.Interface, namespace string) error {
-	return scaleDeploymentNative(ctx, clientset, namespace, operatorDeploymentName, 0)
+	return scaleDeploymentNative(ctx, clientset, namespace, operatorName, 0)
 }
 
-// ScaleOperatorUp scales the operator deployment to 1 replica and waits for readiness.
+// ScaleOperatorUp scales the per-namespace operator deployment to 1 replica and waits for readiness.
 func ScaleOperatorUp(ctx context.Context, clientset kubernetes.Interface, namespace string) error {
-	return scaleDeploymentNative(ctx, clientset, namespace, operatorDeploymentName, 1)
+	return scaleDeploymentNative(ctx, clientset, namespace, operatorName, 1)
 }
 
-// DeleteOperatorPods requests deletion of the current operator pods.
-// It only verifies that the Kubernetes delete calls succeed.
+// DeleteOperatorPods requests deletion of the current operator pods in the namespace.
 func DeleteOperatorPods(ctx context.Context, clientset kubernetes.Interface, namespace string) error {
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: OperatorPodsSelector(),
@@ -52,22 +38,21 @@ func DeleteOperatorPods(ctx context.Context, clientset kubernetes.Interface, nam
 	if err != nil {
 		return fmt.Errorf("failed to list operator pods: %w", err)
 	}
-
-	if len(pods.Items) == 0 {
-		return nil
-	}
-
 	for _, pod := range pods.Items {
-		if err := clientset.CoreV1().Pods(namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+		err := clientset.CoreV1().Pods(namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete operator pod %s: %w", pod.Name, err)
 		}
 	}
-
 	return nil
 }
 
-// scaleDeploymentNative scales a deployment to the desired replica count using native client-go.
-func scaleDeploymentNative(ctx context.Context, clientset kubernetes.Interface, namespace, name string, replicas int32) error {
+func scaleDeploymentNative(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	namespace, name string,
+	replicas int32,
+) error {
 	dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get deployment %s: %w", name, err)
@@ -84,47 +69,64 @@ func scaleDeploymentNative(ctx context.Context, clientset kubernetes.Interface, 
 	return waitForDeploymentReadyNative(ctx, clientset, namespace, name, replicas)
 }
 
-// waitForDeploymentScaleDownNative waits until no pods exist for the deployment.
-func waitForDeploymentScaleDownNative(ctx context.Context, clientset kubernetes.Interface, namespace, name string) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, operatorScaleTimeout, true, func(ctx context.Context) (bool, error) {
-		dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
+func waitForDeploymentScaleDownNative(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	namespace, name string,
+) error {
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, operatorScaleTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
 			}
-			return false, nil
-		}
-
-		selector, err := deploymentPodSelector(dep)
-		if err != nil {
-			return false, err
-		}
-
-		pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
-		if err != nil {
-			return false, nil
-		}
-
-		return dep.Status.Replicas == 0 && dep.Status.ReadyReplicas == 0 && len(pods.Items) == 0, nil
-	})
+			selector, err := deploymentPodSelector(dep)
+			if err != nil {
+				return false, err
+			}
+			pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+			if err != nil {
+				return false, nil
+			}
+			return dep.Status.Replicas == 0 && dep.Status.ReadyReplicas == 0 && len(pods.Items) == 0, nil
+		})
 }
 
-// waitForDeploymentReadyNative waits until the deployment has the desired ready replicas.
-func waitForDeploymentReadyNative(ctx context.Context, clientset kubernetes.Interface, namespace, name string, replicas int32) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, operatorScaleTimeout, true, func(ctx context.Context) (bool, error) {
-		dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return false, nil
-		}
-		return dep.Status.ReadyReplicas >= replicas, nil
-	})
+func waitForDeploymentReadyNative(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	namespace, name string,
+	replicas int32,
+) error {
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, operatorScaleTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
+			return dep.Status.ReadyReplicas >= replicas, nil
+		})
 }
 
-// isPodReady returns true if all containers in the pod are ready.
 func deploymentPodSelector(dep *appsv1.Deployment) (string, error) {
 	selector, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
 	if err != nil {
 		return "", fmt.Errorf("deployment %s has invalid selector: %w", dep.Name, err)
 	}
 	return selector.String(), nil
+}
+
+// WaitForOperatorAvailable waits until the operator deployment reports at least one available replica.
+func WaitForOperatorAvailable(ctx context.Context, clientset kubernetes.Interface, namespace string) error {
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, operatorScaleTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, operatorName, metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
+			return dep.Status.AvailableReplicas >= 1, nil
+		})
 }

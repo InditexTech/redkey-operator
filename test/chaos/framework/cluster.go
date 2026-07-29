@@ -2,67 +2,153 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// NOTE: This file is adapted from test/e2e/framework/redisclient.go for chaos tests.
-// It contains the Redis cluster creation and management functions.
 package framework
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	redkeyv1 "github.com/inditextech/redkeyoperator/api/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
 )
 
-const (
-	defaultConfig = `save ""
+const defaultRedisConfig = `maxmemory 90mb
+maxmemory-policy allkeys-lru
+protected-mode no
 appendonly no
-maxmemory 70mb`
-	defaultTimeout    = 60 * time.Minute
-	defaultRedisImage = "redis:8.4.0"
-	defaultRobinImage = "localhost:5001/redkey-robin:dev"
-	version           = "6.0.2"
-)
+save ""`
 
-// GetRedisImage returns the redis image from environment or default.
-func GetRedisImage() string {
-	if img := os.Getenv("REDIS_IMAGE"); img != "" {
-		return img
+// ClusterOptions configures a Redkey for chaos testing.
+type ClusterOptions struct {
+	Name                 string
+	Namespace            string
+	Primaries            int32
+	ReplicasPerPrimary   int32
+	PurgeKeysOnRebalance bool
+}
+
+// DefaultClusterOptions returns chaos-tuned, ephemeral cluster options.
+func DefaultClusterOptions(name, namespace string, primaries int32, purgeKeysOnRebalance bool) ClusterOptions {
+	return ClusterOptions{
+		Name:                 name,
+		Namespace:            namespace,
+		Primaries:            primaries,
+		ReplicasPerPrimary:   0,
+		PurgeKeysOnRebalance: purgeKeysOnRebalance,
 	}
-	return defaultRedisImage
 }
 
-// GetRobinImage returns the robin image from environment or default.
-func GetRobinImage() string {
-	if img := os.Getenv("ROBIN_IMAGE"); img != "" {
-		return img
+// BuildRedkey builds an ephemeral Redkey object from the options.
+func (o ClusterOptions) BuildRedkey() *redkeyv1beta1.Redkey {
+	return &redkeyv1beta1.Redkey{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      o.Name,
+			Namespace: o.Namespace,
+		},
+		Spec: redkeyv1beta1.RedkeySpec{
+			Primaries:          o.Primaries,
+			ReplicasPerPrimary: o.ReplicasPerPrimary,
+			Ephemeral:          true,
+			Image:              GetRedisImage(),
+			Robin: redkeyv1beta1.RobinSpec{
+				Image:     GetRobinImage(),
+				Resources: defaultRobinResources(),
+				Config:    defaultRobinConfig(),
+			},
+			Config:               defaultRedisConfig,
+			SkipIfSuperseded:     true,
+			PurgeKeysOnRebalance: ptr.To(o.PurgeKeysOnRebalance),
+			DeletePVC:            ptr.To(true),
+			Resources:            defaultRedisResources(),
+		},
 	}
-	return defaultRobinImage
 }
 
-// CreateRedkeyCluster creates a RedkeyCluster CR using dynamic client.
-// When purgeKeys is true the operator deletes and recreates the StatefulSet on
-// scaling; when false the StatefulSet is updated in place.
-func CreateRedkeyCluster(ctx context.Context, dc dynamic.Interface, namespace, name string, primaries int32, purgeKeys bool) error {
-	key := types.NamespacedName{Namespace: namespace, Name: name}
-	rc := buildRedkeyCluster(key, primaries, 0, "", GetRedisImage(), purgeKeys, true, redkeyv1.Pdb{}, redkeyv1.RedkeyClusterOverrideSpec{})
-	return EnsureRedkeyCluster(ctx, dc, rc)
+// CreateRedkey creates a Redkey in the given namespace.
+func CreateRedkey(
+	ctx context.Context,
+	c client.Client,
+	opts ClusterOptions,
+) (*redkeyv1beta1.Redkey, error) {
+	cluster := opts.BuildRedkey()
+	if err := c.Create(ctx, cluster); err != nil {
+		return nil, fmt.Errorf("creating Redkey %s/%s: %w", opts.Namespace, opts.Name, err)
+	}
+	return cluster, nil
 }
 
-// GetStatefulSetReplicas returns the current replica count for a cluster's StatefulSet.
-func GetStatefulSetReplicas(ctx context.Context, clientset kubernetes.Interface, namespace, clusterName string) (int32, error) {
-	sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, clusterName, metav1.GetOptions{})
-	if err != nil {
+// GetRedkey fetches the current Redkey CR.
+func GetRedkey(
+	ctx context.Context,
+	c client.Client,
+	namespace, name string,
+) (*redkeyv1beta1.Redkey, error) {
+	cluster := &redkeyv1beta1.Redkey{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); err != nil {
+		return nil, err
+	}
+	return cluster, nil
+}
+
+// ScaleCluster updates spec.primaries on the Redkey, retrying on conflicts and on
+// validation errors raised while the cluster is not yet Ready (the operator/Robin may reject a
+// topology change until the cluster stabilizes).
+func ScaleCluster(ctx context.Context, c client.Client, namespace, name string, primaries int32) error {
+	return wait.PollUntilContextTimeout(ctx, 3*time.Second, scaleAckTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				cluster := &redkeyv1beta1.Redkey{}
+				if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cluster); err != nil {
+					return err
+				}
+				cluster.Spec.Primaries = primaries
+				return c.Update(ctx, cluster)
+			})
+			if err == nil {
+				return true, nil
+			}
+			// Retry while the cluster is not Ready (validation rejects topology changes).
+			if apierrors.IsInvalid(err) || apierrors.IsConflict(err) {
+				return false, nil
+			}
+			return false, err
+		})
+}
+
+// WaitForScaleAck waits until the Redis StatefulSet reflects the expected replica count, which
+// happens after Robin reconciles the new topology. With PurgeKeysOnRebalance the StatefulSet may be
+// recreated, so polling tolerates a transiently missing StatefulSet.
+func WaitForScaleAck(ctx context.Context, c client.Client, namespace, name string, expectedReplicas int32) error {
+	return wait.PollUntilContextTimeout(ctx, 3*time.Second, scaleAckTimeout, true,
+		func(ctx context.Context) (bool, error) {
+			sts := &appsv1.StatefulSet{}
+			if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sts); err != nil {
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			if sts.Spec.Replicas == nil {
+				return false, nil
+			}
+			return *sts.Spec.Replicas == expectedReplicas, nil
+		})
+}
+
+// GetStatefulSetReplicas returns the desired replica count of the Redis StatefulSet.
+func GetStatefulSetReplicas(ctx context.Context, c client.Client, namespace, name string) (int32, error) {
+	sts := &appsv1.StatefulSet{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sts); err != nil {
 		return 0, err
 	}
 	if sts.Spec.Replicas == nil {
@@ -71,216 +157,47 @@ func GetStatefulSetReplicas(ctx context.Context, clientset kubernetes.Interface,
 	return *sts.Spec.Replicas, nil
 }
 
-// WaitForScaleAck polls until the StatefulSet has the expected replica count
-// and at least that many pods exist. During fast scaling
-// (PurgeKeysOnRebalance=true), the operator may delete and recreate the
-// StatefulSet, so both conditions must be met before the caller can safely
-// interact with the pods.
-func WaitForScaleAck(ctx context.Context, clientset kubernetes.Interface, namespace, clusterName string, expectedReplicas int32, timeout, interval time.Duration) error {
-	return wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (bool, error) {
-		replicas, err := GetStatefulSetReplicas(ctx, clientset, namespace, clusterName)
-		if err != nil {
-			return false, nil
-		}
-		if replicas != expectedReplicas {
-			return false, nil
-		}
-
-		pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: RedisPodsSelector(clusterName),
-		})
-		if err != nil {
-			return false, nil
-		}
-		return int32(len(pods.Items)) >= expectedReplicas, nil
-	})
-}
-
-// buildRedkeyCluster constructs a RedkeyCluster object with the given parameters.
-func buildRedkeyCluster(
-	key types.NamespacedName,
-	primaries, replicasPerPrimary int32,
-	storage, image string,
-	purgeKeys, ephemeral bool,
-	pdb redkeyv1.Pdb,
-	userOverride redkeyv1.RedkeyClusterOverrideSpec,
-) *redkeyv1.RedkeyCluster {
-	rc := &redkeyv1.RedkeyCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      key.Name,
-			Namespace: key.Namespace,
-			Labels:    map[string]string{"team": "team-a"},
-		},
-		Spec: redkeyv1.RedkeyClusterSpec{
-			Auth:                 redkeyv1.RedisAuth{},
-			Version:              version,
-			Primaries:            primaries,
-			Ephemeral:            ephemeral,
-			Image:                image,
-			Config:               defaultConfig,
-			Resources:            buildResources(),
-			PurgeKeysOnRebalance: &purgeKeys,
-		},
-	}
-
-	if storage != "" {
-		rc.Spec.DeletePVC = ptr.To(true)
-		rc.Spec.Ephemeral = false
-		rc.Spec.Storage = storage
-		rc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-	}
-
-	if pdb != (redkeyv1.Pdb{}) {
-		rc.Spec.Pdb = pdb
-	}
-
-	if replicasPerPrimary > 0 {
-		rc.Spec.ReplicasPerPrimary = replicasPerPrimary
-	}
-
-	// Build override with security context
-	var ov redkeyv1.RedkeyClusterOverrideSpec
-	if userOverride.StatefulSet != nil || userOverride.Service != nil {
-		ov = userOverride
-	}
-
-	if ov.StatefulSet == nil {
-		ov.StatefulSet = &redkeyv1.PartialStatefulSet{
-			Spec: &redkeyv1.PartialStatefulSetSpec{
-				Template: &redkeyv1.PartialPodTemplateSpec{},
-			},
-		}
-	}
-	if ov.StatefulSet.Spec == nil {
-		ov.StatefulSet.Spec = &redkeyv1.PartialStatefulSetSpec{
-			Template: &redkeyv1.PartialPodTemplateSpec{},
-		}
-	}
-	if ov.StatefulSet.Spec.Template == nil {
-		ov.StatefulSet.Spec.Template = &redkeyv1.PartialPodTemplateSpec{}
-	}
-	podSpec := &ov.StatefulSet.Spec.Template.Spec
-	if podSpec.SecurityContext == nil {
-		podSpec.SecurityContext = &corev1.PodSecurityContext{}
-	}
-	podSpec.SecurityContext.RunAsNonRoot = ptr.To(true)
-	podSpec.SecurityContext.RunAsUser = ptr.To(int64(1001))
-	podSpec.SecurityContext.RunAsGroup = ptr.To(int64(1001))
-	podSpec.SecurityContext.FSGroup = ptr.To(int64(1001))
-
-	rc.Spec.Override = &ov
-
-	// Robin configuration
-	robinImage := GetRobinImage()
-	rc.Spec.Robin = &redkeyv1.RobinSpec{
-		Template: &redkeyv1.PartialPodTemplateSpec{
-			Spec: redkeyv1.PartialPodSpec{
-				Containers: []corev1.Container{
-					{
-						Name:            "robin",
-						Image:           robinImage,
-						ImagePullPolicy: corev1.PullIfNotPresent,
-						Ports: []corev1.ContainerPort{
-							{
-								ContainerPort: 8080,
-								Name:          "http",
-								Protocol:      corev1.ProtocolTCP,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							{
-								Name:      key.Name + "-robin-config",
-								MountPath: "/opt/conf/configmap",
-							},
-						},
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("50m"),
-								corev1.ResourceMemory: resource.MustParse("64Mi"),
-							},
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("100m"),
-								corev1.ResourceMemory: resource.MustParse("128Mi"),
-							},
-						},
-						SecurityContext: &corev1.SecurityContext{
-							RunAsNonRoot:             ptr.To(true),
-							RunAsUser:                ptr.To(int64(1001)),
-							AllowPrivilegeEscalation: ptr.To(false),
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					{
-						Name: key.Name + "-robin-config",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: key.Name + "-robin",
-								},
-								DefaultMode: ptr.To(int32(420)),
-							},
-						},
-					},
-				},
-			},
-		},
-		Config: &redkeyv1.RobinConfig{
-			Reconciler: &redkeyv1.RobinConfigReconciler{
-				IntervalSeconds:                 ptr.To(30),
-				OperationCleanUpIntervalSeconds: ptr.To(30),
-			},
-			Cluster: &redkeyv1.RobinConfigCluster{
-				HealthProbePeriodSeconds: ptr.To(60),
-				HealingTimeSeconds:       ptr.To(60),
-				MaxRetries:               ptr.To(10),
-				BackOff:                  ptr.To(10),
-			},
-		},
-	}
-
-	return rc
-}
-
-// WaitForReady waits until the cluster status is Ready using dynamic client.
-func WaitForReady(ctx context.Context, dc dynamic.Interface, key types.NamespacedName, timeout time.Duration) (*redkeyv1.RedkeyCluster, error) {
-	if timeout == 0 {
-		timeout = defaultTimeout
-	}
-
-	var last string
-	if err := wait.PollUntilContextTimeout(
-		ctx, 3*time.Second, timeout, true,
-		func(ctx context.Context) (bool, error) {
-			rc, err := GetRedkeyCluster(ctx, dc, key.Namespace, key.Name)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, nil
-				}
-				return false, nil
-			}
-			last = rc.Status.Status
-			return last == redkeyv1.StatusReady, nil
-		},
-	); err != nil {
-		return nil, fmt.Errorf(
-			"timed out after %s waiting for Ready (last seen %q): %w",
-			timeout, last, err,
-		)
-	}
-
-	return GetRedkeyCluster(ctx, dc, key.Namespace, key.Name)
-}
-
-func buildResources() *corev1.ResourceRequirements {
+func defaultRedisResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-			corev1.ResourceMemory: resource.MustParse("256Mi"),
+			corev1.ResourceCPU:    resource.MustParse("300m"),
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
 		},
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		},
+	}
+}
+
+func defaultRobinResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
 			corev1.ResourceMemory: resource.MustParse("128Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		},
+	}
+}
+
+// defaultRobinConfig returns a RobinConfig with shortened intervals to speed up chaos recovery.
+func defaultRobinConfig() *redkeyv1beta1.RobinConfig {
+	reconcileInterval := 5
+	reconcileIntervalOnError := 3
+	reconcileIntervalOnWait := 3
+	clusterMeetWait := 2
+
+	return &redkeyv1beta1.RobinConfig{
+		Reconciler: &redkeyv1beta1.RobinConfigReconciler{
+			IntervalSeconds:        &reconcileInterval,
+			IntervalOnErrorSeconds: &reconcileIntervalOnError,
+			IntervalOnWaitSeconds:  &reconcileIntervalOnWait,
+		},
+		Cluster: &redkeyv1beta1.RobinConfigCluster{
+			ClusterMeetWaitSeconds: &clusterMeetWait,
 		},
 	}
 }

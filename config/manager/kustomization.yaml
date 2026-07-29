@@ -1,18 +1,11 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
 
-namespace: default
-
 resources:
-- operator.yaml
-
-generatorOptions:
-  disableNameSuffixHash: true
-
-configMapGenerator:
-- files:
-  - redkey_operator_config.yaml
-  name: redkey-operator-config
-
+- manager.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+images:
+- name: controller
+  newName: localhost:5005/redkey-operator
+  newTag: 0.2.0

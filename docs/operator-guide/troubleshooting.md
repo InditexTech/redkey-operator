@@ -36,12 +36,36 @@ If a slave node is present in a primaries-only cluster, ix this by running the [
 
 You can find the node IP information by running the [nodes command](#gathering-nodes-information). If the IPs are inconsistent run the [cluster meet](#cluster-meet) from a correctly configured node to the incorrect node.
 
+### An upgrade is stuck on a partition
+
+During a [Rolling N+1 upgrade](upgrade.md) the cluster status stays `Upgrading` and the
+`substatus.upgradingPartition` does not advance over several reconcile intervals. Robin
+deliberately refuses to advance to the next partition while the topology is inconsistent,
+so this usually means a previous reshard left the cluster in a bad state. Common causes:
+
+- **Open slots** left in a `MIGRATING`/`IMPORTING` state by an interrupted reshard. Run
+  the [check command](#check-the-cluster) — if it reports open slots, run the
+  [fix command](#fixing-the-cluster). Robin also runs `redis-cli --cluster fix`
+  automatically before each reshard, so confirm the source node can be reached.
+- **Dead/`FAIL` nodes** from earlier recycles that were not cleaned up, causing reshard
+  timeouts. Run the [check command](#check-the-cluster); if you see nodes in `fail` state,
+  [forget them](#forget-a-node) from every surviving member.
+- **Gossip not converged** — a recycled pod has not yet been recognised by all peers.
+  Verify the IPs with the [nodes command](#gathering-nodes-information) and, if needed,
+  issue a [cluster meet](#cluster-meet) from a healthy node.
+- **A replica that never synced** — Robin waits for `master_link_status:up` before
+  treating a replica as HA. Check `redis-cli -h <pod> INFO replication`; a replica stuck
+  at `master_link_status:down` points to a connectivity or auth problem with its primary.
+
+Once the underlying inconsistency is fixed, Robin resumes the upgrade from the last
+recorded substatus on the next reconcile — no manual status edit is required.
+
 ## Cluster manager commands
 
 Below are a list of commands and code snippets for inspecting and repairing the cluster. Most commands use kubectl combined with the Redkey cluster manager tool. This tool is invoked with
 
-```
-$ redis-cli --cluster ...
+```shell
+redis-cli --cluster ...
 ```
 
 For more information see the [Redis cluster tutorial](https://redis.io/topics/cluster-tutorial).
@@ -50,13 +74,13 @@ For more information see the [Redis cluster tutorial](https://redis.io/topics/cl
 
 Check whether the cluster’s nodes are available and the slots are allocated properly.
 
-```
-$ kubectl exec -it [redis-pod-name] -- redis-cli --cluster check localhost 6379
+```shell
+kubectl exec -it [redis-pod-name] -- redis-cli --cluster check localhost 6379
 ```
 
 #### Good Status - All 16384 slots covered
 
-```
+```shell
 $ kubectl exec -it [redis-pod-name] -- redis-cli --cluster check localhost 6379
 localhost:6379 (89617d3e...) -> 0 keys | 5461 slots | 0 slaves.
 10.244.1.123:6379 (c0aa78d2...) -> 0 keys | 5462 slots | 0 slaves.
@@ -78,7 +102,7 @@ M: 11d23d3c2cbac49201825415b38015c862313ec9 10.244.0.57:6379
 
 #### Bad Status - Slots in incoherent state
 
-```
+```shell
 $ kubectl exec -it [redis-pod-name] -- redis-cli --cluster check localhost 6379
 localhost:6379 (89617d3e...) -> 0 keys | 5461 slots | 0 slaves.
 10.244.1.123:6379 (c0aa78d2...) -> 0 keys | 5462 slots | 0 slaves.
@@ -104,7 +128,7 @@ command terminated with exit code 1
 
 #### Bad Status - Missing slots
 
-```
+```shell
 $ kubectl exec -it [redis-pod-name] -- redis-cli --cluster check localhost 6379
 localhost:6379 (89617d3e...) -> 0 keys | 5460 slots | 0 slaves.
 10.244.1.123:6379 (c0aa78d2...) -> 0 keys | 5462 slots | 0 slaves.
@@ -128,7 +152,7 @@ M: 11d23d3c2cbac49201825415b38015c862313ec9 10.244.0.57:6379
 
 For each pod list the status of each node: its role, primary or slave, whether it is failing, and which slots are allocated to it.
 
-```
+```shell
 for pod in $(kubectl get pods -l redkey-cluster-name=[redkey-cluster-name] -o json | jq -r '.items[] | .metadata.name'); do echo "POD ${pod} NODES"; kubectl exec -it ${pod} -- redis-cli CLUSTER NODES  | sort; done
 ```
 
@@ -136,13 +160,13 @@ for pod in $(kubectl get pods -l redkey-cluster-name=[redkey-cluster-name] -o js
 
 The cluster meet command makes a node join the cluster. This command should be run from a correctly configured pod to have it meet the node joining the cluster.
 
-```
-$ kubectl exec -it [redis-pod-name] -- redis-cli cluster meet [ip-new-node] 6379
+```shell
+kubectl exec -it [redis-pod-name] -- redis-cli cluster meet [ip-new-node] 6379
 ```
 
 To do cluster meet among all cluster nodes:
 
-```
+```shell
 # File: ./redis-cli-meet-all-nodes.sh
 # Example: ./redis-cli-meet-all-nodes.sh redis-cluster-mecprada-2
 if [ -z "$1" ]; then
@@ -152,8 +176,8 @@ fi
 cluster_redis=$1
 echo "Meeting all with all nodes: " $cluster_redis
 
-for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
-    for ip in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].status.podIP'); do
+for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
+    for ip in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].status.podIP'); do
         oc exec $pod -- redis-cli cluster meet $ip 3689
     done
 done
@@ -163,7 +187,7 @@ done
 
 Make sure all nodes agree about slots configuration.
 
-```
+```shell
 $ kubectl exec -it [redis-pod-name] -- redis-cli --cluster fix localhost 6379
 localhost:6379 (89617d3e...) -> 0 keys | 5460 slots | 0 slaves.
 10.244.1.123:6379 (c0aa78d2...) -> 0 keys | 5462 slots | 0 slaves.
@@ -195,7 +219,7 @@ Now run the [cluster check command](#check-the-cluster) again to see if the clus
 
 Perform a soft reset which resets the node config but keeps the node id.
 
-```
+```shell
 kubectl exec -it [redis-pod-name] -- redis-cli cluster reset
 ```
 
@@ -203,13 +227,13 @@ kubectl exec -it [redis-pod-name] -- redis-cli cluster reset
 
 Have all nodes in the cluster forget a failing node. First get the node id via the [cluster nodes command](#gathering-nodes-information).
 
-```
+```shell
 for pod in $(kubectl get pods -l redkey-cluster-name=[redkey-cluster-name] -o json | jq -r '.items[] | .metadata.name'); do echo "POD ${pod} NODES"; kubectl exec -it ${pod} -- redis-cli CLUSTER FORGET [node-id] | sort; done
 ```
 
 If there is a set of disconnected or failing nodes they can forget all at once with the following script:
 
-```
+```shell
 # File: ./redis-cli-forget-all-disconnected.sh
 # Example: ./redis-cli-forget-all-disconnected.sh redis-cluster-mecprada-2
 if [ -z "$1" ]; then
@@ -218,7 +242,7 @@ if [ -z "$1" ]; then
 fi
 cluster_redis=$1
 echo "Forgetting disconnect in: " $cluster_redis
-for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkeycluster.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
+for pod in $(oc get pod -l redkey-cluster-name=$cluster_redis,redis.redkey.operator/component=redis -o json | jq -r '.items[].metadata.name'); do
     for node in $(oc exec $pod -- cat /tmp/nodes.conf | egrep '(fail|disconnected)' | cut -f1 -d" "); do
         oc exec  $pod -- redis-cli cluster forget $node
     done
@@ -229,6 +253,6 @@ done
 
 Generate a CRD for the older kube-api version using operator-sdk command.
 
-```
-$ operator-sdk generate crds --crd-version=v1
+```shell
+operator-sdk generate crds --crd-version=v1
 ```

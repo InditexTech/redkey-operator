@@ -1,0 +1,80 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if .Values.waitReady.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "redkey.name" . }}-wait-ready
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "redkey.name" . }}-wait-ready
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+rules:
+  - apiGroups: ["redkey.inditex.dev"]
+    resources: ["redkeys"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "redkey.name" . }}-wait-ready
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "redkey.name" . }}-wait-ready
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "redkey.name" . }}-wait-ready
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "redkey.name" . }}-wait-ready
+  labels:
+    {{- include "redkey.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation,hook-failed
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "redkey.name" . }}-wait-ready
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "redkey.name" . }}-wait-ready
+      containers:
+        - name: wait
+          image: {{ .Values.waitReady.image }}
+          command:
+            - kubectl
+            - wait
+            - --for=condition=Ready
+            - redkey/{{ include "redkey.name" . }}
+            - -n
+            - {{ .Release.Namespace }}
+            - --timeout={{ .Values.waitReady.timeout }}
+  backoffLimit: {{ .Values.waitReady.backoffLimit }}
+{{- end }}

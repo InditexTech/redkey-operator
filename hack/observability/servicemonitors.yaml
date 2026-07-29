@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# ServiceMonitor for Redkey Operator controller-manager.
+# Prometheus Operator uses this to discover and scrape the operator metrics endpoint.
+# The operator exposes metrics on HTTPS port 8443 via a Service created by kustomize
+# (config/default/metrics_service.yaml).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redkey-operator
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redkey-operator
+    app.kubernetes.io/component: metrics
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: redkey-operator
+  endpoints:
+    - port: https
+      path: /metrics
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+      interval: 15s
+      # Keep metric-exposed labels (e.g. the Redkey's own `namespace`/`name` on the
+      # redkey_phase / redkey_config_phase fleet metrics) instead of overwriting them with
+      # the operator pod's target labels.
+      honorLabels: true
+      # Pin a stable, human-friendly job label instead of the default Service name.
+      relabelings:
+        - targetLabel: job
+          replacement: redkey-operator
+---
+# PodMonitor for Redkey Robin instances.
+# Robin is deployed as a standalone Deployment per Redkey.
+# It exposes metrics on HTTP port 8080 but does NOT define container ports or a Service,
+# so we scrape the pod directly using targetPort.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: redkey-robin
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redkey-robin
+    app.kubernetes.io/component: metrics
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      redkey.inditex.dev/component: robin
+  podMetricsEndpoints:
+    - targetPort: 8080
+      path: /metrics
+      scheme: http
+      interval: 15s
+      # Pin a stable, human-friendly job label instead of the default pod name.
+      relabelings:
+        - targetLabel: job
+          replacement: redkey-robin

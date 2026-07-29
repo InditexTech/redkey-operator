@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 INDUSTRIA DE DISENO TEXTIL S.A. (INDITEX S.A.)
+// SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL, S.A. (INDITEX, S.A.)
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -19,11 +19,61 @@ export const options = {
     },
 };
 
-const client = new redis.Client({
-    cluster: {
-        nodes: __ENV.REDIS_HOSTS.split(',').map(node => `redis://${node}`),
-    },
-});
+// Build cluster seed nodes from REDIS_HOSTS ("host:port,host:port,..."). The first entry is the
+// cluster's headless Service FQDN (<cluster>.<ns>.svc.cluster.local), whose A-record always resolves
+// to the *current, ready* pod IPs; the remaining entries are the per-pod DNS names as fallbacks.
+// Seeding from the Service lets go-redis rediscover the live topology after a StatefulSet recreate
+// (e.g. PurgeKeysOnRebalance), instead of staying wedged on pods that no longer exist.
+//
+// NOTE: xk6-redis interprets these socket timeouts in MILLISECONDS. They must be long enough for a
+// fresh TCP+RESP handshake to a freshly-scheduled pod to succeed (so the cluster client can run
+// CLUSTER SLOTS and reload its slot->node topology) but short enough that a VU stuck on a dead pod
+// fails within a couple of seconds and recycles, instead of blocking for the 5s go-redis default
+// multiplied by the pool/redirect retries.
+function createClient() {
+    const nodes = __ENV.REDIS_HOSTS.split(',').map(node => {
+        const [host, port] = node.split(':');
+        return {
+            socket: {
+                host,
+                port: Number(port) || 6379,
+                dialTimeout: 1000,  // 1s: enough to handshake a recovering pod, fails fast on a dead one
+                readTimeout: 2000,  // 2s: cover reads of values up to ~300KB
+                writeTimeout: 2000, // 2s: cover writes of values up to ~300KB
+            },
+        };
+    });
+
+    return new redis.Client({
+        cluster: {
+            // Follow a few redirects so commands track slots as they migrate during rebalancing, and
+            // route randomly so a single stale node does not stall every request.
+            maxRedirects: 4,
+            routeRandomly: true,
+            nodes,
+        },
+    });
+}
+
+let client = createClient();
+
+// When chaos replaces every pod, go-redis keeps using the IPs it discovered via CLUSTER SLOTS and is
+// slow to fall back to re-resolving the DNS seeds once all of those cached IPs are dead, so it can
+// stay wedged dialing stale addresses. Rebuilding the client forces a fresh re-resolution of the
+// seeds (the headless Service FQDN first) and rediscovery of the live topology. Throttle rebuilds so
+// a burst of failing VUs does not thrash DNS/connections. xk6 runs each VU in its own JS runtime, so
+// `client` and these counters are per-VU.
+let lastReconnectAt = 0;
+const reconnectCooldownMs = 5000;
+
+function maybeReconnect() {
+    const now = Date.now();
+    if (now - lastReconnectAt < reconnectCooldownMs) {
+        return;
+    }
+    lastReconnectAt = now;
+    client = createClient();
+}
 
 // Helper function to generate random-sized values
 function generateRandomValue(maxBytes) {
@@ -72,6 +122,9 @@ export default async function () {
     } catch (error) {
         const message = `[K6_ERROR] iteration failed for ${uniqueKey}: ${error}`;
         console.error(message);
+        // The client has likely cached now-dead pod IPs; rebuild it (throttled) so the next
+        // iterations rediscover the live topology instead of hammering stale addresses.
+        maybeReconnect();
         throw error;
     }
 

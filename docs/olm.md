@@ -6,36 +6,58 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Test Operator deployment in Kubernetes using OLM
 
+We will describe how to deploy the Redkey Operator in a Kubernetes cluster using Operator Lifecycle Manager (OLM). Starting from OLM installation, we will deploy the operator and then create a Redkey resource to verify that the operator is working correctly.
+
+## Table of Contents
+
+- [Installing Operator Lifecycle Manager (OLM)](#installing-operator-lifecycle-manager-olm)
+  - [Install using `operator-sdk`](#install-the-operator-lyfecycle-manager-olm-using-operator-sdk)
+  - [Install using `kubectl`](#install-the-operator-lyfecycle-manager-olm-using-kubectl)
+- [Deploy the Redkey Operator using OLM](#deploy-the-redkey-operator-using-olm)
+  - [Use `operator-sdk` to deploy the Redkey Operator bundle](#use-operator-sdk-to-deploy-the-redkey-operator-bundle)
+  - [Use Kubernetes manifests to deploy the Redkey Operator bundle](#use-kubernetes-manifests-to-deploy-the-redkey-operator-bundle)
+    - [Adding the catalog containing the operator to OLM](#adding-the-catalog-containing-the-operator-to-olm)
+    - [Check the available operators in the catalog](#check-the-available-operators-in-the-catalog)
+    - [Create an OperatorGroup](#create-an-operatorgroup)
+    - [Create a Subscription to the operator](#create-a-subscription-to-the-operator)
+    - [Deploy a Redkey Cluster using the Operator](#deploy-a-redkey-cluster-using-the-operator)
+
+---
+
 ## Installing Operator Lifecycle Manager (OLM)
 
 If you are not using OpenShift, you can install OLM in your Kubernetes cluster by following the following instructions.
 
-We assume you already have a Kubernetes cluster up and running, and this cluster is currently selected as your `current-context` vie `kubectl`. If you don't have one, you can create a local cluster using tools like Minikube or Kind.
+We assume you already have a Kubernetes cluster up and running, and this cluster is currently selected as your `current-context` vie `kubectl`. If you don't have one, you can create a local cluster using tools like `Kind`, `K3s`, or `Minikube`.
 
-```bash
-kind create cluster
+We will use `Kind` in this example, as this is the tool we propose.
+
+Create a local Kubernetes cluster:
+
+```shell
+make setup-cluster
 ```
 
 Operator Lifecycle Manager (OLM) can be installed using either `kubectl` or `operator-sdk`.
 
 ### Install the Operator Lyfecycle Manager (OLM) using `operator-sdk`
 
-```bash
-operator-sdk olm install
+```shell
+make olm-install
 ```
 
 Verify that OLM is installed correctly:
 
-```bash
+```shell
 operator-sdk olm status
 ```
 
 This command should show you the status of OLM components, including the `catalog-operator`, `olm-operator`, and `packageserver`.
 
-```bash
-INFO[0000] Fetching CRDs for version "v0.28.0"          
-INFO[0000] Fetching resources for resolved version "v0.28.0" 
-INFO[0000] Successfully got OLM status for version "v0.28.0" 
+```shell
+INFO[0000] Fetching CRDs for version "v0.28.0"
+INFO[0000] Fetching resources for resolved version "v0.28.0"
+INFO[0000] Successfully got OLM status for version "v0.28.0"
 
 NAME                                            NAMESPACE    KIND                        STATUS
 global-operators                                operators    OperatorGroup               Installed
@@ -64,20 +86,20 @@ olm-operator-serviceaccount                     olm          ServiceAccount     
 
 ### Install the Operator Lyfecycle Manager (OLM) using `kubectl`
 
-```bash
+```shell
 kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.40.0/crds.yaml
 kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.40.0/olm.yaml
 ```
 
 Verify that OLM is installed correctly:
 
-```bash
+```shell
 kubectl get pods -n olm
 ```
 
 You should see the following output, indicating that the OLM components are running:
 
-```bash
+```shell
 NAME                               READY   STATUS    RESTARTS   AGE
 catalog-operator-9f6dc8c87-v9ljl   1/1     Running   0          12m
 olm-operator-6bccddc987-xz7cv      1/1     Running   0          12m
@@ -86,7 +108,70 @@ packageserver-7899cbcfc6-gkc2j     1/1     Running   0          12m
 packageserver-7899cbcfc6-hpxzw     1/1     Running   0          12m
 ```
 
-## Adding the catalog containing the operator to OLM
+## Deploy the Redkey Operator using OLM
+
+### Use `operator-sdk` to deploy the Redkey Operator bundle
+
+This is the easiest way to deploy the operator using OLM. Using `make` goals, you can execute all the required steps.
+
+We will assume you are using the `Kind` cluster created in the previous step. If you are using another cluster, make sure to adjust the `IMAGE_TAG_BASE` variable to point to a registry that your cluster can access. Here is the complete sequence of commands (skip the `make setup-kind` and `make olm-install` steps if you have already executed them):
+
+```shell
+# Create the `Kind` cluster (if you haven't already) with its registry.
+make setup-kind
+
+# Deploy OLM.
+make olm-install
+
+# Build and push the operator image to the local registry.
+make docker-build docker-push
+
+# Build the Operator bundle files.
+make bundle
+
+# Build and push the Operator bundle image to the local registry.
+make bundle-build bundle-push
+
+# Deploy the Operator bundle using operator-sdk.
+make bundle-deploy
+```
+
+The Operator should be up and running in the `operators` namespace. The command `kubectl get pods -n operators` should show you the operator pod running:
+
+```shell
+NAME                                                              READY   STATUS      RESTARTS   AGE
+82e02669894138e3217057b72c0c34993f32f68477f84069c15d5fa44ez7kkm   0/1     Completed   0          23s
+localhost-5005-redkey-operator-bundle-v0-2-0                      1/1     Running     0          44s
+redkey-operator-controller-manager-9764b7b87-g58nk                1/1     Running     0          13s
+```
+
+Now you can proceed to create a `Redkey` resource to verify that the operator is working correctly.
+
+```shell
+make deploy-sample-ephemeral
+```
+
+and then check the status of the `Redkey`:
+
+```shell
+$ kubectl get rk
+NAME                    MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   PHASE
+redkey-cluster-sample   cluster   3           0          true        true        Configuring
+```
+
+To **clean up** the cluster:
+
+```shell
+# Undeploy the Operator bundle (with all the resources created: CSV, Subscription, CatalogSource, OperatorGroup, etc.).
+make bundle-undeploy
+
+# Uninstall OLM.
+make olm-uninstall
+```
+
+### Use Kubernetes manifests to deploy the Redkey Operator bundle
+
+#### Adding the catalog containing the operator to OLM
 
 To add the catalog containing the operator to OLM, you need to create a `CatalogSource` resource. This resource defines the source of the operator's catalog, which can be a container image, a local directory, or a gRPC server.
 
@@ -107,13 +192,13 @@ spec:
 
 Apply the `CatalogSource` resource to your cluster:
 
-```bash
+```shell
 kubectl apply -f catalogSource.yaml
 ```
 
 Verify that the catalog is added correctly:
 
-```bash
+```shell
 $ kubectl get catalogsource -n olm
 NAME                               READY   STATUS    RESTARTS   AGE
 redkey-catalog-vvcnj               1/1     Running   0          14s
@@ -122,26 +207,26 @@ redkey-catalog-vvcnj               1/1     Running   0          14s
 
 Verify the health of the catalog:
 
-```bash
+```shell
 kubectl get catalogsource redkey-catalog -n olm -o yaml
 ```
 
-## Check the available operators in the catalog
+#### Check the available operators in the catalog
 
 You can inspect the loaded `packagemanifests` list to check the available operators in the catalog:
 
-```bash
+```shell
 $ kubectl get packagemanifests -n olm | grep redkey-operator
 redkey-operator                                                   4m37s
 ```
 
-## Create an OperatorGroup
+#### Create an OperatorGroup
 
 The namespaces where the operator will be installed must be defined in an `OperatorGroup` resource. This resource defines the scope of the operator, which can be a single namespace, multiple namespaces, or the entire cluster.
 
 Create an `OperatorGroup` resource that targets the `default` namespace:
 
-```
+```yaml
 apiVersion: operators.coreos.com/v1alpha2
 kind: OperatorGroup
 metadata:
@@ -154,11 +239,11 @@ spec:
 
 Create a file named `operatorGroup.yaml` with the above content and apply it to your cluster:
 
-```bash
+```shell
 kubectl apply -f operatorGroup.yaml
 ```
 
-## Create a Subscription to the operator
+#### Create a Subscription to the operator
 
 Finally, you need to create a `Subscription` resource that defines the operator you want to install, the channel you want to subscribe to, and the source of the catalog.
 
@@ -178,19 +263,19 @@ spec:
 
 Create a file named `subscription.yaml` with the above content and apply it to your cluster:
 
-```bash
+```shell
 kubectl apply -f subscription.yaml
 ```
 
 An `InstallPlan` will be automatically created and executed to install the operator. You can check the status of the `InstallPlan` to see if the operator is being installed correctly:
 
-```bash
+```shell
 kubectl get installplan -n default
 ```
 
 Then, you can check the status of the `ClusterServiceVersion` (CSV) to see if the operator is running:
 
-```bash
+```shell
 $ kubectl get clusterserviceversion -n default -w
 NAME                     DISPLAY           VERSION   REPLACES   PHASE
 redkey-operator.v0.1.0   Redkey Operator   0.1.0                
@@ -207,120 +292,31 @@ redkey-operator.v0.1.0   Redkey Operator   0.1.0                Succeeded
 
 And the Operator should be up and running in the `default` namespace:
 
-```bash
+```shell
 $ kubectl get pods -n default | grep redkey-operator
 NAME                               READY   STATUS    RESTARTS   AGE
 redkey-operator-749595567c-qdq4g   1/1     Running   0          72s
 ```
 
-## Deploy a Redkey Cluster using the Operator
+#### Deploy a Redkey Cluster using the Operator
 
-Save the following content in a file named `rkcl.yaml`:
+Use the included sample manifests to create a `Redkey` by executing the following command:
 
-```yaml
-apiVersion: redkey.inditex.dev/v1
-kind: RedkeyCluster
-metadata:
-  labels:
-    app.kubernetes.io/name: redkey-cluster-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: redis-cluster-ephemeral
-spec:
-  primaries: 3
-  ephemeral: true
-  accessModes: 
-  - ReadWriteOnce
-  image: redis:8-bookworm
-  purgeKeysOnRebalance: true
-  labels:
-    team: a-team
-    custom: custom-label
-  config: |
-    maxmemory 90mb
-    maxmemory-samples 5
-    maxmemory-policy allkeys-lru
-    protected-mode no
-    appendonly no
-    save ""
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-  robin:
-    config:
-      reconciler:
-        intervalSeconds: 30
-        operationCleanUpIntervalSeconds: 30
-      cluster:
-        healthProbePeriodSeconds: 60
-        healingTimeSeconds: 60
-        maxRetries: 10
-        backOff: 10
-      metrics:
-        intervalSeconds: 60
-        redisInfoKeys:
-          - keyspace_hits
-          - evicted_keys
-          - connected_clients
-          - total_commands_processed
-          - keyspace_misses
-          - expired_keys
-          - redis_version
-          - used_memory_rss
-          - maxmemory
-          - used_cpu_sys
-          - used_cpu_sys_children
-          - used_cpu_user
-          - used_cpu_user_children
-          - total_net_input_bytes
-          - total_net_output_bytes
-          - aof_base_size
-          - aof_current_size
-          - mem_aof_buffer
-    template:
-      spec:
-        containers:
-          - image: ghcr.io/inditextech/redkey-robin:0.1.0
-            name: robin
-            imagePullPolicy: Always
-            ports:
-              - containerPort: 8080
-                name: prometheus
-                protocol: TCP
-            volumeMounts:
-              - mountPath: /opt/conf/configmap
-                name: redis-cluster-ephemeral-robin-config
-            resources:
-              requests:
-                cpu: 500m
-                memory: 100Mi
-              limits:
-                cpu: 1
-                memory: 200Mi
-        volumes:
-          - configMap:
-              defaultMode: 420
-              name: redis-cluster-ephemeral-robin
-            name: redis-cluster-ephemeral-robin-config
+```shell
+make deploy-sample-ephemeral
 ```
 
-Apply the `RedkeyCluster` resource to your cluster:
+You can check the status of the `Redkey` to see if it is being created correctly:
 
-```bash
-kubectl apply -f rkcl.yaml
-```
-
-You can check the status of the `RedkeyCluster` to see if it is being created correctly:
-
-```bash
-$ kubectl get rkcl -o wide -w
-NAME                      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   IMAGE              STORAGE   STORAGECLASSNAME   DELETEPVC   STATUS   SUBSTATUS   PARTITION
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false                            
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Initializing               
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Configuring                
-redis-cluster-ephemeral   3           0          true        true        redis:8-bookworm                                false       Ready
+```shell
+$ kubectl get rk -o wide -w
+NAME                      MODE      PRIMARIES   REPLICAS   EPHEMERAL   PURGEKEYS   STORAGE   DELETEPVC   PHASE         STATUS         SUBSTATUS   PARTITION
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Initializing
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Configuring   Configuring
+redis-cluster-ephemeral   cluster   3           0          true        true                  false       Ready         Ready
 ```

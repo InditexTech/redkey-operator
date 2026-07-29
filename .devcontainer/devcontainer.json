@@ -1,0 +1,41 @@
+// SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+//
+// SPDX-License-Identifier: Apache-2.0
+
+{
+  "name": "Redkey Operator DevContainer",
+  "image": "golang:1.26.5-trixie",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false,
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+  },
+
+  "containerEnv": {
+    "GOROOT": "/usr/local/go",
+    "GOPATH": "/go",
+  },
+
+  "remoteEnv": {
+    "PATH": "/usr/local/go/bin:/go/bin:${containerEnv:PATH}",
+  },
+
+  "runArgs": ["--network=host"],
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+      },
+      "extensions": [
+        "golang.Go",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+      ],
+    },
+  },
+
+  "onCreateCommand": "bash .devcontainer/post-install.sh",
+}

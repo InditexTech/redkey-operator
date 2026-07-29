@@ -69,13 +69,16 @@ rules:
   - ""
   resources:
   - configmaps
+  - pods
   - services
   verbs:
   - create
-  - update
   - delete
   - get
   - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -127,7 +130,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - create
   - delete
@@ -139,17 +142,68 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/finalizers
+  - redkeys/finalizers
   verbs:
   - update
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/status
+  - redkeys/scale
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeys/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -177,7 +231,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - create
   - delete
@@ -189,7 +243,21 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/status
+  - redkeys/status
+  verbs:
+  - get
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs/status
   verbs:
   - get
 ---
@@ -204,7 +272,7 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters
+  - redkeys
   verbs:
   - get
   - list
@@ -212,7 +280,21 @@ rules:
 - apiGroups:
   - redkey.inditex.dev
   resources:
-  - redkeyclusters/status
+  - redkeys/status
+  verbs:
+  - get
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - redkey.inditex.dev
+  resources:
+  - redkeyconfigs/status
   verbs:
   - get
 {{- end }}
