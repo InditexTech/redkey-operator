@@ -266,7 +266,11 @@ func (r *RedkeyReconciler) ensureRobinDeployment(ctx context.Context, cluster *r
 	err := r.Get(ctx, types.NamespacedName{Name: desired.Name, Namespace: desired.Namespace}, &existing)
 	if errors.IsNotFound(err) {
 		log.Info("Creating Robin Deployment", "deployment", desired.Name)
-		return r.Create(ctx, desired)
+		if err := r.Create(ctx, desired); err != nil {
+			return err
+		}
+		redkeyRobinDeploymentChanges.WithLabelValues("create").Inc()
+		return nil
 	}
 	if err != nil {
 		return err
@@ -283,7 +287,11 @@ func (r *RedkeyReconciler) ensureRobinDeployment(ctx context.Context, cluster *r
 		existing.Annotations = preserveManagedAnnotations(existing.Annotations, desired.Annotations)
 		existing.Spec.Replicas = desired.Spec.Replicas
 		existing.Spec.Template = desired.Spec.Template
-		return r.Patch(ctx, &existing, client.MergeFrom(base))
+		if err := r.Patch(ctx, &existing, client.MergeFrom(base)); err != nil {
+			return err
+		}
+		redkeyRobinDeploymentChanges.WithLabelValues("patch").Inc()
+		return nil
 	}
 
 	return nil

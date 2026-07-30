@@ -73,6 +73,7 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			log.Info("Redkey resource not found. Ignoring since object must be deleted.", "namespace", req.Namespace, "name", req.Name)
 			return ctrl.Result{}, nil
 		}
+		redkeyReconcileStageErrors.WithLabelValues("get_cluster").Inc()
 		return ctrl.Result{}, err
 	}
 
@@ -83,6 +84,8 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		res, err := r.reconcileScaleToZero(ctx, &cluster)
 		if err == nil {
 			recordRedkeyMetrics(&cluster, nil)
+		} else {
+			redkeyReconcileStageErrors.WithLabelValues("scale_to_zero").Inc()
 		}
 		return res, err
 	}
@@ -90,18 +93,21 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Ensure RBAC resources exist for Robin
 	if err := r.ensureRBAC(ctx, &cluster); err != nil {
 		log.Error(err, "Failed to ensure RBAC resources")
+		redkeyReconcileStageErrors.WithLabelValues("ensure_rbac").Inc()
 		return ctrl.Result{}, err
 	}
 
 	// Ensure Robin Deployment exists
 	if err := r.ensureRobinDeployment(ctx, &cluster); err != nil {
 		log.Error(err, "Failed to ensure Robin Deployment")
+		redkeyReconcileStageErrors.WithLabelValues("ensure_robin_deployment").Inc()
 		return ctrl.Result{}, err
 	}
 
 	// List all RedkeyConfigs for this cluster
 	configs, err := r.listConfigs(ctx, &cluster)
 	if err != nil {
+		redkeyReconcileStageErrors.WithLabelValues("list_configs").Inc()
 		return ctrl.Result{}, err
 	}
 
@@ -114,12 +120,14 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if len(configs) == 0 || needsNewConfig(&cluster, highestSeq) {
 		if err := r.createNewConfig(ctx, &cluster, highestSeq); err != nil {
 			log.Error(err, "Failed to create new RedkeyConfig")
+			redkeyReconcileStageErrors.WithLabelValues("create_new_config").Inc()
 			return ctrl.Result{}, err
 		}
 		log.Info("Created new RedkeyConfig", "cluster", cluster.Name, "generation", cluster.Generation)
 		// Re-fetch configs after creation
 		configs, err = r.listConfigs(ctx, &cluster)
 		if err != nil {
+			redkeyReconcileStageErrors.WithLabelValues("list_configs").Inc()
 			return ctrl.Result{}, err
 		}
 	}
@@ -129,12 +137,14 @@ func (r *RedkeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		configs, err = r.cleanupSupersededConfigs(ctx, configs)
 		if err != nil {
 			log.Error(err, "Failed to cleanup superseded configs")
+			redkeyReconcileStageErrors.WithLabelValues("cleanup_superseded_configs").Inc()
 			return ctrl.Result{}, err
 		}
 
 		// Aggregate status from highest-sequence config into Redkey status
 		if err := r.aggregateStatus(ctx, &cluster, configs); err != nil {
 			log.Error(err, "Failed to aggregate status")
+			redkeyReconcileStageErrors.WithLabelValues("aggregate_status").Inc()
 			return ctrl.Result{}, err
 		}
 	}

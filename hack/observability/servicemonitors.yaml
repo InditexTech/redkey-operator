@@ -3,8 +3,8 @@
 
 # ServiceMonitor for Redkey Operator controller-manager.
 # Prometheus Operator uses this to discover and scrape the operator metrics endpoint.
-# The operator exposes metrics on HTTPS port 8443 via a Service created by kustomize
-# (config/default/metrics_service.yaml).
+# The operator exposes metrics on HTTP port 8080 via a Service created by kustomize
+# (config/default/metrics_service.yaml), matching --metrics-bind-address=:8080.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -21,12 +21,9 @@ spec:
       control-plane: controller-manager
       app.kubernetes.io/name: redkey-operator
   endpoints:
-    - port: https
+    - port: http
       path: /metrics
-      scheme: https
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      tlsConfig:
-        insecureSkipVerify: true
+      scheme: http
       interval: 15s
       # Keep metric-exposed labels (e.g. the Redkey's own `namespace`/`name` on the
       # redkey_phase / redkey_config_phase fleet metrics) instead of overwriting them with
