@@ -184,6 +184,32 @@ type RedkeyStatus struct {
 
 	// ObservedGeneration is the most recent generation observed.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// LastAppliedPrimaries records the number of primaries of the last successfully applied,
+	// non-zero topology of a storage (non-ephemeral) cluster.
+	//
+	// WARNING — race-free scale-from-zero guard. This field is CONTINUOUSLY updated by the operator
+	// on every successful reconcile while the cluster is applied with primaries>0, and is NEVER
+	// cleared. It is intentionally maintained during steady state (NOT only at scale-to-zero) so the
+	// value is always persisted BEFORE any scale-to-zero. The root-level CEL validation rule on
+	// Redkey uses it to force a scale-up from zero back to the exact previous topology, preventing
+	// inconsistent PVC/node/slot remounts. Do NOT change this to record-on-scale-down-only and do NOT
+	// add clearing logic: either would reintroduce the admission-vs-reconcile race, because CEL runs
+	// synchronously at admission while the operator writes status asynchronously afterwards.
+	// Ephemeral clusters never set this field (they lose data on scale-to-zero, so no lock is needed).
+	//
+	// The Maximum bound keeps the CEL messageExpression that references this field within the API
+	// server's cost budget (it lets the cost estimator bound the size of string(...) conversions).
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100000
+	LastAppliedPrimaries int32 `json:"lastAppliedPrimaries,omitempty"`
+
+	// LastAppliedReplicasPerPrimary records the replicasPerPrimary of the last successfully applied,
+	// non-zero topology of a storage (non-ephemeral) cluster. See LastAppliedPrimaries for the
+	// continuous-tracking / race-free rationale — the same WARNING applies here.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100000
+	LastAppliedReplicasPerPrimary int32 `json:"lastAppliedReplicasPerPrimary,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -202,6 +228,24 @@ type RedkeyStatus struct {
 // +kubebuilder:printcolumn:name="Status",type="string",priority=1,JSONPath=".status.status",description="The cluster status"
 // +kubebuilder:printcolumn:name="Substatus",type="string",priority=1,JSONPath=".status.substatus.status",description="The cluster substatus"
 // +kubebuilder:printcolumn:name="Partition",type="string",priority=1,JSONPath=".status.substatus.upgradingPartition",description="Upgrading partition"
+//
+// Scale-from-zero topology lock (storage/non-ephemeral clusters only). These are ROOT-level rules
+// (placed on the Redkey type, not RedkeySpec) because only root-level rules can read self.status.
+// They rely on status.lastAppliedPrimaries / status.lastAppliedReplicasPerPrimary, which the
+// operator maintains CONTINUOUSLY while the cluster runs at primaries>0 (see RedkeyStatus fields).
+// That continuous tracking is what makes this check RACE-FREE: the previous topology is already
+// persisted before any scale-to-zero. Free scaling while primaries>0 stays unrestricted; only
+// scaling UP from zero is forced back to the exact previous topology. Ephemeral clusters and
+// fresh clusters created at zero (which never recorded a topology) are unaffected.
+//
+// NOTE: no messageExpression is used here. This CRD schema is very large (it embeds full
+// StatefulSet/PodSpec overrides), and a root-level messageExpression that reads self.status is
+// estimated by the API server's CEL cost budget against that whole schema, which exceeds the
+// (stricter) messageExpression budget by >100x even for a trivial expression. The static message
+// therefore points users to the exact required numbers in .status.lastAppliedPrimaries /
+// .status.lastAppliedReplicasPerPrimary instead of interpolating them.
+// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries == self.status.lastAppliedPrimaries",message="For storage clusters, scaling up from zero must restore the same primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)"
+// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary == (has(self.status.lastAppliedReplicasPerPrimary) ? self.status.lastAppliedReplicasPerPrimary : 0)",message="For storage clusters, scaling up from zero must restore the same replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)"
 
 // Redkey is the Schema for the redkeys API.
 type Redkey struct {

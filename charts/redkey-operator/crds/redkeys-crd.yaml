@@ -16562,6 +16562,23 @@ spec:
                   - type
                   type: object
                 type: array
+              lastAppliedPrimaries:
+                description: |-
+                  LastAppliedPrimaries records the primaries of the last applied non-zero topology
+                  of a storage (non-ephemeral) cluster. Continuously maintained and never cleared;
+                  used by the root-level scale-from-zero CEL rule (race-free). Do not change.
+                format: int32
+                maximum: 100000
+                minimum: 0
+                type: integer
+              lastAppliedReplicasPerPrimary:
+                description: |-
+                  LastAppliedReplicasPerPrimary records the replicasPerPrimary of the last applied
+                  non-zero topology of a storage (non-ephemeral) cluster. See LastAppliedPrimaries.
+                format: int32
+                maximum: 100000
+                minimum: 0
+                type: integer
               lastUpdatedAt:
                 description: LastUpdatedAt is the last time the status was updated.
                 format: date-time
@@ -16615,6 +16632,18 @@ spec:
             - phase
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: For storage clusters, scaling up from zero must restore the same
+            primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)
+          rule: self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
+            == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries
+            == self.status.lastAppliedPrimaries
+        - message: For storage clusters, scaling up from zero must restore the same
+            replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)
+          rule: 'self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
+            == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary
+            == (has(self.status.lastAppliedReplicasPerPrimary) ? self.status.lastAppliedReplicasPerPrimary
+            : 0)'
     served: true
     storage: true
     subresources:

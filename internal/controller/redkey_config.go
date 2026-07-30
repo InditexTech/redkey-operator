@@ -165,6 +165,22 @@ func (r *RedkeyReconciler) aggregateStatus(ctx context.Context, cluster *redisv1
 		latest.Status.LastUpdatedAt = &now
 		latest.Status.ObservedGeneration = observedGeneration
 
+		// Continuously track the last applied, non-zero topology for storage (non-ephemeral)
+		// clusters. This is deliberately updated on EVERY successful reconcile while the cluster is
+		// Applied at primaries>0 — NOT only at scale-to-zero — and is NEVER cleared. Recording it here,
+		// during steady state, guarantees the value is already persisted BEFORE any scale-to-zero,
+		// which is exactly what makes the root-level "scale-up-from-zero must match the previous
+		// topology" CEL rule RACE-FREE. Do NOT move this to a scale-down-only path and do NOT add
+		// clearing logic: either would reintroduce the admission-vs-reconcile race and allow
+		// inconsistent PVC remounts. Only Applied configs are used so in-progress scale targets are
+		// not captured until they have actually converged.
+		if !latest.Spec.Ephemeral &&
+			activeConfig.Status.ConfigPhase == redisv1.ConfigPhaseApplied &&
+			activeConfig.Spec.Primaries > 0 {
+			latest.Status.LastAppliedPrimaries = activeConfig.Spec.Primaries
+			latest.Status.LastAppliedReplicasPerPrimary = activeConfig.Spec.ReplicasPerPrimary
+		}
+
 		lastStatus, lastPhase = latest.Status.Status, latest.Status.Phase
 		if err := r.Status().Update(ctx, &latest); err != nil {
 			return err
