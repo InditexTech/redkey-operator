@@ -1365,7 +1365,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (stage) (increase(redkey_reconcile_stage_errors_total[$__rate_interval]))",
+          "expr": "clamp_min(sum by (stage) (redkey_reconcile_stage_errors_total - (redkey_reconcile_stage_errors_total offset $__interval)), 0)",
+          "interval": "1m",
           "instant": false,
           "legendFormat": "{{stage}}",
           "range": true,
@@ -1458,7 +1459,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (reason) (increase(redkey_config_creations_total[$__rate_interval]))",
+          "expr": "clamp_min(sum by (reason) (redkey_config_creations_total - (redkey_config_creations_total offset $__interval)), 0)",
+          "interval": "1m",
           "instant": false,
           "legendFormat": "{{reason}}",
           "range": true,
@@ -1551,7 +1553,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(redkey_cleanup_deleted_configs_total[$__rate_interval]))",
+          "expr": "clamp_min(sum(redkey_cleanup_deleted_configs_total - (redkey_cleanup_deleted_configs_total offset $__interval)), 0)",
+          "interval": "1m",
           "instant": false,
           "legendFormat": "deleted",
           "range": true,
@@ -1644,7 +1647,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (action) (increase(redkey_robin_deployment_changes_total[$__rate_interval]))",
+          "expr": "clamp_min(sum by (action) (redkey_robin_deployment_changes_total - (redkey_robin_deployment_changes_total offset $__interval)), 0)",
+          "interval": "1m",
           "instant": false,
           "legendFormat": "{{action}}",
           "range": true,
