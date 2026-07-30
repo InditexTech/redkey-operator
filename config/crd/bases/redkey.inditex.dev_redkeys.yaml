@@ -17320,6 +17320,36 @@ spec:
                   - type
                   type: object
                 type: array
+              lastAppliedPrimaries:
+                description: |-
+                  LastAppliedPrimaries records the number of primaries of the last successfully applied,
+                  non-zero topology of a storage (non-ephemeral) cluster.
+
+                  WARNING — race-free scale-from-zero guard. This field is CONTINUOUSLY updated by the operator
+                  on every successful reconcile while the cluster is applied with primaries>0, and is NEVER
+                  cleared. It is intentionally maintained during steady state (NOT only at scale-to-zero) so the
+                  value is always persisted BEFORE any scale-to-zero. The root-level CEL validation rule on
+                  Redkey uses it to force a scale-up from zero back to the exact previous topology, preventing
+                  inconsistent PVC/node/slot remounts. Do NOT change this to record-on-scale-down-only and do NOT
+                  add clearing logic: either would reintroduce the admission-vs-reconcile race, because CEL runs
+                  synchronously at admission while the operator writes status asynchronously afterwards.
+                  Ephemeral clusters never set this field (they lose data on scale-to-zero, so no lock is needed).
+
+                  The Maximum bound keeps the CEL messageExpression that references this field within the API
+                  server's cost budget (it lets the cost estimator bound the size of string(...) conversions).
+                format: int32
+                maximum: 100000
+                minimum: 0
+                type: integer
+              lastAppliedReplicasPerPrimary:
+                description: |-
+                  LastAppliedReplicasPerPrimary records the replicasPerPrimary of the last successfully applied,
+                  non-zero topology of a storage (non-ephemeral) cluster. See LastAppliedPrimaries for the
+                  continuous-tracking / race-free rationale — the same WARNING applies here.
+                format: int32
+                maximum: 100000
+                minimum: 0
+                type: integer
               lastUpdatedAt:
                 description: LastUpdatedAt is the last time the status was updated.
                 format: date-time
@@ -17373,6 +17403,18 @@ spec:
             - phase
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: For storage clusters, scaling up from zero must restore the same
+            primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)
+          rule: self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
+            == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries
+            == self.status.lastAppliedPrimaries
+        - message: For storage clusters, scaling up from zero must restore the same
+            replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)
+          rule: 'self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
+            == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary
+            == (has(self.status.lastAppliedReplicasPerPrimary) ? self.status.lastAppliedReplicasPerPrimary
+            : 0)'
     served: true
     storage: true
     subresources:

@@ -204,13 +204,56 @@ infrastructure from the namespace while preserving the `Redkey` resource itself.
 This is useful for development/staging environments, cost savings during off-peak hours,
 or as a building block for external autoscalers.
 
+### Hibernation (storage clusters)
+
+For **storage (non-ephemeral) clusters with `spec.deletePVC: false`**, scaling to zero is a
+**hibernation**: the compute (Redis pods, Robin, StatefulSet, Service, PDB, ConfigMap, RBAC) is
+torn down to free resources, but the **data is preserved** in the PersistentVolumeClaims. The
+cluster is later **woken up** (resumed) by scaling back up to the **same topology** it had before
+hibernating, which remounts the existing volumes and restores the cluster from its persisted
+state. To keep the restore consistent, waking up is locked to that previous topology — see
+[Scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters).
+
+By contrast, scaling an **ephemeral** cluster (or a storage cluster with `deletePVC: true`) to zero
+is a plain teardown, not hibernation: no data survives and scaling back up creates a fresh cluster.
+
 ### Behaviour
 
 | Scenario | Effect |
 | :--- | :--- |
 | **Create with `spec.primaries: 0`** | No-op: the operator creates **nothing** — no Robin, no RBAC, no StatefulSet, no configs. Status is set to `Ready` with `replicas: 0`. |
 | **Scale from >0 to 0** | The operator creates a `RedkeyConfig` with `primaries: 0`. Robin deletes the StatefulSet, Service, ConfigMap, and PDB. If `spec.deletePVC: true`, PVCs are also deleted. Once Robin marks the config as Applied, the operator cleans up Robin's Deployment, RBAC, and all configs. |
-| **Scale from 0 to >0** | Normal creation path: the operator creates RBAC, Robin Deployment, and a new config. Robin creates all cluster objects from scratch. |
+| **Scale from 0 to >0** | Normal creation path: the operator creates RBAC, Robin Deployment, and a new config. Robin creates all cluster objects from scratch. **For storage (non-ephemeral) clusters** the target topology is constrained — see [Scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters). |
+
+### Scale-up-from-zero topology lock (storage clusters)
+
+For **storage (non-ephemeral) clusters**, scaling **up from zero** — i.e. **waking a hibernated
+cluster** — is only allowed back to the **exact same topology** the cluster last ran with: the same
+`spec.primaries` **and** `spec.replicasPerPrimary`. This is enforced by a CEL validation rule on the
+`Redkey` CRD and rejects the change at admission time (e.g. `kubectl apply`/`kubectl scale`).
+
+**Why:** persistent volumes keep the Redis node/slot metadata of the topology that created them.
+Coming back from zero with a *different* number of primaries (or replicas) would remount those PVCs
+into a mismatched layout and produce an inconsistent cluster. Locking the scale-up to the previous
+topology prevents that.
+
+What is and isn't restricted:
+
+- ✅ **Free scaling while `primaries > 0`** is unrestricted — scale up/down to any valid topology.
+- ✅ **Ephemeral clusters** are never restricted (they hold no persistent data, so a fresh layout is fine).
+- ✅ **Fresh clusters created at `primaries: 0`** (that never ran) can scale up to any topology.
+- ❌ A storage cluster that ran at, say, `3` primaries / `1` replica, was scaled to `0`, and is then
+  scaled up to a different topology (e.g. `2` primaries, or `3` primaries / `2` replicas) is **rejected**.
+  The exact topology to return to is published in `.status.lastAppliedPrimaries` and
+  `.status.lastAppliedReplicasPerPrimary`, and the rejection message points to those fields.
+
+> **Race-free by design — do not change.** The rule reads `status.lastAppliedPrimaries` /
+> `status.lastAppliedReplicasPerPrimary`, which the operator updates **continuously** on every
+> successful reconcile while the cluster runs at `primaries > 0` (never only at scale-to-zero, and
+> never cleared). Recording it continuously guarantees the value is already persisted **before** any
+> scale-to-zero, which is what makes the check free of the admission-vs-reconcile race. Changing this
+> to record-only-at-scale-down, or adding clearing logic, would reintroduce that race and allow
+> inconsistent PVC remounts.
 
 ### Example
 
@@ -236,15 +279,21 @@ kubectl scale redkey my-cluster --replicas=0
 kubectl scale redkey my-cluster --replicas=3
 ```
 
+> **Storage clusters:** the scale-back-up target must match the topology the cluster had before
+> scaling to zero (see [Scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters)).
+> A mismatched `--replicas` value is rejected by the API server.
+
 ### PVC handling
 
 When scaling to zero with persistent storage:
 
-- **`spec.deletePVC: true`** (default): Robin deletes all PersistentVolumeClaims. Data is
-  lost and a fresh cluster is created when scaling back up.
-- **`spec.deletePVC: false`**: PVCs are preserved. However, the Redis cluster topology
-  metadata inside the volumes becomes stale — scaling back up creates a fresh cluster
-  regardless.
+- **`spec.deletePVC: false`** (default): PVCs are preserved — this is **hibernation**. Because the
+  volumes keep the previous cluster's node/slot metadata, waking up (scaling back up) is **locked to
+  the same topology** (same primaries and replicas) via the
+  [scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters), which
+  avoids remounting the volumes into an inconsistent layout.
+- **`spec.deletePVC: true`**: Robin deletes all PersistentVolumeClaims. This is a teardown, not
+  hibernation: data is lost and a fresh cluster is created when scaling back up.
 
 ### Status after scale to zero
 

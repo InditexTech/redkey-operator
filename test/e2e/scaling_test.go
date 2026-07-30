@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // updateClusterTopology mutates a Redkey's spec with conflict-retry, used to
@@ -697,6 +698,128 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 			size, err := framework.GetDBSize(clusterNs, podNames)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(0), "fast scaling recreates the cluster and purges all data")
+		})
+	})
+
+	// --- deletePVC: removed ordinals' PVCs are deleted on scale-down (deletePVC=true). ---
+	// The StatefulSet PVC retention policy is set to WhenScaled=Delete for deletePVC=true, so the
+	// volumes of the ordinals removed by a scale-down are cleaned up instead of lingering with
+	// stale slot/node data.
+
+	Context("Persistent cluster with deletePVC=true (scale-down deletes removed PVCs)", func() {
+		const clusterName = "scale-deletepvc"
+		key := func() types.NamespacedName {
+			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+		}
+
+		listDataPVCNames := func() []string {
+			pvcs := &corev1.PersistentVolumeClaimList{}
+			Expect(k8sClient.List(ctx, pvcs,
+				client.InNamespace(clusterNs),
+				client.MatchingLabels(framework.RedisPodLabels(clusterName)),
+			)).To(Succeed())
+			names := make([]string, 0, len(pvcs.Items))
+			for i := range pvcs.Items {
+				names = append(names, pvcs.Items[i].Name)
+			}
+			return names
+		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
+		})
+
+		It("creates a 3-primary persistent cluster with deletePVC=true", func() {
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
+			opts.Primaries = 3
+			opts.ReplicasPerPrimary = 0
+			cluster := opts.BuildRedkey()
+			cluster.Spec.DeletePVC = new(true)
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			By("verifying one PVC exists per primary ordinal")
+			Expect(listDataPVCNames()).To(ConsistOf(
+				"data-"+clusterName+"-0",
+				"data-"+clusterName+"-1",
+				"data-"+clusterName+"-2",
+			))
+		})
+
+		It("deletes the removed ordinals' PVCs when scaling down 3→1", func() {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+				c.Spec.Primaries = 1
+			})
+
+			waitForScaledCluster(ctx, clusterName, clusterNs, 1)
+
+			By("verifying only the surviving ordinal's PVC remains (removed PVCs deleted)")
+			Eventually(listDataPVCNames, framework.HealthTimeout, framework.DefaultPollInterval).
+				Should(ConsistOf("data-" + clusterName + "-0"))
+		})
+	})
+
+	// --- deletePVC=false counterpart: removed ordinals' PVCs are retained on scale-down. ---
+	// With deletePVC=false the StatefulSet PVC retention policy is WhenScaled=Retain, so the
+	// volumes of the ordinals removed by a scale-down are preserved (data is kept).
+
+	Context("Persistent cluster with deletePVC=false (scale-down retains removed PVCs)", func() {
+		const clusterName = "scale-keeppvc"
+		key := func() types.NamespacedName {
+			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+		}
+
+		listDataPVCNames := func() []string {
+			pvcs := &corev1.PersistentVolumeClaimList{}
+			Expect(k8sClient.List(ctx, pvcs,
+				client.InNamespace(clusterNs),
+				client.MatchingLabels(framework.RedisPodLabels(clusterName)),
+			)).To(Succeed())
+			names := make([]string, 0, len(pvcs.Items))
+			for i := range pvcs.Items {
+				names = append(names, pvcs.Items[i].Name)
+			}
+			return names
+		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
+		})
+
+		It("creates a 3-primary persistent cluster with deletePVC=false", func() {
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
+			opts.Primaries = 3
+			opts.ReplicasPerPrimary = 0
+			cluster := opts.BuildRedkey()
+			cluster.Spec.DeletePVC = new(false)
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			By("verifying one PVC exists per primary ordinal")
+			Expect(listDataPVCNames()).To(ConsistOf(
+				"data-"+clusterName+"-0",
+				"data-"+clusterName+"-1",
+				"data-"+clusterName+"-2",
+			))
+		})
+
+		It("retains the removed ordinals' PVCs when scaling down 3→1", func() {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+				c.Spec.Primaries = 1
+			})
+
+			waitForScaledCluster(ctx, clusterName, clusterNs, 1)
+
+			By("verifying all three PVCs remain (removed ordinals' PVCs retained)")
+			// WhenScaled=Retain never deletes; poll briefly to prove no async deletion occurs.
+			Consistently(listDataPVCNames, 15*time.Second, framework.DefaultPollInterval).
+				Should(ConsistOf(
+					"data-"+clusterName+"-0",
+					"data-"+clusterName+"-1",
+					"data-"+clusterName+"-2",
+				))
 		})
 	})
 })

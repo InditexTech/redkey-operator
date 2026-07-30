@@ -328,6 +328,33 @@ redis-cluster-ephemeral   cluster   0           0          true        true     
 redis-cluster-ephemeral   cluster   0           0          true        true                  false       Ready         Ready
 ```
 
+#### Scale-up-from-zero topology lock (storage clusters)
+
+For **storage (non-ephemeral)** clusters, scaling to zero with `deletePVC: false` is a
+**hibernation**: the compute is removed but the data is kept in the PVCs. **Waking up** (scaling
+back up from zero) is locked to the exact topology the cluster last ran with (same `spec.primaries`
+and `spec.replicasPerPrimary`). This prevents remounting persistent volumes — which retain Redis
+node/slot metadata — into a mismatched layout.
+The constraint is enforced by a CEL rule on the `Redkey` CRD and is rejected at admission time.
+Free scaling while `primaries > 0`, ephemeral clusters, and fresh clusters created at `0` are not
+restricted. See [Scaling → Hibernation](operator-guide/scaling.md#hibernation-storage-clusters) and
+[Scaling → Scale-up-from-zero topology lock](operator-guide/scaling.md#scale-up-from-zero-topology-lock-storage-clusters).
+
+The operator supports this by continuously tracking the last applied non-zero topology in two
+status fields:
+
+| Field | Meaning |
+| :--- | :--- |
+| `.status.lastAppliedPrimaries` | Primaries of the last applied non-zero topology (storage clusters only). |
+| `.status.lastAppliedReplicasPerPrimary` | Replicas-per-primary of the last applied non-zero topology (storage clusters only). |
+
+> **Race-free by design.** These fields are updated on **every** successful reconcile while the
+> cluster runs at `primaries > 0` (not only at scale-to-zero) and are **never cleared**, so the
+> previous topology is always persisted before any scale-to-zero. This is intentional \u2014 changing it
+> would reintroduce an admission-vs-reconcile race. Ephemeral clusters never populate these fields.
+
+
+
 ### Redkey Cluster Upgrading (Fast upgrading)
 
 Two Substatus are defined:
