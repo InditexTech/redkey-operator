@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ![Redkey Operator icon](docs/images/redkey-logo-512.png)
 
-Seamless Redkey Cluster Management on Kubernetes
+Seamless Redkey management on Kubernetes — in cluster or standalone mode
 
 [![GitHub License](https://img.shields.io/github/license/InditexTech/redkeyoperator)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkeyoperator)](https://github.com/InditexTech/redkeyoperator/releases)
@@ -31,19 +31,20 @@ Seamless Redkey Cluster Management on Kubernetes
 
 ## Overview
 
-A **Redkey Cluster** is a key/value cluster built from either the [Redis official image](https://hub.docker.com/_/redis) or the [Valkey official image](https://hub.docker.com/r/valkey/valkey/). All nodes in the same cluster must use the same image family.
+A **Redkey** is a key/value store built from either the [Redis official image](https://hub.docker.com/_/redis) or the [Valkey official image](https://hub.docker.com/r/valkey/valkey/). A Redkey can run in **cluster** mode — a sharded Redis Cluster of one or more primaries, each with an optional set of replicas — or in **standalone** mode — a single, non-clustered instance. All nodes of the same Redkey use the same image family.
 
-**Redkey Operator** deploys and manages Redkey clusters on Kubernetes by implementing the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+**Redkey Operator** deploys and manages Redkeys on Kubernetes by implementing the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
 
-It extends the Kubernetes API with a controller that reconciles the desired state declared in the `Redkey` resource, manages the Kubernetes objects required by the cluster, coordinates Redis-side operations through Redkey Robin, and keeps the cluster healthy during lifecycle changes.
+It extends the Kubernetes API with a controller that reconciles the desired state declared in the `Redkey` resource, manages the Kubernetes objects the Redkey requires, coordinates Redis-side operations through Redkey Robin, and keeps it healthy during lifecycle changes.
 
 Redkey Operator is built using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) and [operator-sdk](https://github.com/operator-framework/operator-sdk).
 
 ## Key Features
 
-- Deploy Redkey clusters from a single `Redkey` custom resource using Redis or Valkey images
-- Configure topology with a selectable number of primaries and replicas per primary
-- Run ephemeral or persistent clusters with configurable storage size, storage class, access modes, and PVC cleanup behavior
+- Deploy Redkeys from a single `Redkey` custom resource using Redis or Valkey images
+- Choose the deployment mode: **cluster** (a sharded Redis Cluster) or **standalone** (a single, non-clustered instance)
+- Configure the cluster-mode topology with a selectable number of primaries and replicas per primary
+- Run ephemeral or persistent Redkeys with configurable storage size, storage class, access modes, and PVC cleanup behavior
 - Scale clusters up and down while reassigning slots and preserving cluster balance
 - Choose between fast operations and key-preserving rebalance flows through `purgeKeysOnRebalance`
 - Roll out changes to node image, Redis configuration, and pod resources
