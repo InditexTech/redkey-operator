@@ -823,5 +823,3 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 	})
 })
-
-
