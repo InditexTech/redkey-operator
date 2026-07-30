@@ -122,6 +122,14 @@ func (r *RedkeyReconciler) createNewConfig(ctx context.Context, cluster *redisv1
 		return err
 	}
 
+	// Count only genuinely new configs (the AlreadyExists stale-cache path above is a no-op).
+	// The first config for a cluster is the baseline; every later one is a spec/generation change.
+	reason := "generation_change"
+	if highestSeq == nil {
+		reason = "initial"
+	}
+	redkeyConfigCreations.WithLabelValues(reason).Inc()
+
 	log.Info("Created new RedkeyConfig", "config", config.Name)
 	return nil
 }
@@ -333,9 +341,14 @@ func (r *RedkeyReconciler) cleanupSupersededConfigs(ctx context.Context, configs
 	}
 
 	for i := 0; i < lastApplied; i++ {
-		if err := r.Delete(ctx, &configs[i]); err != nil && !errors.IsNotFound(err) {
-			return configs[i:], err
+		if err := r.Delete(ctx, &configs[i]); err != nil {
+			if !errors.IsNotFound(err) {
+				return configs[i:], err
+			}
+			// Already gone (concurrent reconcile deleted it): don't double-count.
+			continue
 		}
+		redkeyCleanupDeletedConfigs.Inc()
 		log.Info("Deleted superseded RedkeyConfig", "config", configs[i].Name)
 	}
 

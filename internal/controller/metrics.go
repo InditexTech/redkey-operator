@@ -61,6 +61,44 @@ var (
 		Name: "redkey_operation_in_progress",
 		Help: "The control-plane operation a managed Redkey is currently running (1 while in progress).",
 	}, []string{"namespace", "name", "operation"})
+
+	// redkeyReconcileStageErrors counts reconcile failures partitioned by the stage that returned
+	// the error, pinpointing which part of the reconcile loop is failing (RBAC, Robin deployment,
+	// config creation, status aggregation, ...) without the high cardinality of per-cluster labels.
+	redkeyReconcileStageErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "redkey_reconcile_stage_errors_total",
+		Help: "Total number of Redkey reconcile failures partitioned by the stage that returned the error.",
+	}, []string{"stage"})
+
+	// redkeyConfigCreations counts RedkeyConfig objects created by the operator, split by the
+	// reason a new config was needed: the first (baseline) config or a spec/generation change.
+	redkeyConfigCreations = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "redkey_config_creations_total",
+		Help: "Total number of RedkeyConfig objects created by the operator, by reason.",
+	}, []string{"reason"})
+
+	// redkeyCleanupDeletedConfigs counts superseded RedkeyConfig objects deleted by the cleanup
+	// step, giving visibility into config lineage churn.
+	redkeyCleanupDeletedConfigs = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "redkey_cleanup_deleted_configs_total",
+		Help: "Total number of superseded RedkeyConfig objects deleted by cleanup.",
+	})
+
+	// redkeyRobinDeploymentChanges counts create and patch operations the operator performs on the
+	// managed Robin Deployment, distinguishing initial creation from drift corrections.
+	redkeyRobinDeploymentChanges = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "redkey_robin_deployment_changes_total",
+		Help: "Total number of Robin Deployment create and patch operations, by action.",
+	}, []string{"action"})
+
+	// redkeyTimeToReady measures how long a cluster takes to reach Ready, timed from the active
+	// RedkeyConfig's creation. It is observed on every transition into Ready — both the initial
+	// provisioning and the return to Ready after a scaling, upgrade or rebalance operation.
+	redkeyTimeToReady = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "redkey_time_to_ready_seconds",
+		Help:    "Time from the active RedkeyConfig creation until the cluster reaches Ready.",
+		Buckets: []float64{5, 10, 20, 30, 60, 120, 300, 600, 900, 1800},
+	})
 )
 
 // redkeyPhaseValues and redkeyConfigPhaseValues enumerate every possible value so the state-set
@@ -80,7 +118,10 @@ var (
 )
 
 func init() {
-	crmetrics.Registry.MustRegister(redkeyPhase, redkeyConfigPhase, redkeyOperationDuration, redkeyOperationTotal, redkeyOperationInProgress)
+	crmetrics.Registry.MustRegister(
+		redkeyPhase, redkeyConfigPhase, redkeyOperationDuration, redkeyOperationTotal, redkeyOperationInProgress,
+		redkeyReconcileStageErrors, redkeyConfigCreations, redkeyCleanupDeletedConfigs, redkeyRobinDeploymentChanges, redkeyTimeToReady,
+	)
 }
 
 // recordRedkeyMetrics refreshes the fleet-state metrics for a single Redkey from its freshly
@@ -118,6 +159,13 @@ func recordRedkeyMetrics(cluster *redisv1.Redkey, activeConfig *redisv1.RedkeyCo
 		}
 		redkeyConfigPhase.WithLabelValues(ns, name, configPhase).Set(value)
 	}
+
+	// Time-to-ready: observe on every transition into the Ready phase, timed from the active
+	// config's creation. This covers the initial provisioning and every return to Ready after a
+	// scaling/upgrade/rebalance operation.
+	if readinessTracker.enteredReady(types.NamespacedName{Namespace: ns, Name: name}, cluster.Status.Phase) {
+		redkeyTimeToReady.Observe(time.Since(activeConfig.CreationTimestamp.Time).Seconds())
+	}
 }
 
 // deleteRedkeyMetrics removes every series belonging to a Redkey that no longer exists.
@@ -127,6 +175,7 @@ func deleteRedkeyMetrics(key types.NamespacedName) {
 	redkeyConfigPhase.DeletePartialMatch(crLabels)
 	redkeyOperationInProgress.DeletePartialMatch(crLabels)
 	operationTracker.forget(key)
+	readinessTracker.forget(key)
 }
 
 // operationTracker measures operation durations by watching the transitions of each Redkey's
@@ -179,5 +228,35 @@ func (t *opTracker) observe(key types.NamespacedName, status, phase string) {
 func (t *opTracker) forget(key types.NamespacedName) {
 	t.mu.Lock()
 	delete(t.active, key)
+	t.mu.Unlock()
+}
+
+// readinessTracker remembers each Redkey's last observed phase so time-to-ready is recorded only
+// on the transition INTO Ready, not on every steady-state reconcile while the cluster stays Ready.
+//
+// State is in-memory: after an operator restart the previous phase is unknown, so the first
+// post-restart observation of a Ready cluster counts as a transition and records one time-to-ready
+// sample against the current active config. This is acceptable noise for a histogram.
+var readinessTracker = &readyTracker{lastPhase: make(map[types.NamespacedName]string)}
+
+type readyTracker struct {
+	mu        sync.Mutex
+	lastPhase map[types.NamespacedName]string
+}
+
+// enteredReady reports whether the cluster just transitioned into the Ready phase, updating the
+// remembered phase as a side effect.
+func (t *readyTracker) enteredReady(key types.NamespacedName, phase string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	previous := t.lastPhase[key]
+	t.lastPhase[key] = phase
+	return phase == redisv1.PhaseReady && previous != redisv1.PhaseReady
+}
+
+func (t *readyTracker) forget(key types.NamespacedName) {
+	t.mu.Lock()
+	delete(t.lastPhase, key)
 	t.mu.Unlock()
 }

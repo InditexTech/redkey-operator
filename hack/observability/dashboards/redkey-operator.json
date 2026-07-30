@@ -15,6 +15,502 @@
         "h": 1,
         "w": 24,
         "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      },
+      "id": 40,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "name",
+        "wideLayout": true
+      },
+      "title": "Operator Version",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max by (version) (redkey_operator_build_info{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "range": false,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "STANDBY",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "LEADER",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max(leader_election_master_status{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Leader Election",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Total Reconciles",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 9,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) / clamp_min(sum(rate(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])), 0.000001)",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Reconcile Error Rate",
+      "type": "stat",
+      "timeFrom": "5m"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(controller_runtime_active_workers{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "Active",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(controller_runtime_max_concurrent_reconciles{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "Max",
+          "range": false,
+          "refId": "B"
+        }
+      ],
+      "title": "Active Workers / Max",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 15,
+        "y": 1
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(controller_runtime_reconcile_panics_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Reconcile Panics",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dtdurations"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 18,
+        "y": 1
+      },
+      "id": 49,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max(time() - process_start_time_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Uptime",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
         "y": 6
       },
       "id": 60,
@@ -472,6 +968,18 @@
       "type": "timeseries"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 69,
+      "title": "Control-Plane Operations",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -530,9 +1038,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 12,
         "x": 0,
-        "y": 20
+        "y": 21
       },
       "id": 67,
       "options": {
@@ -647,9 +1155,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 20
+        "w": 12,
+        "x": 12,
+        "y": 21
       },
       "id": 68,
       "options": {
@@ -740,9 +1248,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 20
+        "w": 12,
+        "x": 0,
+        "y": 29
       },
       "id": 70,
       "options": {
@@ -775,114 +1283,54 @@
       "type": "timeseries"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 100,
-      "title": "Overview",
-      "type": "row"
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Reconcile failures by the stage that returned the error (redkey_reconcile_stage_errors_total), increase per interval. Pinpoints which part of the reconcile loop is failing.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "STANDBY",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "LEADER",
-                  "color": "green"
-                }
-              }
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 3,
-        "y": 1
-      },
-      "id": 1,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max(leader_election_master_status{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Leader Election",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               }
             ]
@@ -892,161 +1340,23 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 6,
-        "y": 1
-      },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Total Reconciles",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.05
-              },
-              {
-                "color": "red",
-                "value": 0.1
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 9,
-        "y": 1
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(controller_runtime_reconcile_errors_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) / clamp_min(sum(rate(controller_runtime_reconcile_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])), 0.000001)",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Reconcile Error Rate",
-      "type": "stat",
-      "timeFrom": "5m"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
+        "h": 8,
+        "w": 12,
         "x": 12,
-        "y": 1
+        "y": 29
       },
-      "id": 4,
+      "id": 71,
       "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "textMode": "value_and_name",
-        "wideLayout": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
@@ -1055,37 +1365,59 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_active_workers{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "Active",
-          "range": false,
+          "expr": "clamp_min(sum by (stage) (redkey_reconcile_stage_errors_total - (redkey_reconcile_stage_errors_total offset $__interval)), 0)",
+          "interval": "1m",
+          "instant": false,
+          "legendFormat": "{{stage}}",
+          "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(controller_runtime_max_concurrent_reconciles{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "Max",
-          "range": false,
-          "refId": "B"
         }
       ],
-      "title": "Active Workers / Max",
-      "type": "stat"
+      "title": "Reconcile Errors by Stage",
+      "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "RedkeyConfig objects created by the operator by reason (redkey_config_creations_total): initial baseline vs spec/generation change. Increase per interval.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -1094,10 +1426,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
               }
             ]
           },
@@ -1106,26 +1434,23 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 15,
-        "y": 1
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 37
       },
-      "id": 5,
+      "id": 72,
       "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "textMode": "auto",
-        "wideLayout": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
@@ -1134,25 +1459,153 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(controller_runtime_reconcile_panics_total{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
+          "expr": "clamp_min(sum by (reason) (redkey_config_creations_total - (redkey_config_creations_total offset $__interval)), 0)",
+          "interval": "1m",
+          "instant": false,
+          "legendFormat": "{{reason}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Reconcile Panics",
-      "type": "stat"
+      "title": "Config Creations by Reason",
+      "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "RedkeyConfig objects removed by the cleanup step (redkey_cleanup_deleted_configs_total), increase per interval. Counts configs actually deleted once a newer config becomes Applied — not configs currently in the Superseded phase, which may still exist until then.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 37
+      },
+      "id": 73,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "clamp_min(sum(redkey_cleanup_deleted_configs_total - (redkey_cleanup_deleted_configs_total offset $__interval)), 0)",
+          "interval": "1m",
+          "instant": false,
+          "legendFormat": "deleted",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Configs Deleted by Cleanup",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Robin Deployment create and patch operations performed by the operator (redkey_robin_deployment_changes_total) by action, increase per interval. Sustained patches indicate persistent drift.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -1164,31 +1617,28 @@
               }
             ]
           },
-          "unit": "dtdurations"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 18,
-        "y": 1
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 45
       },
-      "id": 49,
+      "id": 74,
       "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "textMode": "auto",
-        "wideLayout": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
@@ -1197,15 +1647,133 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(time() - process_start_time_seconds{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
+          "expr": "clamp_min(sum by (action) (redkey_robin_deployment_changes_total - (redkey_robin_deployment_changes_total offset $__interval)), 0)",
+          "interval": "1m",
+          "instant": false,
+          "legendFormat": "{{action}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Uptime",
-      "type": "stat"
+      "title": "Robin Deployment Changes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Time from the active RedkeyConfig creation until the cluster reaches Ready (redkey_time_to_ready_seconds), percentiles across the fleet. Observed on every transition into Ready — initial provisioning and after each scaling/upgrade/rebalance.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "id": 75,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(redkey_time_to_ready_seconds_bucket[$__rate_interval])))",
+          "instant": false,
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(redkey_time_to_ready_seconds_bucket[$__rate_interval])))",
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(redkey_time_to_ready_seconds_bucket[$__rate_interval])))",
+          "instant": false,
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Time to Ready Percentiles",
+      "type": "timeseries"
     },
     {
       "collapsed": false,
@@ -1213,7 +1781,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 53
       },
       "id": 101,
       "title": "Reconciliation Performance",
@@ -1279,7 +1847,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 29
+        "y": 54
       },
       "id": 41,
       "options": {
@@ -1371,7 +1939,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 29
+        "y": 54
       },
       "id": 6,
       "options": {
@@ -1463,7 +2031,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 29
+        "y": 54
       },
       "id": 7,
       "options": {
@@ -1578,8 +2146,8 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
-        "y": 37
+        "x": 0,
+        "y": 62
       },
       "id": 8,
       "options": {
@@ -1682,8 +2250,8 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
-        "y": 37
+        "x": 8,
+        "y": 62
       },
       "id": 42,
       "options": {
@@ -1774,8 +2342,8 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
-        "y": 37
+        "x": 16,
+        "y": 62
       },
       "id": 43,
       "options": {
@@ -1813,7 +2381,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 70
       },
       "id": 102,
       "title": "Work Queue",
@@ -1879,7 +2447,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 71
       },
       "id": 9,
       "options": {
@@ -1971,7 +2539,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 71
       },
       "id": 10,
       "options": {
@@ -2063,7 +2631,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 71
       },
       "id": 11,
       "options": {
@@ -2167,7 +2735,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 54
+        "y": 79
       },
       "id": 12,
       "options": {
@@ -2259,7 +2827,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 54
+        "y": 79
       },
       "id": 13,
       "options": {
@@ -2351,7 +2919,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 54
+        "y": 79
       },
       "id": 14,
       "options": {
@@ -2389,7 +2957,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 87
       },
       "id": 103,
       "title": "Kubernetes API Client",
@@ -2455,7 +3023,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 63
+        "y": 88
       },
       "id": 15,
       "options": {
@@ -2547,7 +3115,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 63
+        "y": 88
       },
       "id": 44,
       "options": {
@@ -2651,7 +3219,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 63
+        "y": 88
       },
       "id": 45,
       "options": {
@@ -2689,7 +3257,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 72
+        "y": 96
       },
       "id": 105,
       "title": "Process & Go Runtime",
@@ -2755,7 +3323,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 73
+        "y": 97
       },
       "id": 22,
       "options": {
@@ -2859,7 +3427,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 73
+        "y": 97
       },
       "id": 23,
       "options": {
@@ -2975,7 +3543,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 73
+        "y": 97
       },
       "id": 24,
       "options": {
@@ -3067,7 +3635,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 81
+        "y": 105
       },
       "id": 25,
       "options": {
@@ -3159,7 +3727,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 81
+        "y": 105
       },
       "id": 26,
       "options": {
@@ -3275,7 +3843,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 81
+        "y": 105
       },
       "id": 27,
       "options": {
@@ -3379,7 +3947,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 89
+        "y": 113
       },
       "id": 46,
       "options": {
@@ -3471,7 +4039,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 89
+        "y": 113
       },
       "id": 47,
       "options": {
@@ -3563,7 +4131,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 89
+        "y": 113
       },
       "id": 48,
       "options": {
@@ -3667,7 +4235,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 97
+        "y": 121
       },
       "id": 51,
       "options": {
@@ -3759,7 +4327,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 97
+        "y": 121
       },
       "id": 52,
       "options": {
@@ -3809,7 +4377,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 105
+        "y": 129
       },
       "id": 106,
       "title": "Kubernetes Container (cAdvisor + kube-state-metrics)",
@@ -3875,7 +4443,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 106
+        "y": 130
       },
       "id": 28,
       "options": {
@@ -3999,7 +4567,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 106
+        "y": 130
       },
       "id": 29,
       "options": {
@@ -4091,7 +4659,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 106
+        "y": 130
       },
       "id": 30,
       "options": {
@@ -4215,7 +4783,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 114
+        "y": 138
       },
       "id": 31,
       "options": {
@@ -4307,7 +4875,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 114
+        "y": 138
       },
       "id": 32,
       "options": {
@@ -4399,7 +4967,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 114
+        "y": 138
       },
       "id": 33,
       "options": {
@@ -4503,7 +5071,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 122
+        "y": 146
       },
       "id": 53,
       "options": {
@@ -4595,7 +5163,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 122
+        "y": 146
       },
       "id": 54,
       "options": {
@@ -4626,69 +5194,6 @@
       ],
       "title": "Pod Ready",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 3,
-        "x": 0,
-        "y": 1
-      },
-      "id": 40,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "name",
-        "wideLayout": true
-      },
-      "title": "Operator Version",
-      "type": "stat",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max by (version) (redkey_operator_build_info{job=~\"$job\", namespace=~\"$namespace\", pod=~\"$pod\"})",
-          "instant": true,
-          "legendFormat": "{{version}}",
-          "range": false,
-          "refId": "A"
-        }
-      ]
     }
   ],
   "schemaVersion": 39,

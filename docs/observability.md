@@ -144,7 +144,8 @@ This dashboard monitors the health and performance of the operator's controller-
 
 | Section | Panels |
 | ------- | ------ |
-| **Managed Redkey Fleet** | Total Redkeys, Ready, Configuring, Error (stats); phase and config-phase distribution; operation duration percentiles, operations by result, and operations in progress — from operator-exposed fleet metrics (`redkey_phase`, `redkey_config_phase`, `redkey_operation_*`), see [Managed Redkey Fleet metrics](#managed-redkey-fleet-metrics) |
+| **Managed Redkey Fleet** | Total Redkeys, Ready, Configuring, Error (stats); phase and config-phase distribution — from operator-exposed fleet metrics (`redkey_phase`, `redkey_config_phase`), see [Managed Redkey Fleet metrics](#managed-redkey-fleet-metrics) |
+| **Control-Plane Operations** | Operation duration percentiles, operations by result, operations in progress (`redkey_operation_*`); reconcile errors by stage (`redkey_reconcile_stage_errors_total`), config creations by reason (`redkey_config_creations_total`), configs deleted by cleanup (`redkey_cleanup_deleted_configs_total`), Robin deployment changes (`redkey_robin_deployment_changes_total`), and time-to-ready percentiles (`redkey_time_to_ready_seconds`), see [Managed Redkey Fleet metrics](#managed-redkey-fleet-metrics) |
 | **Overview** | Operator version (`redkey_operator_build_info`), uptime, leader election status, total reconciles, error rate %, active workers / max, reconcile panics |
 | **Reconciliation Performance** | Count by result (`increase`), rate by result (stacked), duration percentiles (p50/p95/p99), reconciliations by controller, average reconcile duration (`rate(sum)/rate(count)`), reconcile errors terminal vs non-terminal (`increase` by controller) |
 | **Work Queue** | Queue depth, adds rate, queue vs work duration (p95), retries rate, longest running processor, unfinished work |
@@ -285,6 +286,9 @@ Scope is deliberately narrow — only state the operator owns:
 - **Lifecycle phase** (`redkey_phase`, `redkey_config_phase`) — control-plane state.
 - **Operation timing** (`redkey_operation_duration_seconds`, `redkey_operation_total`) — how long
   scaling/upgrade/rebalance operations take and how they end, which nothing else measures.
+- **Control-plane activity** (`redkey_reconcile_stage_errors_total`, `redkey_config_creations_total`,
+  `redkey_cleanup_deleted_configs_total`, `redkey_robin_deployment_changes_total`,
+  `redkey_time_to_ready_seconds`) — where reconciles fail and the config/Robin churn they drive.
 
 Data-plane health (cluster healthy, slots covered, balance, memory, ...) is **not** mirrored here:
 it is owned and published by Robin (`redkey_cluster_*`, shown in the Redkey Cluster dashboard).
@@ -296,6 +300,11 @@ it is owned and published by Robin (`redkey_cluster_*`, shown in the Redkey Clus
 | `redkey_operation_duration_seconds` | histogram | duration from start until the cluster settles back to Ready/Error | `operation` |
 | `redkey_operation_total` | counter | completed operations | `operation`, `result` (`success`/`error`/`superseded`) |
 | `redkey_operation_in_progress` | gauge | the operation a Redkey is running **right now** (1 while in flight; removed on settle) | `namespace`, `name`, `operation` |
+| `redkey_reconcile_stage_errors_total` | counter | reconcile failures partitioned by the stage that returned the error | `stage` (`get_cluster`/`scale_to_zero`/`ensure_rbac`/`ensure_robin_deployment`/`list_configs`/`create_new_config`/`aggregate_status`/`cleanup_superseded_configs`) |
+| `redkey_config_creations_total` | counter | RedkeyConfig objects created by the operator | `reason` (`initial`/`generation_change`) |
+| `redkey_cleanup_deleted_configs_total` | counter | RedkeyConfig objects removed by cleanup once a newer config becomes Applied (not configs merely in the Superseded phase) | — |
+| `redkey_robin_deployment_changes_total` | counter | Robin Deployment create/patch operations | `action` (`create`/`patch`) |
+| `redkey_time_to_ready_seconds` | histogram | time from the active RedkeyConfig creation until the cluster reaches Ready (observed on every transition into Ready) | — |
 
 Because `redkey_phase`/`redkey_config_phase` carry the Redkey's own `namespace`/`name` labels, the
 operator's ServiceMonitor sets `honorLabels: true` so those are preserved instead of being
@@ -308,6 +317,10 @@ Example queries:
 - Upgrade duration p95: `histogram_quantile(0.95, sum by (le) (rate(redkey_operation_duration_seconds_bucket{operation="Upgrading"}[$__rate_interval])))`
 - Failed operations: `sum by (operation) (increase(redkey_operation_total{result="error"}[$__rate_interval]))`
 - Operations running right now: `redkey_operation_in_progress`
+- Reconcile failures by stage: `sum by (stage) (increase(redkey_reconcile_stage_errors_total[$__rate_interval]))`
+- Config creations by reason: `sum by (reason) (increase(redkey_config_creations_total[$__rate_interval]))`
+- Robin deployment drift (patch rate): `sum(increase(redkey_robin_deployment_changes_total{action="patch"}[$__rate_interval]))`
+- Time-to-ready p95: `histogram_quantile(0.95, sum by (le) (rate(redkey_time_to_ready_seconds_bucket[$__rate_interval])))`
 
 > `redkey_operation_*` (duration/total) are recorded only when an operation **completes**, so an
 > in-flight operation appears in `redkey_operation_in_progress` (live) but not yet in the
