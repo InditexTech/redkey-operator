@@ -204,6 +204,19 @@ infrastructure from the namespace while preserving the `Redkey` resource itself.
 This is useful for development/staging environments, cost savings during off-peak hours,
 or as a building block for external autoscalers.
 
+### Hibernation (storage clusters)
+
+For **storage (non-ephemeral) clusters with `spec.deletePVC: false`**, scaling to zero is a
+**hibernation**: the compute (Redis pods, Robin, StatefulSet, Service, PDB, ConfigMap, RBAC) is
+torn down to free resources, but the **data is preserved** in the PersistentVolumeClaims. The
+cluster is later **woken up** (resumed) by scaling back up to the **same topology** it had before
+hibernating, which remounts the existing volumes and restores the cluster from its persisted
+state. To keep the restore consistent, waking up is locked to that previous topology — see
+[Scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters).
+
+By contrast, scaling an **ephemeral** cluster (or a storage cluster with `deletePVC: true`) to zero
+is a plain teardown, not hibernation: no data survives and scaling back up creates a fresh cluster.
+
 ### Behaviour
 
 | Scenario | Effect |
@@ -214,10 +227,10 @@ or as a building block for external autoscalers.
 
 ### Scale-up-from-zero topology lock (storage clusters)
 
-For **storage (non-ephemeral) clusters**, scaling **up from zero** is only allowed back to the
-**exact same topology** the cluster last ran with — the same `spec.primaries` **and**
-`spec.replicasPerPrimary`. This is enforced by a CEL validation rule on the `Redkey` CRD and
-rejects the change at admission time (e.g. `kubectl apply`/`kubectl scale`).
+For **storage (non-ephemeral) clusters**, scaling **up from zero** — i.e. **waking a hibernated
+cluster** — is only allowed back to the **exact same topology** the cluster last ran with: the same
+`spec.primaries` **and** `spec.replicasPerPrimary`. This is enforced by a CEL validation rule on the
+`Redkey` CRD and rejects the change at admission time (e.g. `kubectl apply`/`kubectl scale`).
 
 **Why:** persistent volumes keep the Redis node/slot metadata of the topology that created them.
 Coming back from zero with a *different* number of primaries (or replicas) would remount those PVCs
@@ -274,12 +287,13 @@ kubectl scale redkey my-cluster --replicas=3
 
 When scaling to zero with persistent storage:
 
-- **`spec.deletePVC: true`** (default): Robin deletes all PersistentVolumeClaims. Data is
-  lost and a fresh cluster is created when scaling back up.
-- **`spec.deletePVC: false`**: PVCs are preserved. Because the volumes keep the previous cluster's
-  node/slot metadata, scaling back up is **locked to the same topology** (same primaries and
-  replicas) via the [scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters),
-  which avoids remounting the volumes into an inconsistent layout.
+- **`spec.deletePVC: false`** (default): PVCs are preserved — this is **hibernation**. Because the
+  volumes keep the previous cluster's node/slot metadata, waking up (scaling back up) is **locked to
+  the same topology** (same primaries and replicas) via the
+  [scale-up-from-zero topology lock](#scale-up-from-zero-topology-lock-storage-clusters), which
+  avoids remounting the volumes into an inconsistent layout.
+- **`spec.deletePVC: true`**: Robin deletes all PersistentVolumeClaims. This is a teardown, not
+  hibernation: data is lost and a fresh cluster is created when scaling back up.
 
 ### Status after scale to zero
 

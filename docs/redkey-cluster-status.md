@@ -330,12 +330,15 @@ redis-cluster-ephemeral   cluster   0           0          true        true     
 
 #### Scale-up-from-zero topology lock (storage clusters)
 
-For **storage (non-ephemeral)** clusters, scaling **up from zero** is locked to the exact topology
-the cluster last ran with (same `spec.primaries` and `spec.replicasPerPrimary`). This prevents
-remounting persistent volumes \u2014 which retain Redis node/slot metadata \u2014 into a mismatched layout.
+For **storage (non-ephemeral)** clusters, scaling to zero with `deletePVC: false` is a
+**hibernation**: the compute is removed but the data is kept in the PVCs. **Waking up** (scaling
+back up from zero) is locked to the exact topology the cluster last ran with (same `spec.primaries`
+and `spec.replicasPerPrimary`). This prevents remounting persistent volumes — which retain Redis
+node/slot metadata — into a mismatched layout.
 The constraint is enforced by a CEL rule on the `Redkey` CRD and is rejected at admission time.
 Free scaling while `primaries > 0`, ephemeral clusters, and fresh clusters created at `0` are not
-restricted. See [Scaling \u2192 Scale-up-from-zero topology lock](operator-guide/scaling.md#scale-up-from-zero-topology-lock-storage-clusters).
+restricted. See [Scaling → Hibernation](operator-guide/scaling.md#hibernation-storage-clusters) and
+[Scaling → Scale-up-from-zero topology lock](operator-guide/scaling.md#scale-up-from-zero-topology-lock-storage-clusters).
 
 The operator supports this by continuously tracking the last applied non-zero topology in two
 status fields:
