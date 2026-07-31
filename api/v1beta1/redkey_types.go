@@ -244,8 +244,8 @@ type RedkeyStatus struct {
 // (stricter) messageExpression budget by >100x even for a trivial expression. The static message
 // therefore points users to the exact required numbers in .status.lastAppliedPrimaries /
 // .status.lastAppliedReplicasPerPrimary instead of interpolating them.
-// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries == self.status.lastAppliedPrimaries",message="For storage clusters, scaling up from zero must restore the same primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)"
-// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary == (has(self.status.lastAppliedReplicasPerPrimary) ? self.status.lastAppliedReplicasPerPrimary : 0)",message="For storage clusters, scaling up from zero must restore the same replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)"
+// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries == self.status.lastAppliedPrimaries",message="For storage clusters, scaling up from zero must restore the same primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)",fieldPath=".spec.primaries"
+// +kubebuilder:validation:XValidation:rule="self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary == (has(self.status.lastAppliedReplicasPerPrimary) ? self.status.lastAppliedReplicasPerPrimary : 0)",message="For storage clusters, scaling up from zero must restore the same replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)",fieldPath=".spec.replicasPerPrimary"
 
 // Redkey is the Schema for the redkeys API.
 type Redkey struct {
