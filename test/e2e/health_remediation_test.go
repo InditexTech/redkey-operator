@@ -96,17 +96,20 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 			_, _ = fmt.Fprintf(GinkgoWriter, "After forget: state=%s, known_nodes=%d\n", info.State, info.KnownNodes)
 
 			By("waiting for Robin to detect and repair (CLUSTER MEET)")
-			Eventually(func() error {
-				return framework.VerifyClusterHealthy(clusterNs, podNames[0], 3)
+			// The forgotten node re-joins only after Redis' ~60s CLUSTER FORGET blacklist
+			// expires, and it flaps in and out of the cluster view until then. Assert the full
+			// recovered state (health + known nodes + slot coverage) inside a single retried
+			// block so a transient flap-up cannot be observed as success while a follow-up
+			// one-shot check catches a flap-down.
+			Eventually(func(g Gomega) {
+				g.Expect(framework.VerifyClusterHealthy(clusterNs, podNames[0], 3)).To(Succeed())
+				info, err := framework.GetClusterInfo(clusterNs, podNames[0])
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(info.State).To(Equal("ok"))
+				g.Expect(info.KnownNodes).To(Equal(3))
+				g.Expect(info.SlotsAssigned).To(Equal(16384))
 			}, framework.HealthTimeout, 10*time.Second).Should(Succeed(),
 				"Robin should restore the forgotten node via CLUSTER MEET")
-
-			By("verifying cluster is fully operational")
-			info, err = framework.GetClusterInfo(clusterNs, podNames[0])
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.State).To(Equal("ok"))
-			Expect(info.KnownNodes).To(Equal(3))
-			Expect(info.SlotsAssigned).To(Equal(16384))
 
 			By("verifying the cluster phase is Ready")
 			cluster, err := framework.WaitForClusterReady(ctx, k8sClient,
@@ -398,26 +401,19 @@ var _ = Describe("Health Check and Remediation", Ordered, Label("health"), func(
 			}
 
 			By("waiting for Robin to repair the cluster")
-			Eventually(func() error {
-				return framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods, password)
+			// The re-met replica rejoins as an empty master and is demoted back to a replica only
+			// after Redis' ~60s CLUSTER FORGET blacklist expires; until then it flaps in and out.
+			// Assert health and the primary/replica distribution together in one retried block so
+			// a transient flap-up is not mistaken for stable recovery.
+			Eventually(func(g Gomega) {
+				g.Expect(framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods, password)).To(Succeed())
+				nodesAfter, err := framework.GetClusterNodes(clusterNs, podNames[0], password)
+				g.Expect(err).NotTo(HaveOccurred())
+				primaries, replicas := countPrimariesAndReplicas(nodesAfter)
+				g.Expect(primaries).To(Equal(3))
+				g.Expect(replicas).To(Equal(3))
 			}, framework.HealthTimeout, 10*time.Second).Should(Succeed(),
 				"Robin should restore the forgotten replica")
-
-			By("verifying primary/replica distribution is correct")
-			nodesAfter, err := framework.GetClusterNodes(clusterNs, podNames[0], password)
-			Expect(err).NotTo(HaveOccurred())
-			primaries := 0
-			replicas := 0
-			for _, n := range nodesAfter {
-				if n.IsPrimary() {
-					primaries++
-				}
-				if n.IsReplica() {
-					replicas++
-				}
-			}
-			Expect(primaries).To(Equal(3))
-			Expect(replicas).To(Equal(3))
 		})
 	})
 

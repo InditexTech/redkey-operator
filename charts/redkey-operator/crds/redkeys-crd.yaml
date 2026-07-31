@@ -16633,12 +16633,14 @@ spec:
             type: object
         type: object
         x-kubernetes-validations:
-        - message: For storage clusters, scaling up from zero must restore the same
+        - fieldPath: .spec.primaries
+          message: For storage clusters, scaling up from zero must restore the same
             primaries the cluster had before scaling to zero (see .status.lastAppliedPrimaries)
           rule: self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
             == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.primaries
             == self.status.lastAppliedPrimaries
-        - message: For storage clusters, scaling up from zero must restore the same
+        - fieldPath: .spec.replicasPerPrimary
+          message: For storage clusters, scaling up from zero must restore the same
             replicasPerPrimary the cluster had before scaling to zero (see .status.lastAppliedReplicasPerPrimary)
           rule: 'self.spec.ephemeral || oldSelf.spec.primaries != 0 || self.spec.primaries
             == 0 || !has(self.status.lastAppliedPrimaries) || self.spec.replicasPerPrimary
