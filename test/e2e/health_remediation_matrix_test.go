@@ -108,17 +108,18 @@ var _ = Describe("Health Remediation Matrix - Replicas without auth", Ordered, L
 			}
 
 			By("waiting for Robin to repair the cluster")
-			Eventually(func() error {
-				return framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods)
+			// Until Redis' ~60s CLUSTER FORGET blacklist expires the re-met node flaps in and out
+			// of the cluster view. Assert health and distribution together in one retried block so
+			// a transient flap-up is not observed as stable recovery.
+			Eventually(func(g Gomega) {
+				g.Expect(framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods)).To(Succeed())
+				nodesAfter, err := framework.GetClusterNodes(clusterNs, podNames[0])
+				g.Expect(err).NotTo(HaveOccurred())
+				primaries, replicas := countPrimariesAndReplicas(nodesAfter)
+				g.Expect(primaries).To(Equal(3))
+				g.Expect(replicas).To(Equal(3))
 			}, framework.HealthTimeout, 10*time.Second).Should(Succeed(),
 				"Robin should restore the forgotten replica")
-
-			By("verifying primary/replica distribution")
-			nodesAfter, err := framework.GetClusterNodes(clusterNs, podNames[0])
-			Expect(err).NotTo(HaveOccurred())
-			primaries, replicas := countPrimariesAndReplicas(nodesAfter)
-			Expect(primaries).To(Equal(3))
-			Expect(replicas).To(Equal(3))
 		})
 	})
 
@@ -289,16 +290,18 @@ var _ = Describe("Health Remediation Matrix - No replicas with auth", Ordered, L
 			}
 
 			By("waiting for Robin to repair")
-			Eventually(func() error {
-				return framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods, password)
+			// Until Redis' ~60s CLUSTER FORGET blacklist expires the re-met node flaps in and out
+			// of the cluster view. Assert the full recovered state in one retried block so a
+			// transient flap-up is not observed as success while a one-shot check later catches a
+			// flap-down.
+			Eventually(func(g Gomega) {
+				g.Expect(framework.VerifyClusterHealthy(clusterNs, podNames[0], expectedPods, password)).To(Succeed())
+				info, err := framework.GetClusterInfo(clusterNs, podNames[0], password)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(info.State).To(Equal("ok"))
+				g.Expect(info.KnownNodes).To(Equal(3))
+				g.Expect(info.SlotsAssigned).To(Equal(16384))
 			}, framework.HealthTimeout, 10*time.Second).Should(Succeed())
-
-			By("verifying cluster state")
-			info, err := framework.GetClusterInfo(clusterNs, podNames[0], password)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.State).To(Equal("ok"))
-			Expect(info.KnownNodes).To(Equal(3))
-			Expect(info.SlotsAssigned).To(Equal(16384))
 		})
 	})
 
