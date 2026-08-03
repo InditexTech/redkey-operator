@@ -132,19 +132,19 @@ make docker-buildx IMG=ghcr.io/inditextech/redkey-operator:<tag>
 
 #### Build and push the Robin image
 
-Robin lives in the sibling `redkeyrobin` repository and imports the API types from `redkeyoperator`. To build the Robin image from source, keep both repositories checked out side by side:
+Robin lives in the sibling `redkey-robin` repository and imports the API types from `redkey-operator`. To build the Robin image from source, keep both repositories checked out side by side:
 
 ```text
 <workspace>/
-  redkeyoperator/
-  redkeyrobin/
+  redkey-operator/
+  redkey-robin/
 ```
 
 Robin now builds from its own repository using a Docker BuildKit named context that points back to the operator checkout. From the operator repository, a typical local flow looks like this:
 
 ```shell
-pushd ../redkeyrobin
-make docker-build IMG=localhost:5005/redkey-robin:dev OPERATOR_DIR=../redkeyoperator
+pushd ../redkey-robin
+make docker-build IMG=localhost:5005/redkey-robin:dev OPERATOR_DIR=../redkey-operator
 make docker-push IMG=localhost:5005/redkey-robin:dev
 popd
 ```
@@ -154,8 +154,8 @@ If your checkout names or paths differ, adjust `OPERATOR_DIR` accordingly.
 For cross-platform publication, Robin also provides `make docker-buildx`, and its release workflow publishes `linux/amd64` and `linux/arm64` images using the same mechanism:
 
 ```shell
-pushd ../redkeyrobin
-make docker-buildx IMG=ghcr.io/inditextech/redkey-robin:<tag> OPERATOR_DIR=../redkeyoperator
+pushd ../redkey-robin
+make docker-buildx IMG=ghcr.io/inditextech/redkey-robin:<tag> OPERATOR_DIR=../redkey-operator
 popd
 ```
 
@@ -303,15 +303,15 @@ make cleanup-test-e2e
 
 #### GitHub Actions E2E workflow
 
-The `.github/workflows/e2e-tests.yml` workflow in this repository checks out `redkeyoperator/` and `redkeyrobin/` side by side under `${{ github.workspace }}`. Robin is then built from its own repository with `OPERATOR_DIR=../redkeyoperator`.
+The `.github/workflows/e2e-tests.yml` workflow in this repository checks out `redkey-operator/` and `redkey-robin/` side by side under `${{ github.workspace }}`. Robin is then built from its own repository with `OPERATOR_DIR=../redkey-operator`.
 
-This layout is important: nesting the Robin checkout inside the operator repository breaks `controller-gen paths="./..."` and similar targets because the operator tooling starts scanning the nested Robin module and hits Robin's `replace ../redkeyoperator` directive.
+This layout is important: nesting the Robin checkout inside the operator repository breaks `controller-gen paths="./..."` and similar targets because the operator tooling starts scanning the nested Robin module and hits Robin's `replace ../redkey-operator` directive.
 
 When the workflow needs a Robin ref, it resolves it in this order:
 
 1. The `workflow_dispatch` input `robin_ref`.
 2. A line in the pull request body with the form `robin-ref: <ref>`.
-3. A branch in `InditexTech/redkeyrobin` with the same name as the operator pull request branch, if it exists.
+3. A branch in `InditexTech/redkey-robin` with the same name as the operator pull request branch, if it exists.
 4. `main`.
 
 To force the workflow to test a specific Robin branch from an operator pull request, add a line like this to the PR body:

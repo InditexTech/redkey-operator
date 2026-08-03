@@ -19,7 +19,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
+	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
 )
 
 const defaultRedisConfig = `maxmemory 90mb

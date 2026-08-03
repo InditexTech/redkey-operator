@@ -21,8 +21,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
-	"github.com/inditextech/redkeyoperator/test/chaos/framework"
+	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
+	"github.com/inditextech/redkey-operator/test/chaos/framework"
 )
 
 var (

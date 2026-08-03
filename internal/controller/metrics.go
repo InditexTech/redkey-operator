@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	redisv1 "github.com/inditextech/redkeyoperator/api/v1beta1"
+	redisv1 "github.com/inditextech/redkey-operator/api/v1beta1"
 )
 
 // Custom operator metrics describing the control-plane state of the managed Redkey fleet.

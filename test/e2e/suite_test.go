@@ -15,8 +15,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
-	"github.com/inditextech/redkeyoperator/test/utils"
+	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
+	"github.com/inditextech/redkey-operator/test/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

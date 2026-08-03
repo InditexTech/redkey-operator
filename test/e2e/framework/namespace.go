@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
+	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
 )
 
 const (

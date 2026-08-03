@@ -27,7 +27,7 @@ concurrency:
 
 env:
   OPERATOR_VERSION: test-e2e
-  KUBECONFIG: ${{ github.workspace }}/redkeyoperator/.kube/config
+  KUBECONFIG: ${{ github.workspace }}/redkey-operator/.kube/config
   LOCAL_CLUSTER_NAME: test-e2e-cluster
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
     - name: Checkout operator code
       uses: actions/checkout@v4
       with:
-        path: redkeyoperator
+        path: redkey-operator
 
     - name: Resolve Robin ref
       id: robin-ref
@@ -58,7 +58,7 @@ jobs:
         fi
 
         if [[ -z "${robin_ref}" && -n "${PR_HEAD_REF}" ]]; then
-          if git ls-remote --exit-code --heads https://github.com/InditexTech/redkeyrobin.git "${PR_HEAD_REF}" >/dev/null 2>&1; then
+          if git ls-remote --exit-code --heads https://github.com/InditexTech/redkey-robin.git "${PR_HEAD_REF}" >/dev/null 2>&1; then
             robin_ref="${PR_HEAD_REF}"
           fi
         fi
@@ -69,14 +69,14 @@ jobs:
     - name: Checkout Robin code
       uses: actions/checkout@v4
       with:
-        repository: InditexTech/redkeyrobin
+        repository: InditexTech/redkey-robin
         ref: ${{ steps.robin-ref.outputs.ref }}
-        path: redkeyrobin
+        path: redkey-robin
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: redkeyoperator/go.mod
+        go-version-file: redkey-operator/go.mod
         cache: true
 
     - name: Install kubectl
@@ -90,18 +90,18 @@ jobs:
         cluster_name: ${{ env.LOCAL_CLUSTER_NAME }}
 
     - name: Build operator image
-      working-directory: redkeyoperator
+      working-directory: redkey-operator
       run: make docker-build IMG=redkey-operator:${{ env.OPERATOR_VERSION }}
 
     - name: Build Robin image
-      working-directory: redkeyrobin
-      run: make docker-build IMG=redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkeyoperator
+      working-directory: redkey-robin
+      run: make docker-build IMG=redkey-robin:${{ env.OPERATOR_VERSION }} OPERATOR_DIR=../redkey-operator
 
     - name: Install Ginkgo CLI
       run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
     - name: Run E2E test suite
-      working-directory: redkeyoperator
+      working-directory: redkey-operator
       env:
         TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
       run: |

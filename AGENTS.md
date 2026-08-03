@@ -43,7 +43,7 @@ Key paths to understand before changing code:
 - `cmd/main.go`: operator entrypoint and controller startup wiring.
 - `internal/controller/`: reconcile logic, config lifecycle, and Robin integration.
 - `config/`: generated CRDs, RBAC, manager manifests, samples, and kustomize bases.
-- `charts/`: Helm packaging for operator and sample cluster installation.
+- `charts/`: Helm packaging for operator and sample cluster installation. CRDs under `charts/redkey-operator/crds/` are generated copies of `config/crd/bases/`, kept in sync by `make manifests`/`make sync-crds` — do not hand-edit them except for the SPDX header.
 - `test/integration/`: envtest-based integration suite.
 - `test/e2e/`: Kind-based end-to-end suite.
 - `docs/`: operator, architecture, OLM, and developer documentation.
@@ -87,7 +87,8 @@ This repository does not use Maven. There is no `pom.xml` or `mvnw` in Redkey Op
 
 ```shell
 make generate    # regenerates DeepCopy methods
-make manifests   # regenerates CRDs, RBAC manifests, and webhooks
+make manifests   # regenerates CRDs, RBAC manifests, and webhooks; then syncs CRDs into charts/redkey-operator/crds
+make sync-crds   # copies config/crd/bases CRDs into the Helm chart, preserving each file's SPDX header
 ```
 
 ### Format and static analysis
@@ -231,7 +232,7 @@ make cleanup-kind     # tears down the Kind cluster
 - Follow standard Go idioms and the [Effective Go](https://go.dev/doc/effective_go) guidelines.
 - For every change, run `make lint` and `make test-all` before finishing the task.
 - All code must pass `go fmt`, `go vet`, and `golangci-lint` before being merged.
-- API types live in `api/v1beta1/`. After changing them, always run `make generate && make manifests`.
+- API types live in `api/v1beta1/`. After changing them, always run `make generate && make manifests` (the latter also syncs the CRD copies under `charts/redkey-operator/crds/`, so they must not be edited by hand).
 - Controller logic lives in `internal/controller/`. Files are split by concern:
   - `redkey_controller.go` — main reconcile loop
   - `redkey_config.go` — `RedkeyConfig` lifecycle
@@ -260,7 +261,7 @@ The upgrade lifecycle is split between the operator and Robin. Understanding the
 2. **Config Checksum**: A SHA-256 checksum annotation (`redkey.inditex.dev/config-checksum`, 16 hex chars) is set on the pod template to ensure StatefulSet detects changes even when only `redisConfig` differs.
 3. **Robin Deployment**: The operator ensures a Robin Deployment exists per cluster that watches for config changes. The Robin image is specified via Helm values or the operator container environment.
 
-### Robin Responsibilities (in `../redkeyrobin`)
+### Robin Responsibilities (in `../redkey-robin`)
 
 Robin owns the entire upgrade execution:
 - Strategy selection: Fast vs Rolling N+1

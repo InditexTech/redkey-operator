@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "redkeyoperator"
+SPDX-PackageName = "redkey-operator"
 SPDX-PackageSupplier = "2025 Industria de Diseño Textil S.A."
-SPDX-PackageDownloadLocation = "https://github.com/InditexTech/redkeyoperator"
+SPDX-PackageDownloadLocation = "https://github.com/InditexTech/redkey-operator"
 
 [[annotations]]
 path = [

@@ -12,11 +12,11 @@ Welcome to the support section of our open-source project! We’re excited to ha
 ### 1. **Check the Documentation**
 Before asking for help, please review the documentation provided for this project. It includes installation instructions, usage guides, and API documentation. The documentation is available at:
 - [Documentation Link](./docs/)
-- [Wikis](https://github.com/inditextech/redkeyoperator/wiki)
+- [Wikis](https://github.com/inditextech/redkey-operator/wiki)
 
 ### 2. **Search the Issues**
 Often, your issue might have already been reported and solved by others. Please search the issues section of this repository to see if your problem has already been discussed:
-- [Issues Section](https://github.com/inditextech/redkeyoperator/issues)
+- [Issues Section](https://github.com/inditextech/redkey-operator/issues)
 
 ### 3. **Community and Discussion**
 If you didn’t find your answer in the documentation or the issues, you can ask for help or discuss the project in our community channels:

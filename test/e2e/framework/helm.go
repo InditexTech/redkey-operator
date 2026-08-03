@@ -10,7 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 
-	"github.com/inditextech/redkeyoperator/test/utils"
+	"github.com/inditextech/redkey-operator/test/utils"
 )
 
 // HelmInstall runs `helm install` with the given release name, chart path, and values.

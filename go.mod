@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/inditextech/redkeyoperator
+module github.com/inditextech/redkey-operator
 
 go 1.26.5
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
 
-# This rule is not used by the project redkeyoperator itself.
+# This rule is not used by the project redkey-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
 # Grants permissions to create, update, and delete resources within the redkey.inditex.dev.

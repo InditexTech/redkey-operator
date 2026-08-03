@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/inditextech/redkeyoperator/test/chaos/framework"
+	"github.com/inditextech/redkey-operator/test/chaos/framework"
 )
 
 // Topology Corruption Recovery exercises the new architecture where Robin (not the operator) owns

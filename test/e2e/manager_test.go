@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/inditextech/redkeyoperator/test/utils"
+	"github.com/inditextech/redkey-operator/test/utils"
 )
 
 // namespace where the project is deployed in
