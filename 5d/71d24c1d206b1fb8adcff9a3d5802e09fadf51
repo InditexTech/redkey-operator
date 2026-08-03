@@ -1,0 +1,155 @@
+.github/workflows/e2e-tests.yml
+  s_b01c9400ed16c7::t_2ec6f6e72d2e3a 30,45,61,72,74,79,93,97-98,104
+Dockerfile
+  s_b01c9400ed16c7::t_30a435e0ebe1eb 43
+PROJECT
+  s_b01c9400ed16c7::t_e3972b0a0b2ac1 15,24,32
+README.md
+  s_b01c9400ed16c7::t_4ea523da67e92e 13-16,23-26,97-98,113
+REUSE.toml
+  s_b01c9400ed16c7::t_ce9135cd58a89a 2,4
+SUPPORT.md
+  s_b01c9400ed16c7::t_3f214675105afd 15,19
+cmd/main.go
+  s_b01c9400ed16c7::t_a49400272c36b6 41-42
+config/rbac/kustomization.yaml
+  s_b01c9400ed16c7::t_ccb7f697fa823b 26
+config/rbac/redkey_admin_role.yaml
+  s_b01c9400ed16c7::t_7688064a2c5d0c 4
+config/rbac/redkey_editor_role.yaml
+  s_b01c9400ed16c7::t_40e742e1242eb9 4
+config/rbac/redkey_viewer_role.yaml
+  s_b01c9400ed16c7::t_5840eec88c3349 4
+config/rbac/redkeyconfig_admin_role.yaml
+  s_b01c9400ed16c7::t_41ae0502e43688 4
+config/rbac/redkeyconfig_editor_role.yaml
+  s_b01c9400ed16c7::t_1219177a43d45e 4
+config/rbac/redkeyconfig_viewer_role.yaml
+  s_b01c9400ed16c7::t_1e5a6b4ff017c6 4
+docs/developer-guide/development-guide.md
+  s_b01c9400ed16c7::t_be9a79ede11e40 135,139-140,146-147,157-158,306,308,314
+go.mod
+  s_b01c9400ed16c7::t_6989ee8fb0012c 5
+internal/controller/metrics.go
+  s_b01c9400ed16c7::t_edb11d773684f2 15
+internal/controller/redkey_config.go
+  s_b01c9400ed16c7::t_858f47801693e7 22
+internal/controller/redkey_config_test.go
+  s_b01c9400ed16c7::t_b068ec80ffd8cb 25
+internal/controller/redkey_controller.go
+  s_b01c9400ed16c7::t_7c9bc673f3b4e9 21
+internal/controller/redkey_controller_test.go
+  s_b01c9400ed16c7::t_9355b4cdf4f142 24
+internal/controller/redkey_robin.go
+  s_b01c9400ed16c7::t_436378fde206ab 23
+internal/controller/redkey_robin_test.go
+  s_b01c9400ed16c7::t_9436d0b9618c43 24
+internal/controller/redkey_scale_zero.go
+  s_b01c9400ed16c7::t_681e7c5eeef5c4 21
+internal/controller/redkey_scale_zero_test.go
+  s_b01c9400ed16c7::t_a0d81de0b87819 23
+test/chaos/framework/cluster.go
+  s_b01c9400ed16c7::t_422b769120c058 22
+test/chaos/framework/namespace.go
+  s_b01c9400ed16c7::t_2e6e0fbceb1dc6 19
+test/chaos/framework/readiness.go
+  s_b01c9400ed16c7::t_538195f3e94925 20
+test/chaos/helpers_test.go
+  s_b01c9400ed16c7::t_2775d8906db283 18
+test/chaos/suite_test.go
+  s_b01c9400ed16c7::t_39edb69d91964f 24-25
+test/chaos/topology_test.go
+  s_b01c9400ed16c7::t_0f11d2bd9272dd 14
+test/e2e/additional_features_test.go
+  s_b01c9400ed16c7::t_4ff7e2c35d3521 15-16
+test/e2e/auth_and_upgrade_test.go
+  s_b01c9400ed16c7::t_858d4e7fd5544d 17-18
+test/e2e/auth_test.go
+  s_b01c9400ed16c7::t_27d11ac2b4d3ec 15-16
+test/e2e/cluster_creation_test.go
+  s_b01c9400ed16c7::t_4009a90f627c35 15-16
+test/e2e/cluster_features_test.go
+  s_b01c9400ed16c7::t_8bad25f08b77c0 16-17
+test/e2e/cluster_lifecycle_test.go
+  s_b01c9400ed16c7::t_626537d79fa5ff 15-16
+test/e2e/config_hotreload_test.go
+  s_b01c9400ed16c7::t_83e45f7f6ab653 16-17
+test/e2e/framework/cluster.go
+  s_b01c9400ed16c7::t_18139f4f1b4755 18
+test/e2e/framework/debug.go
+  s_b01c9400ed16c7::t_4e129e8d2a9d7f 17
+test/e2e/framework/helm.go
+  s_b01c9400ed16c7::t_b7d2876855ca66 13
+test/e2e/framework/namespace.go
+  s_b01c9400ed16c7::t_4c3e35f5fcabe0 19
+test/e2e/framework/wait.go
+  s_b01c9400ed16c7::t_0780003b019c7c 20
+test/e2e/health_remediation_matrix_test.go
+  s_b01c9400ed16c7::t_d1535a5e30f14d 15-16
+test/e2e/health_remediation_test.go
+  s_b01c9400ed16c7::t_f792314c8c1724 16-18
+test/e2e/helm_deploy_test.go
+  s_b01c9400ed16c7::t_ceccc284175c8a 16-18
+test/e2e/manager_test.go
+  s_b01c9400ed16c7::t_1483086d05b3de 15
+test/e2e/object_overrides_test.go
+  s_b01c9400ed16c7::t_40d441a823b877 15-16
+test/e2e/operator_resources_test.go
+  s_b01c9400ed16c7::t_74c79812315dc3 16-17
+test/e2e/resilience_test.go
+  s_b01c9400ed16c7::t_47df7656df7eee 16-18
+test/e2e/robin_changes_test.go
+  s_b01c9400ed16c7::t_4abca78f12a061 15-16
+test/e2e/scale_from_zero_lock_test.go
+  s_b01c9400ed16c7::t_4cc3e0241f478a 15-16
+test/e2e/scale_to_zero_test.go
+  s_b01c9400ed16c7::t_0835d04f953098 15-16
+test/e2e/scaling_test.go
+  s_b01c9400ed16c7::t_96fa764796d2f7 15-16
+test/e2e/standalone_test.go
+  s_b01c9400ed16c7::t_084c68d14588a6 16-17
+test/e2e/suite_test.go
+  s_b01c9400ed16c7::t_83d698518669b0 18-19
+test/e2e/superseding_test.go
+  s_b01c9400ed16c7::t_936ae041aef954 15-16
+test/e2e/upgrade_test.go
+  s_b01c9400ed16c7::t_a98f670e0a78b3 17-18
+test/e2e/validation_test.go
+  s_b01c9400ed16c7::t_3069375cdd0fb0 15-16
+test/integration/config_cleanup_test.go
+  s_b01c9400ed16c7::t_5903996a9119cf 15
+test/integration/config_creation_test.go
+  s_b01c9400ed16c7::t_62cadb80581020 19-20
+test/integration/config_status_test.go
+  s_b01c9400ed16c7::t_fe0ed38f25dfed 15
+test/integration/helpers_test.go
+  s_b01c9400ed16c7::t_c89f486e62503a 17-18
+test/integration/robin_deployment_test.go
+  s_b01c9400ed16c7::t_06913f30efbf5c 21-22
+test/integration/robin_rbac_test.go
+  s_b01c9400ed16c7::t_652da84156c1e8 19-20
+test/integration/scale_from_zero_lock_test.go
+  s_b01c9400ed16c7::t_a8d42ec8433eb2 16
+test/integration/scale_to_zero_test.go
+  s_b01c9400ed16c7::t_aaf6049cd59467 20
+test/integration/storage_immutability_test.go
+  s_b01c9400ed16c7::t_21c0538df8e94f 16
+test/integration/suite_test.go
+  s_b01c9400ed16c7::t_b77e6f340de290 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5d71d24c1d206b1fb8adcff9a3d5802e09fadf51",
+  "prompts": {},
+  "sessions": {
+    "s_b01c9400ed16c7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "ae4e3c5d-8576-48f0-9cc8-198f4263f76c",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
