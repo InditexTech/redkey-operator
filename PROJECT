@@ -12,7 +12,7 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: redkey-operator
-repo: github.com/inditextech/redkeyoperator
+repo: github.com/inditextech/redkey-operator
 resources:
 - api:
     crdVersion: v1
@@ -21,7 +21,7 @@ resources:
   domain: inditex.dev
   group: redkey
   kind: Redkey
-  path: github.com/inditextech/redkeyoperator/api/v1beta1
+  path: github.com/inditextech/redkey-operator/api/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -29,6 +29,6 @@ resources:
   domain: inditex.dev
   group: redkey
   kind: RedkeyConfig
-  path: github.com/inditextech/redkeyoperator/api/v1beta1
+  path: github.com/inditextech/redkey-operator/api/v1beta1
   version: v1beta1
 version: "3"

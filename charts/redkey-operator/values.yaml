@@ -7,8 +7,8 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/inditextech/redkey-operator
-  pullPolicy: IfNotPresent
-  tag: "0.1.0"
+  pullPolicy: Always
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""

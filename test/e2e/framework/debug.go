@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/inditextech/redkeyoperator/test/utils"
+	"github.com/inditextech/redkey-operator/test/utils"
 )
 
 // DefaultSpecTimeout is the per-spec time budget applied by SetupSpecContexts when it is given a

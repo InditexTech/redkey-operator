@@ -13,9 +13,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	redkeyv1beta1 "github.com/inditextech/redkeyoperator/api/v1beta1"
-	"github.com/inditextech/redkeyoperator/test/e2e/framework"
-	"github.com/inditextech/redkeyoperator/test/utils"
+	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
+	"github.com/inditextech/redkey-operator/test/e2e/framework"
+	"github.com/inditextech/redkey-operator/test/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

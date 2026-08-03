@@ -10,20 +10,20 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 Seamless Redkey management on Kubernetes — in cluster or standalone mode
 
-[![GitHub License](https://img.shields.io/github/license/InditexTech/redkeyoperator)](LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkeyoperator)](https://github.com/InditexTech/redkeyoperator/releases)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/InditexTech/redkeyoperator)](go.mod)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/InditexTech/redkeyoperator/ci.yml?branch=main)](https://github.com/InditexTech/redkeyoperator/actions)
+[![GitHub License](https://img.shields.io/github/license/InditexTech/redkey-operator)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkey-operator)](https://github.com/InditexTech/redkey-operator/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/InditexTech/redkey-operator)](go.mod)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/InditexTech/redkey-operator/ci.yml?branch=main)](https://github.com/InditexTech/redkey-operator/actions)
 
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Operator SDK](https://img.shields.io/badge/Operator%20SDK-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://sdk.operatorframework.io/)
 [![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)](https://golang.org/)
 [![REUSE Compliance](https://img.shields.io/badge/REUSE-compliant-green)](https://reuse.software/)
 
-[![GitHub Issues](https://img.shields.io/github/issues/InditexTech/redkeyoperator)](https://github.com/InditexTech/redkeyoperator/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/InditexTech/redkeyoperator)](https://github.com/InditexTech/redkeyoperator/pulls)
-[![GitHub Stars](https://img.shields.io/github/stars/InditexTech/redkeyoperator?style=social)](https://github.com/InditexTech/redkeyoperator/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/InditexTech/redkeyoperator?style=social)](https://github.com/InditexTech/redkeyoperator/network/members)
+[![GitHub Issues](https://img.shields.io/github/issues/InditexTech/redkey-operator)](https://github.com/InditexTech/redkey-operator/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/InditexTech/redkey-operator)](https://github.com/InditexTech/redkey-operator/pulls)
+[![GitHub Stars](https://img.shields.io/github/stars/InditexTech/redkey-operator?style=social)](https://github.com/InditexTech/redkey-operator/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/InditexTech/redkey-operator?style=social)](https://github.com/InditexTech/redkey-operator/network/members)
 
 [🚀 Quick Start](#quick-start) • [📖 Documentation](./docs) • [🤝 Contributing](./CONTRIBUTING.md) • [📝 License](./LICENSE)
 
@@ -94,8 +94,8 @@ The operator can be installed using the provided Makefile. The following steps w
 Clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/InditexTech/redkeyoperator.git
-cd redkeyoperator
+git clone https://github.com/InditexTech/redkey-operator.git
+cd redkey-operator
 ```
 
 Generate and install the CRDs:
@@ -110,7 +110,7 @@ Deploy the operator in the cluster (replace `${VERSION}` with the desired versio
 make deploy IMG=ghcr.io/inditextech/redkey-operator:${VERSION}
 ```
 
-Create a sample Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkeyrobin) repo releases for available versions):
+Create a sample Redkey Cluster (replace `${VERSION}` with the desired version, e.g., `0.1.0`; check the [Redkey Robin](https://github.com/InditexTech/redkey-robin) repo releases for available versions):
 
 ```bash
 # Ephemeral cluster (3 primaries, no persistence)

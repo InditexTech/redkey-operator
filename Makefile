@@ -98,7 +98,7 @@ REGISTRY_PORT ?= 5005
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# inditex.dev/redkeyoperator-bundle:$VERSION and inditex.dev/redkeyoperator-catalog:$VERSION.
+# inditex.dev/redkey-operator-bundle:$VERSION and inditex.dev/redkey-operator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= localhost:$(REGISTRY_PORT)/$(NAME)
 
 # Image URL to use all building/pushing image targets
@@ -167,9 +167,31 @@ version-set:: ## Set the project version to the given version, using the NEW_VER
 
 ##@ Development
 
+# CRD_SRC_DIR holds the controller-gen output; HELM_CRD_DIR is the Helm chart copy kept in sync.
+CRD_SRC_DIR ?= config/crd/bases
+HELM_CRD_DIR ?= charts/redkey-operator/crds
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(MAKE) sync-crds
+
+.PHONY: sync-crds
+sync-crds: ## Sync generated CRDs from config/crd/bases into the Helm chart, preserving each file's SPDX header.
+	@for src in $(CRD_SRC_DIR)/*.yaml; do \
+		base=$$(basename $$src); \
+		plural=$${base#*_}; \
+		dest=$(HELM_CRD_DIR)/$${plural%.yaml}-crd.yaml; \
+		tmp=$$(mktemp); \
+		if [ -f $$dest ] && grep -q '^# SPDX' $$dest; then \
+			sed -n '/^#/p; /^[^#]/q' $$dest > $$tmp; \
+		else \
+			printf '# SPDX-FileCopyrightText: %s INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)\n# SPDX-License-Identifier: Apache-2.0\n' "$$(date +%Y)" > $$tmp; \
+		fi; \
+		cat $$src >> $$tmp; \
+		mv $$tmp $$dest; \
+		echo "synced $$src -> $$(basename $$dest)"; \
+	done
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -448,10 +470,10 @@ docker-push: ## Push docker image with the manager.
 PLATFORMS ?= linux/amd64,linux/arm64
 .PHONY: docker-buildx
 docker-buildx: test-all ## Build and push docker image for the manager for cross-platform support
-	- $(CONTAINER_TOOL) buildx create --name redkeyoperator-builder
-	$(CONTAINER_TOOL) buildx use redkeyoperator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} .
-	- $(CONTAINER_TOOL) buildx rm redkeyoperator-builder
+	- $(CONTAINER_TOOL) buildx create --name redkey-operator-builder
+	$(CONTAINER_TOOL) buildx use redkey-operator-builder
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} --tag $(IMAGE_TAG_BASE):latest .
+	- $(CONTAINER_TOOL) buildx rm redkey-operator-builder
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

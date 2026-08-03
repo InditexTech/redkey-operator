@@ -23,7 +23,7 @@ The Robin container image is specified in `spec.robin.image`:
 ```yaml
 spec:
   robin:
-    image: ghcr.io/inditextech/redkey-robin:0.1.0
+    image: ghcr.io/inditextech/redkey-robin:latest
 ```
 
 The operator automatically exposes the metrics port (8080/TCP) on the Robin container.
@@ -156,7 +156,7 @@ spec:
 
 ## How to develop Robin
 
-Please refer to [Redkey Robin](https://github.com/InditexTech/redkeyrobin/docs/developer-guide.md) section of the Operador Development Guide to know how to develop, build and deploy Robin for development and debugging purposes.
+Please refer to [Redkey Robin](https://github.com/InditexTech/redkey-robin/docs/developer-guide.md) section of the Operador Development Guide to know how to develop, build and deploy Robin for development and debugging purposes.
 
 ## Authentication
 

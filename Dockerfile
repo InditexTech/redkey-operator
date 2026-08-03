@@ -40,7 +40,7 @@ FROM debian:trixie-slim AS final
 # Install some useful tools
 RUN apt update && apt upgrade -y && apt install -y curl procps
 
-LABEL org.opencontainers.image.source="https://github.com/inditextech/redkeyoperator"
+LABEL org.opencontainers.image.source="https://github.com/inditextech/redkey-operator"
 
 # Copy the built binary from the builder stage, use a non-root user and set entrypoint
 WORKDIR /

@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "redkeyoperator"
+SPDX-PackageName = "redkey-operator"
 SPDX-PackageSupplier = "2025 Industria de Diseño Textil S.A."
-SPDX-PackageDownloadLocation = "https://github.com/InditexTech/redkeyoperator"
+SPDX-PackageDownloadLocation = "https://github.com/InditexTech/redkey-operator"
 
 [[annotations]]
 path = [
@@ -33,6 +33,7 @@ path = [
     "test/cmd/data_44kl.txt",
     "config/crd/bases/redkey.inditex.dev_redkeyconfigs.yaml",
     "config/crd/bases/redkey.inditex.dev_redkeys.yaml",
+    "config/manifests/bases/redkey-operator.clusterserviceversion.yaml",
     "config/rbac/role.yaml",
     "docs/proposals/images/redkey-logo.png",
 ]
