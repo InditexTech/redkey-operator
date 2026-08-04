@@ -15,7 +15,6 @@ The following parameters are applied to **every cluster**, regardless of topolog
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
 | `cluster-enabled` | `yes` | Required for Redis Cluster mode. Without this, Redis runs as a standalone instance. |
-| `cluster-config-file` | `nodes.conf` | File where Redis persists cluster topology metadata (node IDs, slot assignments, epoch). Automatically maintained by Redis. |
 | `cluster-node-timeout` | `5000` | Time in milliseconds before a node is considered unreachable by its peers. Controls failover speed: lower values trigger faster failover but risk false positives under network jitter. |
 | `cluster-require-full-coverage` | `no` | Allows the cluster to continue serving requests even when some hash slots are temporarily uncovered. Without this set to `no`, any slot migration (during upgrade or scaling) causes `CLUSTERDOWN` for the entire cluster, blocking **all** client operations — reads and writes — on every node. |
 | `cluster-allow-reads-when-down` | `yes` | Permits read operations even when the cluster detects partial failure states. Reduces impact on read-intensive workloads during transient conditions such as node restarts, network partition recovery, or upgrade operations. |
@@ -44,12 +43,26 @@ Because Robin already manages replica placement explicitly (via `CLUSTER REPLICA
 
 ## Persistence Parameters
 
-Robin additionally sets persistence-related parameters based on the `ephemeral` flag:
+Robin additionally sets the working directory and persistence-related parameters based on the `ephemeral` flag:
 
 | Condition | Parameters | Behavior |
 |-----------|-----------|----------|
-| `ephemeral = true` | `appendonly no`, `save ""` | No persistence. Data exists only in memory. Pod restart = data loss for that node. |
-| `ephemeral = false` | `appendonly yes` | AOF (Append Only File) persistence enabled. Data survives pod restarts via the PVC. |
+| `ephemeral = true` | `dir /tmp`, `cluster-config-file /tmp/nodes.conf`, `appendonly no`, `save ""` | No persistence and no data volume is mounted. Redis' working directory is `/tmp`, so `nodes.conf` (cluster topology metadata) is written there. Pod restart = data loss for that node. |
+| `ephemeral = false` | `dir /data`, `cluster-config-file /data/nodes.conf`, `appendonly yes` | AOF (Append Only File) persistence enabled. Redis' working directory is the PVC mounted at `/data`, so `nodes.conf` and the AOF/RDB survive pod restarts. |
+
+### Why `/tmp` for ephemeral clusters?
+
+Redis writes `nodes.conf` (and any RDB/AOF files) into its working directory, set via `dir`. The
+default Redis image working directory is `/data`, which is owned by the image's `redis` user. On
+platforms that assign a **random, non-root UID** to the container — notably OpenShift's
+`restricted-v2` SCC — that UID cannot write to `/data` unless a volume is mounted there with the
+appropriate group ownership (`fsGroup`).
+
+Persistent clusters get a PVC mounted at `/data`, which the platform makes group-writable, so
+`dir /data` works. **Ephemeral clusters mount no data volume**, so `dir` is pointed at `/tmp`
+instead — a location that is world-writable in the container image and therefore always writable by
+the runtime UID. Without this, ephemeral Redis pods fail to start with
+`Can't open nodes.conf in order to acquire a lock: Permission denied`.
 
 ## User Overrides
 
