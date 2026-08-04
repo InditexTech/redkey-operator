@@ -41,6 +41,7 @@ FROM debian:trixie-slim AS final
 RUN apt update && apt upgrade -y && apt install -y curl procps
 
 LABEL org.opencontainers.image.source="https://github.com/inditextech/redkey-operator"
+LABEL org.opencontainers.image.description="Redkey Operator"
 
 # Copy the built binary from the builder stage, use a non-root user and set entrypoint
 WORKDIR /

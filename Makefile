@@ -472,7 +472,7 @@ PLATFORMS ?= linux/amd64,linux/arm64
 docker-buildx: test-all ## Build and push docker image for the manager for cross-platform support
 	- $(CONTAINER_TOOL) buildx create --name redkey-operator-builder
 	$(CONTAINER_TOOL) buildx use redkey-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} --tag $(IMAGE_TAG_BASE):latest .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --annotation "index:org.opencontainers.image.description=Redkey Operator" --tag ${IMG} --tag $(IMAGE_TAG_BASE):latest .
 	- $(CONTAINER_TOOL) buildx rm redkey-operator-builder
 
 .PHONY: build-installer
@@ -837,6 +837,7 @@ bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metada
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	@chmod -R a+rx ./bundle		# Ensure read and execute permissions on the bundle directory for all users, which is required for OLM to read the files.
+	@sed -i "/^FROM.*/a LABEL org.opencontainers.image.description=\"Redkey Operator OLM Bundle\"" bundle.Dockerfile
 	@sed -i "/^FROM.*/a LABEL com.redhat.openshift.versions="$(OPENSHIFT_VERSION)"" bundle.Dockerfile; \
 	sed -i "/^FROM.*/a LABEL com.redhat.delivery.operator.bundle=true" bundle.Dockerfile; \
 	sed -i "/^FROM.*/a LABEL com.redhat.delivery.backport=false" bundle.Dockerfile; \
