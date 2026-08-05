@@ -14,7 +14,7 @@ metadata:
             "primaries": 3,
             "ephemeral": true,
             "accessModes": ["ReadWriteOnce"],
-            "image": "redis:8-bookworm",
+            "image": "redis:8.10",
             "purgeKeysOnRebalance": true,
             "resources": {
               "limits": {

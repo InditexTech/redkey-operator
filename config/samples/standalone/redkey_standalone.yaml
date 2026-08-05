@@ -24,7 +24,7 @@ spec:
   storageClassName: ""
   accessModes:
     - ReadWriteOnce
-  image: redis:8-bookworm
+  image: redis:8.10
   purgeKeysOnRebalance: false
   labels:
     team: a-team

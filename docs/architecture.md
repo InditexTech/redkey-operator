@@ -94,7 +94,7 @@ metadata:
 spec:
   primaries: 3
   replicasPerPrimary: 1
-  image: redis:8-bookworm
+  image: redis:8.10
   ephemeral: false
   storage: 1Gi
   storageClassName: standard

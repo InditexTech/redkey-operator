@@ -20,7 +20,7 @@ import (
 
 // Default images and constants.
 const (
-	defaultRedisImage = "redis:8-bookworm"
+	defaultRedisImage = "redis:8.10"
 	defaultConfig     = `maxmemory 90mb
 maxmemory-policy allkeys-lru
 protected-mode no

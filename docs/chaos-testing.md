@@ -169,7 +169,7 @@ make cleanup-test-chaos  # delete the Kind cluster
 | -------- | ------- | ----------- |
 | `IMAGE_OPERATOR` | `localhost:5005/redkey-operator:dev` | Operator image deployed (namespace-scoped) into each chaos namespace. |
 | `IMAGE_ROBIN` | `localhost:5005/redkey-robin:dev` | Robin image used by the cluster spec. |
-| `REDIS_IMAGE` | `redis:8-bookworm` | Redis image for cluster nodes. |
+| `REDIS_IMAGE` | `redis:8.10` | Redis image for cluster nodes. |
 | `K6_IMG` | `localhost:5005/redkey-k6:dev` | k6 load-generator image (built with the xk6-redis extension via `make k6-build`). |
 | `CHAOS_ITERATIONS` | `3` | Number of fault-injection iterations per scenario. More iterations increase coverage and run time. |
 | `CHAOS_SEED` | *(auto: Ginkgo random seed)* | Fixed RNG seed for reproducibility. The seed used is printed at suite start so a failing run can be replayed. |
