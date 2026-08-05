@@ -6,8 +6,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Scaling a Redkey Cluster
 
-![Redkey Operator icon](../images/redkey-logo-128.png)
-
 Redkey clusters can be scaled **up** (more capacity / availability) or **down** (fewer
 nodes) by changing the topology fields of the `Redkey` resource. Scaling is
 orchestrated entirely by **Redkey Robin** — the operator only records the desired

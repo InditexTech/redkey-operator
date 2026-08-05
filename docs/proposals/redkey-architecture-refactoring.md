@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ## Table of Contents
 
-<img src="images/redkey-logo.png" alt="Redkey Logo" width="200" align="right" />
+<img src="../images/redkey-icon-color-256.png" alt="Redkey Logo" width="200" align="right" />
 
 1. [Overview](#1-overview)
 2. [Current Architecture](#2-current-architecture)

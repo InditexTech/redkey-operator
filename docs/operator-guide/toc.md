@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Operator Guide - Table of Contents
 
-![Redkey Operator icon](../images/redkey-logo-128.png)
+![Redkey Operator icon](../images/redkey-icon-color-128.png)
 
 * [Operator deployment](operator-deployment.md)
 * [Redkey Robin](robin.md)

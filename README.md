@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Redkey Operator
 
-![Redkey Operator icon](docs/images/redkey-logo-256.png)
+![Redkey Operator](docs/images/redkey-horizontal-operator-color-2000.png)
 
 Seamless Redkey management on Kubernetes — in cluster or standalone mode
 

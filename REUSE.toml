@@ -22,20 +22,21 @@ path = [
     "docs/images/redkey-cluster-substatus-scalingup-slow.png",
     "docs/images/redkey-cluster-substatus-upgrading-fast.png",
     "docs/images/redkey-cluster-substatus-upgrading-slow.png",
-    "docs/images/redkey-logo-128.png",
-    "docs/images/redkey-logo-2048.png",
-    "docs/images/redkey-logo-256.png",
-    "docs/images/redkey-logo-512.png",
-    "docs/images/redkey-logo-50.png",
-    "docs/images/redkey-logo.png",
-    "docs/images/redkey-operator-robin.png",
     "go.sum",
     "test/cmd/data_44kl.txt",
     "config/crd/bases/redkey.inditex.dev_redkeyconfigs.yaml",
     "config/crd/bases/redkey.inditex.dev_redkeys.yaml",
     "config/manifests/bases/redkey-operator.clusterserviceversion.yaml",
     "config/rbac/role.yaml",
-    "docs/proposals/images/redkey-logo.png",
+]
+SPDX-FileCopyrightText = "2025 Industria Textil de Diseño, S.A."
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+    "docs/brand-kit/**",
+    "docs/images/redkey-icon-*.png",
+    "docs/images/redkey-horizontal-*.png",
 ]
 SPDX-FileCopyrightText = "2025 Industria Textil de Diseño, S.A."
 SPDX-License-Identifier = "Apache-2.0"
