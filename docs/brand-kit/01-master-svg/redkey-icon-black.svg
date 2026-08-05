@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Redkey black icon">
+  <title>Redkey black icon</title>
+  <g transform="translate(0 0) scale(1)">
+<path d="M100 8 178 53v94l-78 45-78-45V53Z" fill="none" stroke="#263238" stroke-width="10" stroke-linejoin="round"/>
+<path d="M94 70h12v40h20v11h-20v3h20v11h-20v15a6 6 0 0 1-12 0Z" fill="#263238"/>
+<path d="M100 32a23 23 0 1 1 0 46 23 23 0 1 1 0-46Zm0 15a8 8 0 1 0 0 16 8 8 0 1 0 0-16Z" fill="#263238" fill-rule="evenodd"/>
+</g>
+</svg>

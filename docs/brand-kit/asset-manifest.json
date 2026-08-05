@@ -1,0 +1,30 @@
+{
+  "brand": "Redkey",
+  "descriptor": "Operator",
+  "version": "1.0-final",
+  "colors": {
+    "red": "#E5392D",
+    "blue": "#326CE5",
+    "navy": "#0B1F3A",
+    "charcoal": "#263238",
+    "white": "#FFFFFF"
+  },
+  "colorUsage": {
+    "red": "Key symbol and \"Red\"",
+    "blue": "Pod outline, \"key\", and \"Operator\" descriptor",
+    "navy": "Dark backgrounds and reverse panels",
+    "charcoal": "One-color and monochrome artwork",
+    "white": "Light backgrounds and reverse artwork"
+  },
+  "recommended": {
+    "primary": "01-master-svg/redkey-horizontal-operator-color.svg",
+    "navigation": "01-master-svg/redkey-horizontal-color.svg",
+    "icon": "01-master-svg/redkey-icon-color.svg",
+    "small_icon": "03-web-icons/favicon.svg",
+    "stacked": "01-master-svg/redkey-stacked-operator-color.svg",
+    "monochrome": "01-master-svg/redkey-horizontal-black.svg",
+    "reverse": "01-master-svg/redkey-horizontal-operator-reverse.svg",
+    "social_avatar": "04-social/redkey-avatar-blue-1024.png",
+    "open_graph": "04-social/redkey-og-white-1200x630.png"
+  }
+}

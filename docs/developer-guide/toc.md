@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Development Guide - Table of Contents
 
-![Redkey Operator icon](../images/redkey-logo-128.png)
+![Redkey Operator icon](../images/redkey-icon-color-128.png)
 
 * [Development Guide](development-guide.md)
 * [Profiling Guide](profiling-guide.md)

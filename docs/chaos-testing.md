@@ -6,8 +6,6 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Chaos Testing
 
-![Redkey Operator icon](images/redkey-logo-128.png)
-
 ## What chaos tests are
 
 Chaos tests validate that a Redkey cluster keeps serving traffic and self-heals while it is

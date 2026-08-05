@@ -1,0 +1,8 @@
+:root {
+  --redkey-red: #e5392d;      /* Key symbol and "Red" */
+  --redkey-blue: #326ce5;     /* Pod outline, "key", and "Operator" descriptor */
+  --redkey-navy: #0b1f3a;     /* Dark backgrounds and reverse panels */
+  --redkey-charcoal: #263238; /* One-color and monochrome artwork */
+  --redkey-white: #ffffff;    /* Light backgrounds and reverse artwork */
+}
+

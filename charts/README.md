@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Helm Charts
 
-![Redkey Operator icon](../docs/images/redkey-logo-128.png)
+![Redkey Operator icon](../docs/images/redkey-icon-color-128.png)
 
 This directory contains Helm charts for deploying the various components of the project. Each subdirectory corresponds to a specific component and includes the necessary templates and configuration files for deployment.
 

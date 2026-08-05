@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="Redkey color palette">
+  <title>Redkey color palette</title>
+  
+<rect width="1200" height="760" fill="#FFFFFF"/>
+<text x="70" y="82" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#0B1F3A">Redkey color palette</text>
+<g transform="translate(70 145)"><rect width="245" height="390" rx="24" fill="#E5392D"/><text x="20" y="445" font-family="Arial" font-size="25" font-weight="700" fill="#0B1F3A">Signal Red</text><text x="20" y="480" font-family="Arial" font-size="22" fill="#65758B">#E5392D</text></g>
+<g transform="translate(345 145)"><rect width="245" height="390" rx="24" fill="#326CE5"/><text x="20" y="445" font-family="Arial" font-size="25" font-weight="700" fill="#0B1F3A">Kubernetes Blue</text><text x="20" y="480" font-family="Arial" font-size="22" fill="#65758B">#326CE5</text></g>
+<g transform="translate(620 145)"><rect width="245" height="390" rx="24" fill="#0B1F3A"/><text x="20" y="445" font-family="Arial" font-size="25" font-weight="700" fill="#0B1F3A">Deep Navy</text><text x="20" y="480" font-family="Arial" font-size="22" fill="#65758B">#0B1F3A</text></g>
+<g transform="translate(895 145)"><rect width="245" height="390" rx="24" fill="#263238"/><text x="20" y="445" font-family="Arial" font-size="25" font-weight="700" fill="#0B1F3A">Charcoal</text><text x="20" y="480" font-family="Arial" font-size="22" fill="#65758B">#263238</text></g>
+
+</svg>
