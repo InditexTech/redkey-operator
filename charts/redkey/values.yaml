@@ -12,7 +12,7 @@ primaries: 3
 replicasPerPrimary: 0
 ephemeral: true
 purgeKeysOnRebalance: true
-image: redis:8-bookworm
+image: redis:8.10
 version: ""
 
 # Storage (only for non-ephemeral clusters)

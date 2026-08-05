@@ -25,7 +25,7 @@ import (
 
 // getRedisUpgradeImage returns the target image for upgrade tests.
 // Use REDIS_IMAGE_UPGRADE env var to set a custom target, otherwise defaults to "redis:8-alpine"
-// (a compatible but different image tag from the default "redis:8-bookworm").
+// (a compatible but different image tag from the default "redis:8.10").
 func getRedisUpgradeImage() string {
 	if img := os.Getenv("REDIS_IMAGE_UPGRADE"); img != "" {
 		return img

@@ -48,7 +48,7 @@ const (
 	// defaultRobinImage is the Robin image used when IMAGE_ROBIN is unset.
 	defaultRobinImage = "localhost:5005/redkey-robin:dev"
 	// defaultRedisImage is the Redis image used when REDIS_IMAGE is unset.
-	defaultRedisImage = "redis:8-bookworm"
+	defaultRedisImage = "redis:8.10"
 	// defaultK6Image is the k6 load-generator image used when K6_IMG is unset.
 	defaultK6Image = "localhost:5005/redkey-k6:dev"
 	// defaultK6VUs is the number of k6 virtual users used when CHAOS_K6_VUS is unset.

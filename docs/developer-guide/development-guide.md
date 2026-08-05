@@ -354,7 +354,7 @@ to `make test-e2e` or exported in your shell:
 | `E2E_HEALTH_TIMEOUT` | `600` | Maximum seconds to wait for health-related operations (remediation, node recovery, pod restart). Increase for tests that involve pod deletions or network disruptions. |
 | `IMAGE_OPERATOR` | `localhost:5005/redkey-operator:$(VERSION)` | Operator image loaded into Kind and deployed by the suite. |
 | `IMAGE_ROBIN` | `localhost:5005/redkey-robin:$(ROBIN_VERSION)` | Robin image used by the operator when creating Robin deployments. |
-| `REDIS_IMAGE` | `redis:8-bookworm` | Redis image for cluster nodes. |
+| `REDIS_IMAGE` | `redis:8.10` | Redis image for cluster nodes. |
 | `CERT_MANAGER_INSTALL_SKIP` | *(unset)* | Set to `true` to skip CertManager installation (if already present). |
 | `OPERATOR_DEPLOY_SKIP` | *(unset)* | Set to `true` to skip operator deployment (if already deployed manually). |
 | `LABEL` | *(unset)* | Ginkgo label filter to run a subset of specs (e.g. `creation`, `helm`, `health`). |
