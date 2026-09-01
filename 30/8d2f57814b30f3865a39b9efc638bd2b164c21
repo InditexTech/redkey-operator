@@ -1,0 +1,25 @@
+Makefile
+  s_2e681d1e9c1e56::t_adc9502c8e4f41 45
+charts/redkey-operator/Chart.yaml
+  s_2e681d1e9c1e56::t_d88407b836b912 11
+charts/redkey/Chart.yaml
+  s_2e681d1e9c1e56::t_acf25dbc9f531f 10
+config/manifests/examples/redkey_v1beta1_redkeyconfig.yaml
+  s_2e681d1e9c1e56::t_a451066c12c92c 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "308d2f57814b30f3865a39b9efc638bd2b164c21",
+  "prompts": {},
+  "sessions": {
+    "s_2e681d1e9c1e56": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fa392e33bffe3x8mBLtjGuERuQ",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
