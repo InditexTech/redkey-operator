@@ -1,0 +1,19 @@
+.github/workflows/e2e-tests.yml
+  s_37cb927fb0ecc7::t_8ae14d46957c23 14,68,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "07a6a81d0ce5c485ea638a2db9bf6eb53a9c40b3",
+  "prompts": {},
+  "sessions": {
+    "s_37cb927fb0ecc7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "ba3de20b-7d91-4979-b57c-4fa09b0069eb",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
