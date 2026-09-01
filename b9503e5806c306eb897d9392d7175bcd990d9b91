@@ -1,0 +1,79 @@
+config/manifests/bases/redkey-operator.clusterserviceversion.yaml
+  s_ee2cd1d47d9039::t_1c4814e2a30226 84-85
+docs/brand-kit/01-master-svg/redkey-horizontal-black.svg
+  s_ee2cd1d47d9039::t_0047190f32da12 1-14
+docs/brand-kit/01-master-svg/redkey-horizontal-color.svg
+  s_ee2cd1d47d9039::t_9eb8ce1a0bdb97 1-14
+docs/brand-kit/01-master-svg/redkey-horizontal-operator-black.svg
+  s_ee2cd1d47d9039::t_8d52193e7b858d 1-22
+docs/brand-kit/01-master-svg/redkey-horizontal-operator-color.svg
+  s_ee2cd1d47d9039::t_4e7403936ab085 1-22
+docs/brand-kit/01-master-svg/redkey-horizontal-operator-reverse.svg
+  s_ee2cd1d47d9039::t_d49afeb8e32f62 1-22
+docs/brand-kit/01-master-svg/redkey-horizontal-reverse.svg
+  s_ee2cd1d47d9039::t_611c5edce3c520 1-14
+docs/brand-kit/01-master-svg/redkey-icon-black.svg
+  s_ee2cd1d47d9039::t_6f55d51cd19179 1-8
+docs/brand-kit/01-master-svg/redkey-icon-color.svg
+  s_ee2cd1d47d9039::t_09838f420d9343 1-8
+docs/brand-kit/01-master-svg/redkey-icon-reverse.svg
+  s_ee2cd1d47d9039::t_a8444a771e0056 1-8
+docs/brand-kit/01-master-svg/redkey-icon-solid.svg
+  s_ee2cd1d47d9039::t_ba829f3aeab0c2 1-8
+docs/brand-kit/01-master-svg/redkey-stacked-black.svg
+  s_ee2cd1d47d9039::t_0b6af8e3917a84 1-14
+docs/brand-kit/01-master-svg/redkey-stacked-color.svg
+  s_ee2cd1d47d9039::t_fe1c29d49b20e1 1-14
+docs/brand-kit/01-master-svg/redkey-stacked-operator-color.svg
+  s_ee2cd1d47d9039::t_aff599cefcb2f6 1-22
+docs/brand-kit/01-master-svg/redkey-stacked-reverse.svg
+  s_ee2cd1d47d9039::t_ce06e1dd9d8d84 1-14
+docs/brand-kit/01-master-svg/redkey-wordmark-black.svg
+  s_ee2cd1d47d9039::t_6c73fc1733dd54 1-9
+docs/brand-kit/01-master-svg/redkey-wordmark-color.svg
+  s_ee2cd1d47d9039::t_eafcaf3541fc4f 1-9
+docs/brand-kit/01-master-svg/redkey-wordmark-reverse.svg
+  s_ee2cd1d47d9039::t_017092f0f96015 1-9
+docs/brand-kit/03-web-icons/favicon.svg
+  s_ee2cd1d47d9039::t_ee42e16373bcf5 1-8
+docs/brand-kit/03-web-icons/maskable-icon.svg
+  s_ee2cd1d47d9039::t_f1c709a4fadac7 1-9
+docs/brand-kit/03-web-icons/site.webmanifest
+  s_ee2cd1d47d9039::t_7cd1ee348567bf 1-26
+docs/brand-kit/04-social/redkey-avatar-blue.svg
+  s_ee2cd1d47d9039::t_d76d8d78ed777b 1-9
+docs/brand-kit/04-social/redkey-avatar-white.svg
+  s_ee2cd1d47d9039::t_85ba5049914777 1-9
+docs/brand-kit/04-social/redkey-og-dark.svg
+  s_ee2cd1d47d9039::t_61a3978fb101e5 1-24
+docs/brand-kit/04-social/redkey-og-white.svg
+  s_ee2cd1d47d9039::t_bfe65e89a8cb4c 1-24
+docs/brand-kit/05-guidelines/redkey-brand-overview.svg
+  s_ee2cd1d47d9039::t_45428ac307ed43 1-62
+docs/brand-kit/05-guidelines/redkey-clear-space.svg
+  s_ee2cd1d47d9039::t_9d9ae829b2a270 1-30
+docs/brand-kit/05-guidelines/redkey-color-palette.svg
+  s_ee2cd1d47d9039::t_ffd345e98081e4 1-11
+docs/brand-kit/README.md
+  s_ee2cd1d47d9039::t_15ed955dc8c8aa 1-49
+docs/brand-kit/asset-manifest.json
+  s_ee2cd1d47d9039::t_28bbe6b6890dc7 1-30
+docs/brand-kit/redkey-brand.css
+  s_ee2cd1d47d9039::t_3bec33721879d3 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b9503e5806c306eb897d9392d7175bcd990d9b91",
+  "prompts": {},
+  "sessions": {
+    "s_ee2cd1d47d9039": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "256a3483-e51d-47b3-ade8-e8d8509c08d1",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}

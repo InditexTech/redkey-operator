@@ -1,0 +1,19 @@
+Makefile
+  s_b5ef4dc4f8f3d5::t_460bc737c77085 527-700
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "91baccef840cbe4fc8fbf5d50df1714e676d6e37",
+  "prompts": {},
+  "sessions": {
+    "s_b5ef4dc4f8f3d5": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "10b86306-8b6a-4bbc-97fe-a29af0d7fa1c",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
