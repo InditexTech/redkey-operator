@@ -44,6 +44,7 @@ type RedkeySpec struct {
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=0
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of replicas per Primary Node"
 	// ReplicasPerPrimary specifies how many replicas should be attached to each Redis Primary node.
 	ReplicasPerPrimary int32 `json:"replicasPerPrimary"`
 

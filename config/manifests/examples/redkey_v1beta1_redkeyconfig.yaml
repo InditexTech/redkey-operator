@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# NOTE: RedkeyConfig is an internal, operator-managed resource. The operator
+# creates a new RedkeyConfig revision whenever the parent Redkey spec changes,
+# and Redkey Robin consumes it to apply the desired state. Users are not
+# expected to create RedkeyConfig objects manually. This sample exists to
+# provide a representative example for the OLM bundle (alm-examples).
+apiVersion: redkey.inditex.dev/v1beta1
+kind: RedkeyConfig
+metadata:
+  name: redkey-cluster-ephemeral-config-1
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  sequence: 1
+  skipIfSuperseded: false
+  mode: cluster
+  primaries: 3
+  replicasPerPrimary: 0
+  ephemeral: true
+  image: redis:8.10
+  purgeKeysOnRebalance: true
+  redisConfig: |
+    maxmemory 90mb
+    maxmemory-policy allkeys-lru
+    protected-mode no
+    appendonly no
+    save ""

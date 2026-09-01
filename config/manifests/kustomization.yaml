@@ -9,6 +9,10 @@ resources:
 - ../default
 - ../samples
 - ../scorecard
+# RedkeyConfig is an internal, operator-managed resource: users never create it,
+# so it is deliberately NOT under config/samples. This example exists only to
+# populate the bundle's alm-examples annotation (every owned CRD needs one).
+- examples/redkey_v1beta1_redkeyconfig.yaml
 
 # [WEBHOOK] To enable webhooks, uncomment all the sections with [WEBHOOK] prefix.
 # Do NOT uncomment sections with prefix [CERTMANAGER], as OLM does not support cert-manager.
