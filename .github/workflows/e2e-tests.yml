@@ -10,15 +10,8 @@ on:
     branches: [main]
     paths-ignore: ['docs/**']
 
-  workflow_dispatch:
-    inputs:
-      test_parallel_process:
-        description: Number of parallel processes for the E2E test suite
-        default: '2'
-        required: false
-
 concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  group: e2e-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -72,7 +65,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: redkey-operator/go.mod
-        cache: ${{ github.event_name == 'pull_request' }}
+        cache: true
 
     - name: Install kubectl
       uses: azure/setup-kubectl@v3
@@ -98,7 +91,7 @@ jobs:
     - name: Run E2E test suite
       working-directory: redkey-operator
       env:
-        TEST_PARALLEL_PROCESSES: ${{ github.event.inputs.test_parallel_process || 2 }}
+        TEST_PARALLEL_PROCESSES: ${{ vars.E2E_TEST_PARALLEL_PROCESSES || 2 }}
       run: |
         make test-e2e \
           IMAGE_OPERATOR=redkey-operator:${{ env.OPERATOR_VERSION }} \
