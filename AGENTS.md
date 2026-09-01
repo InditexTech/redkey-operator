@@ -28,7 +28,7 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 | Language | Go 1.26.5 |
 | Framework | [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) + [operator-sdk](https://github.com/operator-framework/operator-sdk) |
 | Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21.0 |
-| Target platform | Kubernetes v1.33 (also OpenShift v4.11+) |
+| Target platform | Kubernetes v1.33 (also OpenShift v4.12+) |
 | Packaging | Helm charts (`charts/redkey-operator`, `charts/redkey`) + OLM bundle |
 | Testing | Go `testing`, [Ginkgo v2](https://github.com/onsi/ginkgo) + [Gomega](https://github.com/onsi/gomega), [envtest](https://sigs.k8s.io/controller-runtime/tools/setup-envtest) |
 | Linting | [golangci-lint](https://github.com/golangci/golangci-lint) v2.1.0 |
