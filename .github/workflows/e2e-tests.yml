@@ -16,10 +16,6 @@ on:
         description: Number of parallel processes for the E2E test suite
         default: '2'
         required: false
-      robin_ref:
-        description: Branch, tag or SHA to checkout from the Robin repository
-        default: main
-        required: false
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.sha }}
@@ -47,13 +43,12 @@ jobs:
     - name: Resolve Robin ref
       id: robin-ref
       env:
-        INPUT_ROBIN_REF: ${{ github.event.inputs.robin_ref || '' }}
         PR_HEAD_REF: ${{ github.head_ref || '' }}
         PR_BODY: ${{ github.event.pull_request.body || '' }}
       run: |
-        robin_ref="${INPUT_ROBIN_REF}"
+        robin_ref=""
 
-        if [[ -z "${robin_ref}" && -n "${PR_BODY}" ]]; then
+        if [[ -n "${PR_BODY}" ]]; then
           robin_ref="$(printf '%s\n' "${PR_BODY}" | sed -nE 's/^robin-ref:[[:space:]]*(.+)$/\1/p' | head -n1)"
         fi
 
@@ -77,7 +72,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: redkey-operator/go.mod
-        cache: true
+        cache: ${{ github.event_name == 'pull_request' }}
 
     - name: Install kubectl
       uses: azure/setup-kubectl@v3
