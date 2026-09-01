@@ -1,0 +1,14 @@
+.github/workflows/e2e-tests.yml
+  h_daebd220e3f9d7 49,51,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "91b66dfb4fcc00422e00eda120939aaa71ee6cfd",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
