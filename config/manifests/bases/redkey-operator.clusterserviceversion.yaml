@@ -27,26 +27,18 @@ metadata:
       ]
     capabilities: Auto Pilot
     categories: Database
-    containerImage: redkey-operator:0.1.0
+    containerImage: ghcr.io/inditextech/redkey-operator:latest
     description: Redkey Cluster Operator for Kubernetes. Manage your Redis/Valkey
       clusters seamlessly.
+    operators.operatorframework.io/internal-objects: '["redkeyconfigs.redkey.inditex.dev"]'
     repository: https://github.com/InditexTech/redkey-operator
+    support: Inditex PaaS Team
   name: redkey-operator.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: Redkey is the Schema for the redkeys API
-      displayName: Redkey
-      kind: Redkey
-      name: redkeys.redkey.inditex.dev
-      specDescriptors:
-      - description: ReplicasPerPrimary specifies how many replicas should be attached
-          to each Redis Primary node
-        displayName: Number of replicas per Primary Node
-        path: replicasPerPrimary
-      version: ""
     - description: |-
         RedkeyConfig is the Schema for the redkeyconfigs API.
         It represents a sequenced desired-state snapshot created by the Operator and consumed by Robin.
@@ -58,6 +50,11 @@ spec:
       displayName: Redkey
       kind: Redkey
       name: redkeys.redkey.inditex.dev
+      specDescriptors:
+      - description: ReplicasPerPrimary specifies how many replicas should be attached
+          to each Redis Primary node.
+        displayName: Number of replicas per Primary Node
+        path: replicasPerPrimary
       version: v1beta1
   description: |
     Seamless Redkey Cluster Management on Kubernetes.
@@ -117,7 +114,7 @@ spec:
   - email: lddpaas@inditex.com
     name: Inditex PaaS Team
   maturity: alpha
-  minKubeVersion: 1.24.0
+  minKubeVersion: 1.25.0
   provider:
     name: InditexTech
     url: https://github.com/InditexTech

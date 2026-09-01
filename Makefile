@@ -42,7 +42,7 @@ KIND_VERSION ?= v0.22.0
 # Required to publish the operator in the Red Hat Marketplace.
 # This value is used to set the com.redhat.openshift.versions label in the bundle and catalog images,
 # which indicates the OpenShift versions that are supported by the operator.
-OPENSHIFT_VERSION="v4.11"
+OPENSHIFT_VERSION="v4.12"
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
