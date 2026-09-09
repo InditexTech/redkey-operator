@@ -31,9 +31,9 @@ jobs:
       - name: Load Operator version
         id: version
         run: |
-          echo "version=$(make version)" >> $GITHUB_OUTPUT
-          echo "user_agent_version=$(cat cmd/main.go | grep 'USER_AGENT_VERSION =' | cut -d'=' -f2 | cut -d'"' -f2)" >> $GITHUB_OUTPUT
-          echo $GITHUB_OUTPUT
+          echo "version=$(make version)" >> "$GITHUB_OUTPUT"
+          echo "user_agent_version=$(cat cmd/main.go | grep 'USER_AGENT_VERSION =' | cut -d'=' -f2 | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_OUTPUT"
 
   check:
     name: Check versions
