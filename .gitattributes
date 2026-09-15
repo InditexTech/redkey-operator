@@ -4,3 +4,6 @@
 
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# k6 load-test scripts are test fixtures, not a JavaScript package.
+test/chaos/k6scripts/*.js linguist-detectable=false

@@ -6,6 +6,9 @@ SPDX-PackageDownloadLocation = "https://github.com/InditexTech/redkey-operator"
 [[annotations]]
 path = [
     ".github/CODEOWNERS",
+    ".github/inditextech-ci-go.json",
+    ".github/inditextech-ci-sync-manifest.json",
+    ".sync-exclude",
     ".go-version",
     "repolinter.json",
     ".vscode/launch.json",
