@@ -65,6 +65,15 @@ jobs:
 
   conventional-commits:
     name: Conventional Commits
+    if: >-
+      !(
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.user.login == 'inditextechbot[bot]' &&
+        (
+          github.head_ref == 'automated/sync-from-main-to-develop' ||
+          startsWith(github.head_ref, 'automated/sync-release-')
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
