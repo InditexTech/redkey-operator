@@ -137,7 +137,7 @@ If you are a developer, you'll find interesting information in the [developer gu
 
 Learn about [Redkey Cluster Status and Substatus](./docs/redkey-cluster-status.md).
 
-Discover [Redkey Robin](./docs/redkey-robin.md).
+Discover [Redkey Robin](./docs/operator-guide/robin.md).
 
 The importance of the [purgeKeysOnRebalance](./docs/purge-keys-on-rebalance.md) parameter.
 
@@ -151,12 +151,12 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 
 The source of truth for the development toolchain lives in `go.mod`, `Makefile`, and `Dockerfile`.
 
-- [Go](https://github.com/golang/go): 4
+- [Go](https://github.com/golang/go): 1.26.8
 - [Operator SDK](https://github.com/operator-framework/operator-sdk): v1.42.2
 - [Kubernetes Controller Tools](https://github.com/kubernetes-sigs/controller-tools): v0.18.0
 - [Kustomize](https://github.com/kubernetes-sigs/kustomize): v5.6.0
 - [Kind](https://github.com/kubernetes-sigs/kind): v0.22.0
-- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.33.0 / v1.33
+- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.36.3 / v1.36
 
 ## License
 
