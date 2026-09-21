@@ -1,0 +1,14 @@
+README.md
+  h_daebd220e3f9d7 140,154,159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8561e608416b134fae3d082b11b0d3091c2a5acb",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}

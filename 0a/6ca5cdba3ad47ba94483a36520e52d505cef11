@@ -1,0 +1,19 @@
+REUSE.toml
+  s_b448ddc8e6f321::t_3de1f91787b5b2 35,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a6ca5cdba3ad47ba94483a36520e52d505cef11",
+  "prompts": {},
+  "sessions": {
+    "s_b448ddc8e6f321": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "05ca7ea8-ac74-4f9f-98ee-7b2192933471",
+        "model": "copilot/claude-opus-4.8"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
