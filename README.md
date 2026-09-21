@@ -13,7 +13,6 @@ Seamless Redkey management on Kubernetes — in cluster or standalone mode
 [![GitHub License](https://img.shields.io/github/license/InditexTech/redkey-operator)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkey-operator)](https://github.com/InditexTech/redkey-operator/releases)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/InditexTech/redkey-operator)](go.mod)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/InditexTech/redkey-operator/ci.yml?branch=main)](https://github.com/InditexTech/redkey-operator/actions)
 
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Operator SDK](https://img.shields.io/badge/Operator%20SDK-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://sdk.operatorframework.io/)
