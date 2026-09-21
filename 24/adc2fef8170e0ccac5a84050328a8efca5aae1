@@ -1,0 +1,19 @@
+go.sum
+  s_f879ceea3038d0::t_68be3feaff10df 62-63,191-192,207-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24adc2fef8170e0ccac5a84050328a8efca5aae1",
+  "prompts": {},
+  "sessions": {
+    "s_f879ceea3038d0": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "9363b475-31e3-4d4f-82cd-af86547e5c3a",
+        "model": "copilot/claude-opus-4.8"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
