@@ -13,7 +13,6 @@ Seamless Redkey management on Kubernetes — in cluster or standalone mode
 [![GitHub License](https://img.shields.io/github/license/InditexTech/redkey-operator)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/InditexTech/redkey-operator)](https://github.com/InditexTech/redkey-operator/releases)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/InditexTech/redkey-operator)](go.mod)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/InditexTech/redkey-operator/ci.yml?branch=main)](https://github.com/InditexTech/redkey-operator/actions)
 
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Operator SDK](https://img.shields.io/badge/Operator%20SDK-326CE5?style=flat&logo=kubernetes&logoColor=white)](https://sdk.operatorframework.io/)
@@ -87,7 +86,7 @@ Prerequisites:
 - A running Kubernetes cluster (Kubernetes v1.33+ recommended)
 - `kubectl` matching the cluster version
 - Make
-- Go 1.26.5 (project configured to install easily using asdf or mise)
+- Go 1.26.8 (project configured to install easily using asdf or mise)
 
 The operator can be installed using the provided Makefile. The following steps will guide you through the installation and deployment of a sample Redkey Cluster. Redkey Operator can be installed in any namespace, but for this quick start we will use the `redkey-operator` namespace.
 
@@ -138,7 +137,7 @@ If you are a developer, you'll find interesting information in the [developer gu
 
 Learn about [Redkey Cluster Status and Substatus](./docs/redkey-cluster-status.md).
 
-Discover [Redkey Robin](./docs/redkey-robin.md).
+Discover [Redkey Robin](./docs/operator-guide/robin.md).
 
 The importance of the [purgeKeysOnRebalance](./docs/purge-keys-on-rebalance.md) parameter.
 
@@ -152,12 +151,12 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 
 The source of truth for the development toolchain lives in `go.mod`, `Makefile`, and `Dockerfile`.
 
-- [Go](https://github.com/golang/go): 4
+- [Go](https://github.com/golang/go): 1.26.8
 - [Operator SDK](https://github.com/operator-framework/operator-sdk): v1.42.2
 - [Kubernetes Controller Tools](https://github.com/kubernetes-sigs/controller-tools): v0.18.0
 - [Kustomize](https://github.com/kubernetes-sigs/kustomize): v5.6.0
 - [Kind](https://github.com/kubernetes-sigs/kind): v0.22.0
-- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.33.0 / v1.33
+- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.36.3 / v1.36
 
 ## License
 
