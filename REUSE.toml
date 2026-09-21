@@ -32,7 +32,7 @@ path = [
     "config/manifests/bases/redkey-operator.clusterserviceversion.yaml",
     "config/rbac/role.yaml",
 ]
-SPDX-FileCopyrightText = "2025 Industria Textil de Diseño, S.A."
+SPDX-FileCopyrightText = "2025 Industria de Diseño Textil S.A."
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
@@ -41,5 +41,5 @@ path = [
     "docs/images/redkey-icon-*.png",
     "docs/images/redkey-horizontal-*.png",
 ]
-SPDX-FileCopyrightText = "2025 Industria Textil de Diseño, S.A."
+SPDX-FileCopyrightText = "2025 Industria de Diseño Textil S.A."
 SPDX-License-Identifier = "Apache-2.0"
