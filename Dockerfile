@@ -8,7 +8,7 @@
 ARG GOLANG_VERSION=1.26.8
 
 # Use an official Golang image with a specific version based on Debian
-FROM golang:${GOLANG_VERSION}-trixie AS builder
+FROM golang:${GOLANG_VERSION}-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -35,7 +35,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ma
 ### Final stage
 
 # Use a smaller base image for the final stage
-FROM debian:trixie-slim AS final
+FROM debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a AS final
 
 # Install some useful tools
 RUN apt update && apt upgrade -y && apt install -y curl procps
