@@ -1,0 +1,27 @@
+.github/workflows/e2e-tests.yml
+  s_21cd509aaeb1c5::t_1d37164040a29e 32,58,65,71,76
+.github/workflows/release.yml
+  s_21cd509aaeb1c5::t_935ad1d4af03ca 64
+.github/workflows/stale.yml
+  s_21cd509aaeb1c5::t_744b881bc919bf 18
+Dockerfile
+  s_21cd509aaeb1c5::t_e9a564636ac7f4 7,34
+test/chaos/k6.Dockerfile
+  s_21cd509aaeb1c5::t_437572a140195a 6,11,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6774e6f64819bc4baef6b7b8cc9498514db83d3",
+  "prompts": {},
+  "sessions": {
+    "s_21cd509aaeb1c5": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "s_21cd509aaeb1c5",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Alvarez Sabin <ivanasabi@ext.inditex.com>"
+    }
+  }
+}
