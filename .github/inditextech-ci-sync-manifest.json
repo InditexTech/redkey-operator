@@ -12,7 +12,7 @@
   "creation_year": 2026,
   "integrity": {
     "algorithm": "hmac-sha256",
-    "signature": "82147dad9b47e9780ab718e80a8bb692f4b1221d24499b3c4392f3dfdbedee4d"
+    "signature": "d4d3002ceafaaf54593435bf6ceff8fe90ae40c69affc0ab994497022c54d9da"
   },
   "managed_by": "InditexTech CI governance",
   "managed_paths": {
@@ -21,9 +21,9 @@
     ".github/ISSUE_TEMPLATE/config.yml": "10e5dee4d49aa9e7792ceb4c986160c61f95da1ba00a64bf06e5f1f636cd17ec",
     ".github/PULL_REQUEST_TEMPLATE.md": "23a0b0ac79a9020ccac9c013582a01f86e2df2ae7f914673583b9a3368313041",
     ".github/inditextech-ci-go.json": "b0e32b653ec535b83e803ec54b688df558593b2ad234cb3cfaf9b42f209a7933",
-    ".github/workflows/code-gomod_go-PR_verify.yml": "76aefd67d70c17d44252cb2854191c6530cfc176f49d3a481a65eac2f4989fb9",
+    ".github/workflows/code-gomod_go-PR_verify.yml": "d148e5af0bc577e6deff1c6c57916de83af3e553fbe197d057ac2e7c6d7e22cb",
     ".github/workflows/code-gomod_go-sonarcloud-analysis.yml": "fcb5c72a4ae59a3b429420b1e15eda5c4c0cb4a0aa89c3f4f99eb2e3198dcaca",
-    ".github/workflows/codeql.yml": "cdd995b56f89f38fbe2cdfd2701e8e6b1d632710da4d9768e8afdf1225a9454b",
+    ".github/workflows/codeql.yml": "c939b9dea312d987ecc8df2b32c257fb7512b5ca5576c9a73dd0b21fcc770b33",
     ".github/workflows/pr-verify.yml": "5628d1d93c09cb761602fcfc3857c325e2dc542cadc159a1edad58d1818d0de0",
     ".github/workflows/push-verify.yml": "643f6905fa30284af4a2eabac752293b2e785a5e82449bb6d97950624386829c",
     ".github/workflows/scorecard-analysis.yml": "b45c2a0f87801796cefb4363d9f1414891b0734bc07de3f50d4a880e22faea10",
@@ -44,6 +44,6 @@
   "schema_version": 2,
   "source_digests": {
     "base": "944d4d8a1695ce62a674e1d89ca426d3e0199e3ccba9c23c13eb9abf811f91a1",
-    "go": "700144973bce098b78a4ada8ca24d0ee73c88563d1cee10870253598cccef523"
+    "go": "553836e941384482b416db2684c551a70a9f285f3734c010cfcd133cba266b39"
   }
 }
