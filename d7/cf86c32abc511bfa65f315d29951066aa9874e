@@ -1,0 +1,16 @@
+.github/workflows/e2e-tests.yml
+  h_8fe143308bc629 32,58,65,71,76
+.github/workflows/stale.yml
+  h_8fe143308bc629 10-12,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7cf86c32abc511bfa65f315d29951066aa9874e",
+  "prompts": {},
+  "humans": {
+    "h_8fe143308bc629": {
+      "author": "Mariano Alonso Ortiz <marianoao@inditex.com>"
+    }
+  }
+}
