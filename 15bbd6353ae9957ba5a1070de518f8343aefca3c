@@ -1,0 +1,165 @@
+AGENTS.md
+  s_fc20b899e481bc::t_d531dbee206881 19-20,32,54,221,236-238,247,259,269
+Makefile
+  s_fc20b899e481bc::t_0c98b77a231c1f 531,537,546,549,559,568,571,581,592,595,607,618,621,633,644,647,659,668,671,681,690,693
+README.md
+  s_fc20b899e481bc::t_fdb09c5af790f4 38,44,77,80
+api/v1beta1/redkey_types.go
+  s_fc20b899e481bc::t_215d1a2fbe438f 15,22,56,60,64,82,86-87,95-96,104,108,135-136,149,153,160-162,170,173-174,176,192,206-207,211-212,215-216,224,233-234,237,240,305,312-313,315,319,436
+api/v1beta1/redkey_types_test.go
+  s_fc20b899e481bc::t_e5fd95fccc3f5d 15,31,40-41,53-55,65,67-68,78-79,82,100-101
+api/v1beta1/redkeyconfig_types.go
+  s_fc20b899e481bc::t_385999046a6a7e 12,20,76-77,91,93,175,187,191,193,201,216-217,231-232,239,241,245-246,251-252,255,259
+charts/README.md
+  s_fc20b899e481bc::t_a9605e7dcd4617 21,37,44,47,53,56
+charts/redkey-operator/crds/redkeyconfigs-crd.yaml
+  s_fc20b899e481bc::t_a012e1f84dd87a 9,13-15,17-18,22,50,72,125,228,8770
+charts/redkey-operator/crds/redkeys-crd.yaml
+  s_fc20b899e481bc::t_918d16e635fe6d 1-2,9,13-15,17-18,74,94,114-115,128,136,152-153,170-171,174,277,8643,8677,8737,16504-16505,16581,16599,16603
+charts/redkey-operator/templates/rbac.yaml
+  s_fc20b899e481bc::t_be4be2a54c6137 133,145,151,159,167,177,234,246,252,260,275,283,289,297
+charts/redkey/Chart.yaml
+  s_fc20b899e481bc::t_333cf7227ca52b 5-6
+charts/redkey/templates/_helpers.tpl
+  s_fc20b899e481bc::t_fdf2f1e33c3ef1 4,8-9
+charts/redkey/templates/redkey.yaml
+  s_fc20b899e481bc::t_69e630492f245c 5,7,9
+charts/redkey/templates/wait-ready-hook.yaml
+  s_fc20b899e481bc::t_bf9860e93493f0 8,10,19,21,28,34,36,44,47,53,55,64,67,75
+charts/redkey/values.yaml
+  s_fc20b899e481bc::t_4e8feda9824b5b 4,108
+config/default/kustomization.yaml
+  s_fc20b899e481bc::t_1942e0171c5907 23
+config/manifests/bases/redkey-operator.clusterserviceversion.yaml
+  s_fc20b899e481bc::t_c889eba273b73e 12,43-46,54,56-58,61,63-65,67-70
+config/rbac/kustomization.yaml
+  s_fc20b899e481bc::t_a46c1f36a1c650 28-33
+config/rbac/redkey_admin_role.yaml
+  s_fc20b899e481bc::t_5b55e8033a7c67 17,22,28
+config/rbac/redkey_editor_role.yaml
+  s_fc20b899e481bc::t_5b59fdefe9c5ca 17,22,34
+config/rbac/redkey_viewer_role.yaml
+  s_fc20b899e481bc::t_6213f5729b90ca 17,22,30
+config/rbac/redkeyconfig_admin_role.yaml
+  s_fc20b899e481bc::t_685466f8fc7173 17,22,28
+config/rbac/redkeyconfig_editor_role.yaml
+  s_fc20b899e481bc::t_50ec84a07d0fb3 17,22,34
+config/rbac/redkeyconfig_viewer_role.yaml
+  s_fc20b899e481bc::t_f4fcfd6b7a0aa8 17,22,30
+config/samples/auth/kustomization.yaml
+  s_fc20b899e481bc::t_c983552ed8b4a3 6
+config/samples/auth/redkey_cluster.yaml
+  s_fc20b899e481bc::t_29978d9c5f4b92 5
+config/samples/ephemeral/kustomization.yaml
+  s_fc20b899e481bc::t_095998feb279f3 5
+config/samples/ephemeral/redkey_cluster.yaml
+  s_fc20b899e481bc::t_0e7c8df6106c3c 5
+config/samples/replicas/kustomization.yaml
+  s_fc20b899e481bc::t_224a89c64dac79 5
+config/samples/replicas/redkey_cluster.yaml
+  s_fc20b899e481bc::t_63c3f24b1ed38c 5
+config/samples/standalone/kustomization.yaml
+  s_fc20b899e481bc::t_ed2c3cf91b10a5 5
+config/samples/standalone/redkey_standalone.yaml
+  s_fc20b899e481bc::t_551cd7d555eb11 5
+config/samples/storage/kustomization.yaml
+  s_fc20b899e481bc::t_1577fb671af5b4 5
+config/samples/storage/redkey_cluster.yaml
+  s_fc20b899e481bc::t_4016fa6df2cbd7 5
+docs/architecture.md
+  s_fc20b899e481bc::t_deac5e7b2315ba 18-19,26-28,43-44,54,58-62,68,74,76,83,85,91,124,134,136,173,180,184-185,187,193,227,231,235,252,260,295,328,380,382,398,415,423-426,440-441,443,451,459,475,494,510,545,560,563,569,576
+docs/chaos-testing.md
+  s_fc20b899e481bc::t_b8bc54eb72a068 190
+docs/cluster-health-checks.md
+  s_fc20b899e481bc::t_1275c68cf316a6 25,66
+docs/developer-guide/development-guide.md
+  s_fc20b899e481bc::t_640fabaaceb986 105,180,186,188,191
+docs/files/redis-cluster-status-transitions.drawio
+  s_fc20b899e481bc::t_ae8cd371a0f178 33,50,61,76,91,117,128,139,150,164,225,240,254,268,282,297,302,316,331
+docs/metrics.md
+  s_fc20b899e481bc::t_5a26d646e594b4 40,232
+docs/observability.md
+  s_fc20b899e481bc::t_455c07cdd8b506 165,187,241
+docs/olm.md
+  s_fc20b899e481bc::t_ae68aa15bf2e0c 9,148,154,157,303,309,312
+docs/operator-guide/authentication.md
+  s_fc20b899e481bc::t_923a33fb3eb696 13,16-17,24,40,61,63,69,81,114,130-131
+docs/operator-guide/cluster-configuration.md
+  s_fc20b899e481bc::t_d93a1769ea774b 56,60,77
+docs/operator-guide/cluster-metrics.md
+  s_fc20b899e481bc::t_68256caee7d9f9 70,74,173,294,341-342,541,552,575
+docs/operator-guide/delete-pvc.md
+  s_fc20b899e481bc::t_9fd5b3d1da48c1 15,25
+docs/operator-guide/dynamic-configuration.md
+  s_fc20b899e481bc::t_566ac73753e839 43,47-48,70,72,74,86,92,107,152-153,160,162
+docs/operator-guide/ephemeral-cluster.md
+  s_fc20b899e481bc::t_0c1b8b3a31b3ed 17
+docs/operator-guide/object-overrides.md
+  s_fc20b899e481bc::t_2dd5a7b3f654ba 31,34,42,77-78,82
+docs/operator-guide/primary-replica-cluster.md
+  s_fc20b899e481bc::t_4c33b73a7bbc6f 17,31,52,65,77,89
+docs/operator-guide/profiling.md
+  s_fc20b899e481bc::t_c00079e7f12759 195,199,203,213
+docs/operator-guide/redkey-deployment.md
+  s_fc20b899e481bc::t_83b389d9acfc9b 11,17,74
+docs/operator-guide/robin.md
+  s_fc20b899e481bc::t_f766183fc5e130 15,83,112,163,169
+docs/operator-guide/scaling.md
+  s_fc20b899e481bc::t_fc7159b6c5b1bb 12,14,23,32,37,40,203,212,218-219,233,236
+docs/operator-guide/standalone-cluster.md
+  s_fc20b899e481bc::t_5a4ce4264dc2f1 17,61,64,78,81
+docs/operator-guide/troubleshooting.md
+  s_fc20b899e481bc::t_6ed1f31e81199c 179-180,245
+docs/operator-guide/upgrade.md
+  s_fc20b899e481bc::t_b6e759e9aeab06 15,149,182,191
+docs/proposals/e2e-chaos-test-design.md
+  s_fc20b899e481bc::t_269718da0ff75b 237,249,345,376,395
+docs/proposals/redkey-architecture-refactoring.md
+  s_fc20b899e481bc::t_02a35a47ac3154 19,44,46,69-71,81,97,101,132,134,145,180,213-214,220,224,228,244,253,259,292,310,318,329,331-332,334-335,337,339,342,344-345,351,353,359,383,385,391,402,426,430-431,433,439,484-485,491,493-496,502-504,523,532,538,541,543,569-570,576,578,584,592-597
+docs/redkey-cluster-status.md
+  s_fc20b899e481bc::t_e601685ae1bcaa 9,41,51-52,71-72,84-91,104,110,127,135,146,152,190,363
+hack/observability/dashboards/redkey-instance.json
+  s_fc20b899e481bc::t_5a4d3fcd9b5cff 3385,3399-3400
+hack/observability/servicemonitors.yaml
+  s_fc20b899e481bc::t_2c15ddc9bab0a2 33
+internal/controller/redkey_config.go
+  s_fc20b899e481bc::t_1f7042ad82f27e 25-27,42-43,58-59,66-67,78,119,125,129,132,153,180,188,200,225,240,290,294,300,323
+internal/controller/redkey_config_test.go
+  s_fc20b899e481bc::t_2ebddbd2be80fb 28,31,36,45,48,64-65,71,79-80,88,99,105,131,133-134,138,155,161,166,176,181,191-192,195,208,214,224,229,241-242,247,259,262,268,274,282,285,297,313-314,321,336,339,345,351,359-360,365,373-374,379,390-391,396,407-408,419,435,443,446,452,458,469-470,473,493,508-509,527,530,536,542,550,560,575-576,593,595,599,606,608,620,624,632-633,644,650,655,661,668,670,676,678-680,686,718-719,744-745,779-780,854-855,877-878,883,885,892,894,896,907,909,911,922,924,926,937,939,941,952,954,956,965,967,969,995,1008,1014,1018,1030,1035,1041-1042,1052-1053,1071,1077,1089,1095,1101-1102,1126,1132,1136,1148,1154,1160-1161,1171-1172,1189,1195,1199,1211,1217,1223-1224,1234-1235,1245-1246
+internal/controller/redkey_controller.go
+  s_fc20b899e481bc::t_e64a25a151ccc9 25,27,31-32,35,44-49,60-61,64,66-67,70-71,79,96,102,110,113,129,136,144,146-147,152,158,161
+internal/controller/redkey_controller_test.go
+  s_fc20b899e481bc::t_1660a761366dd1 65,96,100,117,121,139,141,146,153,171,173,178,184,202,206,211,214-215,219-220,229,231,236,243,261,263,268,275,293,295,301,306,317-318,324,346,348,353,359
+internal/controller/redkey_robin.go
+  s_fc20b899e481bc::t_4cdafb92aa2e13 38,97,102,107,117,257,292-293,474,508,541
+internal/controller/redkey_robin_test.go
+  s_fc20b899e481bc::t_b4a32dc0d02b9f 35,39,44,69,72,76,84,90,119,123,128,140,145,150,163,166,176,180,189,194,215,246,264,269,314,332,341,346,421-422,431,436,442,457,459,464,507,515,520,549,554,559,594,596,601,615,617,622,648,650,655,691,693,698,730,732,737,772,774,779,816,822,827,861,863,868,926,928,933,966,1205,1211,1271,1286,1290,1332,1350,1354,1392,1407,1411,1449,1466,1472,1498,1518
+internal/controller/redkey_scale_zero.go
+  s_fc20b899e481bc::t_ad61895edab92e 28,31-32,107,128,151-152,155,170,175-176,182
+internal/controller/redkey_scale_zero_test.go
+  s_fc20b899e481bc::t_26130cd80357c1 26-27,30,36,48,60,76,85,88,94,101,110,115,126,138,144,169,175,182,191,196,207,224,233,239,246,255,260,298,328,334,345,351,356,367,384,393,398,407
+test/chaos/framework/env.go
+  s_fc20b899e481bc::t_cc9f915ebf39e5 17,77,80
+test/chaos/framework/operator_setup.go
+  s_fc20b899e481bc::t_b1c3a53e65f545 252,257,262,267
+test/config/kind-config.yaml
+  s_fc20b899e481bc::t_f24686c22eed11 13
+test/e2e/helm_deploy_test.go
+  s_fc20b899e481bc::t_ef36fe3c1e5482 63,67,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "15bbd6353ae9957ba5a1070de518f8343aefca3c",
+  "prompts": {},
+  "sessions": {
+    "s_fc20b899e481bc": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "d61cee9d-3bac-4746-9352-5d89569a79ad",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
