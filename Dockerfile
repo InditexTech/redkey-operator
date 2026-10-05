@@ -4,11 +4,10 @@
 
 ### Build stage
 
-# Define the desired Golang version
-ARG GOLANG_VERSION=1.26.8
-
-# Use an official Golang image with a specific version based on Debian
-FROM golang:${GOLANG_VERSION}-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS builder
+# Use an official Golang image with a specific version based on Debian.
+# Tag and digest must be updated together: the digest hard-pins the image
+# (Scorecard Pinned-Dependencies) and corresponds to the tag shown here.
+FROM golang:1.26.8-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

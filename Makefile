@@ -22,9 +22,6 @@ ROBIN_VERSION ?= 0.2.0
 
 ## Tool Versions and Configuration
 
-# GOLANG_VERSION defines the Go version used in the Dockerfile for building the manager image.
-GOLANG_VERSION := 1.26.8
-
 # KUSTOMIZE_VERSION defines the version of kustomize to use for generating the install manifests and bundle manifests.
 KUSTOMIZE_VERSION ?= v5.6.0
 
@@ -392,7 +389,7 @@ CHAOS_ENV += $(if $(CHAOS_DISRUPTION_REBALANCE_INTERVAL),CHAOS_DISRUPTION_REBALA
 
 .PHONY: k6-build
 k6-build: ## Build the k6 load-generator image used by chaos tests.
-	$(CONTAINER_TOOL) build -f test/chaos/k6.Dockerfile -t $(K6_IMG) --build-arg GOLANG_VERSION=$(GOLANG_VERSION) test/chaos
+	$(CONTAINER_TOOL) build -f test/chaos/k6.Dockerfile -t $(K6_IMG) test/chaos
 
 .PHONY: setup-test-chaos
 setup-test-chaos: ## Set up the Kind cluster used by chaos tests.
