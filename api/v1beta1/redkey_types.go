@@ -20,15 +20,15 @@ import (
 // +kubebuilder:validation:XValidation:rule="self.mode != 'standalone' || self.primaries <= 1", message="Standalone mode allows at most 1 primary (0 to scale to zero)"
 // +kubebuilder:validation:XValidation:rule="self.mode != 'standalone' || self.replicasPerPrimary == 0", message="Standalone mode does not allow replicas (replicasPerPrimary must be 0)"
 type RedkeySpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	// RedisAuth
 	Auth RedisAuth `json:"auth,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Redis version
 	Version string `json:"version,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=cluster
 	// +kubebuilder:validation:Enum=cluster;standalone
 	// Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
@@ -38,52 +38,52 @@ type RedkeySpec struct {
 
 	// Primaries specifies the number of Redis primary nodes in the cluster.
 	// A value of 0 means the cluster is scaled to zero — no Kubernetes objects will be created.
-	// +kubebuilder:validation:Required
+	// +required
 	// +kubebuilder:validation:Minimum=0
 	Primaries int32 `json:"primaries"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=0
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of replicas per Primary Node"
 	// ReplicasPerPrimary specifies how many replicas should be attached to each Redis Primary node.
 	ReplicasPerPrimary int32 `json:"replicasPerPrimary"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Image is the Redis image to use.
 	Image string `json:"image,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=false
 	// DeletePVC specifies if the PVC should be deleted when the Redkey is deleted.
 	DeletePVC *bool `json:"deletePVC"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Backup specifies if the Redkey should be backed up.
 	Backup bool `json:"backup,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +required
 	// Robin specifies the Robin sidecar configuration for the Redkey.
 	Robin RobinSpec `json:"robin"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=true
 	// SkipIfSuperseded indicates whether Robin may skip intermediate configs if a newer one is pending.
 	SkipIfSuperseded bool `json:"skipIfSuperseded"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=true
 	// PurgeKeysOnRebalance specifies if keys should be purged on rebalance.
 	PurgeKeysOnRebalance *bool `json:"purgeKeysOnRebalance"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Config is the Redis configuration to use.
 	Config string `json:"config,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Resources is the resource requirements for the Redkey.
 	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Labels are applied to all Kubernetes objects managed for this Redkey
 	// (the RedkeyConfig, the Robin Deployment and its RBAC, and the Redis
 	// StatefulSet, Service, ConfigMap and PodDisruptionBudget — including the pods).
@@ -92,7 +92,7 @@ type RedkeySpec struct {
 	// replaces these labels for that object.
 	Labels *map[string]string `json:"labels,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Annotations are applied to all Kubernetes objects managed for this Redkey
 	// (the RedkeyConfig, the Robin Deployment and its RBAC, and the Redis
 	// StatefulSet, Service, ConfigMap and PodDisruptionBudget — including the pods).
@@ -101,31 +101,31 @@ type RedkeySpec struct {
 	// replaces these annotations for that object.
 	Annotations *map[string]string `json:"annotations,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Pdb is the PodDisruptionBudget configuration for the Redkey.
 	Pdb Pdb `json:"pdb,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	Override *RedkeyOverrideSpec `json:"override,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Changing the ephemeral field is not allowed"
 	// Ephemeral storage is not persisted across pod restarts.
 	Ephemeral bool `json:"ephemeral"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Changing the storage size is not allowed"
 	// Storage is the amount of persistent storage to request for each Redis node.
 	Storage string `json:"storage,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=""
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Changing the storage class name is not allowed"
 	// StorageClassName is the name of the StorageClass to use for the PVC.
 	StorageClassName string `json:"storageClassName"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default={ReadWriteOnce}
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Changing the storage access modes is not allowed"
 	// +kubebuilder:validation:items:Enum={ReadWriteOnce,ReadOnlyMany,ReadWriteMany}
@@ -284,15 +284,15 @@ type RedkeyList struct {
 
 // RobinSpec defines the desired state of Robin configuration for Redkey.
 type RobinSpec struct {
-	// +kubebuilder:validation:Required
+	// +required
 	// Image is the Robin container image to deploy for this cluster.
 	Image string `json:"image"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Resources defines the resource requirements for the Robin container.
 	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Template allows advanced overrides of the Robin Deployment's PodTemplateSpec.
 	// Fields set here take precedence over first-level fields like Resources.
 	Template *PartialPodTemplateSpec `json:"template,omitempty"`
@@ -356,11 +356,11 @@ type Pdb struct {
 
 // RedkeyOverrideSpec provides the ability to override the generated manifest of several child resources.
 type RedkeyOverrideSpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Override configuration for the Redkey StatefulSet.
 	StatefulSet *PartialStatefulSet `json:"statefulSet,omitempty"`
 
-	// +kubebuilder:validation:Optional
+	// +optional
 	// Override configuration for the Redkey Service.
 	Service *PartialService `json:"service,omitempty"`
 }
@@ -379,28 +379,28 @@ type PartialStatefulSet struct {
 // PartialStatefulSetSpec is a partial representation of StatefulSetSpec.
 // +kubebuilder:pruning:PreserveUnknownFields
 type PartialStatefulSetSpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	MinReadySeconds *int32 `json:"minReadySeconds,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	ServiceName string `json:"serviceName,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Template *PartialPodTemplateSpec `json:"template,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	UpdateStrategy *appsv1.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	PodManagementPolicy string `json:"podManagementPolicy,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	VolumeClaimTemplates []v1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Ordinals *appsv1.StatefulSetOrdinals `json:"ordinals,omitempty"`
 }
@@ -408,10 +408,10 @@ type PartialStatefulSetSpec struct {
 // PartialPodTemplateSpec is a partial representation of PodTemplateSpec.
 // +kubebuilder:pruning:PreserveUnknownFields
 type PartialPodTemplateSpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Metadata metav1.ObjectMeta `json:"metadata,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Spec PartialPodSpec `json:"spec,omitempty"`
 }
@@ -419,35 +419,35 @@ type PartialPodTemplateSpec struct {
 // PartialPodSpec is a partial representation of PodSpec where containers are optional.
 // +kubebuilder:pruning:PreserveUnknownFields
 type PartialPodSpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	EphemeralContainers []v1.EphemeralContainer `json:"ephemeralContainers,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	RestartPolicy v1.RestartPolicy `json:"restartPolicy,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 }
 
@@ -465,15 +465,15 @@ type PartialService struct {
 // PartialServiceSpec is a partial representation of ServiceSpec.
 // +kubebuilder:pruning:PreserveUnknownFields
 type PartialServiceSpec struct {
-	// +kubebuilder:validation:Optional
+	// +optional
 	Ports []v1.ServicePort `json:"ports,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Selector map[string]string `json:"selector,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	ClusterIP string `json:"clusterIP,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	Type v1.ServiceType `json:"type,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +optional
 	PublishNotReadyAddresses bool `json:"publishNotReadyAddresses,omitempty"`
 }
 

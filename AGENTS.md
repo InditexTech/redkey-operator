@@ -25,13 +25,13 @@ The operator reconciles the declared state, manages the lifecycle of Kubernetes 
 
 | Layer | Technology |
 | ----- | ---------- |
-| Language | Go 1.26.8 |
+| Language | Go 1.27.2 |
 | Framework | [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) + [operator-sdk](https://github.com/operator-framework/operator-sdk) |
-| Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.21.0 |
+| Kubernetes client | [controller-runtime](https://sigs.k8s.io/controller-runtime) v0.25.2 |
 | Target platform | Kubernetes v1.33 (also OpenShift v4.12+) |
 | Packaging | Helm charts (`charts/redkey-operator`, `charts/redkey`) + OLM bundle |
 | Testing | Go `testing`, [Ginkgo v2](https://github.com/onsi/ginkgo) + [Gomega](https://github.com/onsi/gomega), [envtest](https://sigs.k8s.io/controller-runtime/tools/setup-envtest) |
-| Linting | [golangci-lint](https://github.com/golangci/golangci-lint) v2.1.0 |
+| Linting | [golangci-lint](https://github.com/golangci/golangci-lint) v2.14.0 |
 
 ---
 
@@ -78,7 +78,7 @@ This repository does not use Maven. There is no `pom.xml` or `mvnw` in Redkey Op
 
 ### Prerequisites (installed manually)
 
-- Go 1.26+
+- Go 1.27+
 - Make
 - Docker or Podman
 - `kubectl`

@@ -15,11 +15,12 @@ import (
 
 // HelmInstall runs `helm install` with the given release name, chart path, and values.
 func HelmInstall(releaseName, chartPath, namespace string, values map[string]string) error {
-	args := []string{
+	args := make([]string, 0, 9+2*len(values))
+	args = append(args,
 		"install", releaseName, chartPath,
 		"--namespace", namespace, "--create-namespace",
 		"--wait", "--timeout", "5m",
-	}
+	)
 	for k, v := range values {
 		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))
 	}
@@ -46,7 +47,12 @@ func HelmUninstall(releaseName, namespace string) error {
 
 // HelmUpgrade runs `helm upgrade --install` with the given values.
 func HelmUpgrade(releaseName, chartPath, namespace string, values map[string]string) error {
-	args := []string{"upgrade", "--install", releaseName, chartPath, "--namespace", namespace, "--wait", "--timeout", "5m"}
+	args := make([]string, 0, 9+2*len(values))
+	args = append(args,
+		"upgrade", "--install", releaseName, chartPath,
+		"--namespace", namespace,
+		"--wait", "--timeout", "5m",
+	)
 	for k, v := range values {
 		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))
 	}

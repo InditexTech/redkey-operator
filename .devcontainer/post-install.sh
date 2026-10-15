@@ -4,7 +4,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-KIND_VERSION="v0.22.0"
+KIND_VERSION="v0.33.0"
 KUBECTL_CHANNEL="stable-1.33"
 
 export GOROOT="${GOROOT:-/usr/local/go}"
