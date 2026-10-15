@@ -1,0 +1,19 @@
+go.sum
+  s_197148f80bfa2c::t_4ce0a0ddb8bb6e 32-33,47-80,110-111,132-135,141-148,155-156,158-159,161-162,175-176,202-221,234-235,241-252,255-264,269-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd981aa497d82dbea0281016436c983d914fd693",
+  "prompts": {},
+  "sessions": {
+    "s_197148f80bfa2c": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "9200166d-ce07-4019-bc0a-dcf87e8d413e",
+        "model": "copilot/claude-opus-5.5"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
