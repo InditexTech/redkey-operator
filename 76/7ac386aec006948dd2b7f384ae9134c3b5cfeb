@@ -1,0 +1,21 @@
+go.mod
+  s_4759a00b759e60::t_3684eb05b91667 88,90-93,95
+go.sum
+  s_4759a00b759e60::t_323875265de87c 208-209,212-219,222-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "767ac386aec006948dd2b7f384ae9134c3b5cfeb",
+  "prompts": {},
+  "sessions": {
+    "s_4759a00b759e60": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "defd28a1-a152-453f-b423-e74a3b59bc19",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
