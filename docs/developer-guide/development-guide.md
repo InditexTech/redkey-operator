@@ -275,6 +275,14 @@ You can run Unit and Integration tests together with:
 make test-all
 ```
 
+### Fuzz tests
+
+Go native fuzz targets (`internal/controller/fuzz_test.go`) run their seed corpus as part of `make test`. To fuzz each target with random inputs:
+
+```shell
+make fuzz FUZZTIME=30s
+```
+
 ### End-to-end tests
 
 E2E tests simulate real-world scenarios, testing the Operator's functionality from start to finish, including interactions with the Kubernetes API and the Redkey cluster.
