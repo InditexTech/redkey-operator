@@ -169,6 +169,7 @@ make test-integration                   # envtest coverage for controller behavi
 make verify                             # preferred full local gate
 make setup-test-e2e && make test-e2e    # cluster-level behavior checks when relevant
 make cleanup-test-e2e                   # tear down the isolated e2e cluster afterwards
+make fuzz FUZZTIME=10s                  # optional: run the Go fuzz targets
 ```
 
 ### Unit tests

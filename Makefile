@@ -238,6 +238,13 @@ test-integration: manifests generate fmt vet setup-envtest ## Run integration te
 .PHONY: test-all
 test-all: test test-integration ## Run all tests (unit + integration).
 
+FUZZTIME ?= 30s
+.PHONY: fuzz
+fuzz: ## Run each Go fuzz target for FUZZTIME (e.g. make fuzz FUZZTIME=10s).
+	@for f in FuzzMergeMeta FuzzNeedsNewConfig; do \
+		go test ./internal/controller/ -run='^$$' -fuzz="^$$f$$" -fuzztime=$(FUZZTIME) || exit 1; \
+	done
+
 # CertManager is installed by default; skip with:
 # - CERT_MANAGER_INSTALL_SKIP=true
 KIND_CLUSTER ?= $(NAME)-dev
