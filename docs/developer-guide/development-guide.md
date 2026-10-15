@@ -60,7 +60,7 @@ The tools that will be **downloaded and installed by `make`** in the `bin` direc
 - [`golangci-lint`](https://github.com/golangci/golangci-lint) — Go linter aggregator
 - [`operator-sdk`](https://github.com/operator-framework/operator-sdk) — Operator SDK CLI for OLM bundle management
 
-The project is configured to use [`mise`](https://mise.jdx.dev/) or [`asdf`](https://asdf-vm.com/) for managing Go tool versions. If you have either of these tools installed, it will automatically use the Go version specified in the `.tools-version` file.
+The project is configured to use [`mise`](https://mise.jdx.dev/) or [`asdf`](https://asdf-vm.com/) for managing Go tool versions. If you have either of these tools installed, it will automatically use the Go version specified in the `.tool-versions` file.
 
 ## Devcontainers
 

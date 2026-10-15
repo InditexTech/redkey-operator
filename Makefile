@@ -23,7 +23,7 @@ ROBIN_VERSION ?= 0.2.0
 ## Tool Versions and Configuration
 
 # GOLANG_VERSION defines the Go version used in the Dockerfile for building the manager image.
-GOLANG_VERSION := 1.26.8
+GOLANG_VERSION := 1.27.2
 
 # KUSTOMIZE_VERSION defines the version of kustomize to use for generating the install manifests and bundle manifests.
 KUSTOMIZE_VERSION ?= v5.6.0
@@ -33,10 +33,10 @@ KUSTOMIZE_VERSION ?= v5.6.0
 OPERATOR_SDK_VERSION ?= v1.42.2
 
 # CONTROLLER_TOOLS_VERSION defines the version of controller-gen to use for generating code and manifests.
-CONTROLLER_TOOLS_VERSION ?= v0.18.0
+CONTROLLER_TOOLS_VERSION ?= v0.22.0
 
 # KIND_VERSION defines the version of kind to use for local testing.
-KIND_VERSION ?= v0.22.0
+KIND_VERSION ?= v0.33.0
 
 # Openshift platform supported version.
 # Required to publish the operator in the Red Hat Marketplace.
@@ -740,9 +740,9 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 ## Tool Versions
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
-ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
-GOLANGCI_LINT_VERSION ?= v2.1.0
+#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries; pinned to the production target.
+ENVTEST_K8S_VERSION ?= 1.33
+GOLANGCI_LINT_VERSION ?= v2.14.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.

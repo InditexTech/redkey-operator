@@ -17,7 +17,6 @@ concurrency:
 env:
   OPERATOR_VERSION: test-e2e
   KUBECONFIG: ${{ github.workspace }}/redkey-operator/.kube/config
-  LOCAL_CLUSTER_NAME: test-e2e-cluster
 
 jobs:
   e2e-tests:
@@ -70,12 +69,7 @@ jobs:
     - name: Install kubectl
       uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8 # v3
       with:
-        version: v1.30.0
-
-    - name: Create Kind cluster
-      uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
-      with:
-        cluster_name: ${{ env.LOCAL_CLUSTER_NAME }}
+        version: v1.33.12
 
     - name: Build operator image
       working-directory: redkey-operator
@@ -107,4 +101,5 @@ jobs:
 
     - name: Delete Kind cluster
       if: always()
-      run: kind delete cluster --name ${{ env.LOCAL_CLUSTER_NAME }}
+      working-directory: redkey-operator
+      run: make cleanup-test-e2e

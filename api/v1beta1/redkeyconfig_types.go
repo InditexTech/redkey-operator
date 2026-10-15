@@ -92,94 +92,94 @@ const (
 // This spec is immutable after creation — set by the operator, read-only for Robin.
 type RedkeyConfigSpec struct {
 	// Sequence is a monotonically increasing counter set by the Operator.
-	// +kubebuilder:validation:Required
+	// +required
 	Sequence int `json:"sequence"`
 
 	// SkipIfSuperseded indicates whether Robin may skip this config if a newer one is pending.
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=false
 	SkipIfSuperseded bool `json:"skipIfSuperseded"`
 
 	// Mode selects the deployment topology: "cluster" (Redis Cluster) or "standalone"
 	// (a single, non-clustered Redis instance).
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=cluster
 	// +kubebuilder:validation:Enum=cluster;standalone
 	Mode string `json:"mode,omitempty"`
 
 	// Primaries specifies the number of Redis primary nodes in the cluster.
-	// +kubebuilder:validation:Required
+	// +required
 	Primaries int32 `json:"primaries"`
 
 	// ReplicasPerPrimary specifies how many replicas should be attached to each Redis Primary node.
-	// +kubebuilder:validation:Optional
+	// +optional
 	// +kubebuilder:default=0
 	ReplicasPerPrimary int32 `json:"replicasPerPrimary"`
 
 	// Ephemeral indicates whether storage is not persisted across pod restarts.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Ephemeral bool `json:"ephemeral"`
 
 	// Storage is the amount of persistent storage to request for each Redis node.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Storage string `json:"storage,omitempty"`
 
 	// StorageClassName is the name of the StorageClass to use for the PVC.
-	// +kubebuilder:validation:Optional
+	// +optional
 	StorageClassName string `json:"storageClassName,omitempty"`
 
 	// Image is the Redis image to use.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Image string `json:"image,omitempty"`
 
 	// Version is the Redis version.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Version string `json:"version,omitempty"`
 
 	// RedisConfig is the merged redis.conf content.
-	// +kubebuilder:validation:Optional
+	// +optional
 	RedisConfig string `json:"redisConfig,omitempty"`
 
 	// Resources is the resource requirements for the Redis pods.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Auth references the Secret containing Redis authentication credentials.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Auth RedisAuth `json:"auth,omitempty"`
 
 	// Labels are applied to all Kubernetes objects Robin manages for this config
 	// (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
 	// the pods). Internal labels required for correct operation always win on a key
 	// collision; an object-level override fully replaces these labels for that object.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Labels *map[string]string `json:"labels,omitempty"`
 
 	// Annotations are applied to all Kubernetes objects Robin manages for this config
 	// (the Redis StatefulSet, Service, ConfigMap and PodDisruptionBudget, including
 	// the pods). Internal annotations required for correct operation always win on a
 	// key collision; an object-level override fully replaces these for that object.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Annotations *map[string]string `json:"annotations,omitempty"`
 
 	// DeletePVC specifies if the PVC should be deleted when the cluster is deleted.
-	// +kubebuilder:validation:Optional
+	// +optional
 	DeletePVC *bool `json:"deletePVC,omitempty"`
 
 	// PurgeKeysOnRebalance specifies if keys should be purged on rebalance (ephemeral only).
-	// +kubebuilder:validation:Optional
+	// +optional
 	PurgeKeysOnRebalance *bool `json:"purgeKeysOnRebalance,omitempty"`
 
 	// Override provides ability to override generated child resources.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Override *RedkeyOverrideSpec `json:"override,omitempty"`
 
 	// Pdb is the PodDisruptionBudget configuration.
-	// +kubebuilder:validation:Optional
+	// +optional
 	Pdb Pdb `json:"pdb,omitempty"`
 
 	// RobinConfig provides Robin's operational settings overrides.
-	// +kubebuilder:validation:Optional
+	// +optional
 	RobinConfig *RobinConfig `json:"robinConfig,omitempty"`
 }
 

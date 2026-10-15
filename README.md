@@ -86,7 +86,7 @@ Prerequisites:
 - A running Kubernetes cluster (Kubernetes v1.33+ recommended)
 - `kubectl` matching the cluster version
 - Make
-- Go 1.26.8 (project configured to install easily using asdf or mise)
+- Go 1.27.2 (project configured to install easily using asdf or mise)
 
 The operator can be installed using the provided Makefile. The following steps will guide you through the installation and deployment of a sample Redkey Cluster. Redkey Operator can be installed in any namespace, but for this quick start we will use the `redkey-operator` namespace.
 
@@ -151,12 +151,12 @@ Contributions are welcome! Please read our [contributing guidelines](./CONTRIBUT
 
 The source of truth for the development toolchain lives in `go.mod`, `Makefile`, and `Dockerfile`.
 
-- [Go](https://github.com/golang/go): 1.26.8
+- [Go](https://github.com/golang/go): 1.27.2
 - [Operator SDK](https://github.com/operator-framework/operator-sdk): v1.42.2
-- [Kubernetes Controller Tools](https://github.com/kubernetes-sigs/controller-tools): v0.18.0
+- [Kubernetes Controller Tools](https://github.com/kubernetes-sigs/controller-tools): v0.22.0
 - [Kustomize](https://github.com/kubernetes-sigs/kustomize): v5.6.0
-- [Kind](https://github.com/kubernetes-sigs/kind): v0.22.0
-- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.36.3 / v1.36
+- [Kind](https://github.com/kubernetes-sigs/kind): v0.33.0
+- Kubernetes Go libraries (`k8s.io/*`) / envtest target: v0.37.1 / v1.33
 
 ## License
 

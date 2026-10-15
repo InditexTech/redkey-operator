@@ -9,6 +9,8 @@ containerdConfigPatches:
     config_path = "/etc/containerd/certs.d"
 nodes:
 - role: control-plane
+  # Matches the production Kubernetes version (OpenShift 1.33); image published with kind v0.32.0.
+  image: kindest/node:v1.33.12@sha256:3f5c8443c620245e4d355cfe09e96a91ead32ceaa569d3f1ca9edf0cb2fe2ff4
   # The e2e suites (hotreload, scaling, ...) run concurrently and each spec
   # leaves its Redkey (3 redis + 1 robin pods) running until the suite's
   # AfterAll. On a single node the default kubelet limit of 110 pods is exhausted,
