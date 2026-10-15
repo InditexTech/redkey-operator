@@ -1,0 +1,16 @@
+CHANGELOG.md
+  h_daebd220e3f9d7 16
+test/e2e/suite_test.go
+  h_daebd220e3f9d7 25-26,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6a643454bed4ad2077ffb54440b43477614a055",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
