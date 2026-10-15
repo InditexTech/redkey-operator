@@ -1,0 +1,19 @@
+.github/dependabot.yml
+  s_9dcec9ba995ca6::t_37401f5043e2cd 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06654bedcbc4cd11fbf94db936191015e87b8365",
+  "prompts": {},
+  "sessions": {
+    "s_9dcec9ba995ca6": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "936d5ad3-b7b8-44af-88c4-f5c58cbcf3a5",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}

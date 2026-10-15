@@ -1,0 +1,23 @@
+Dockerfile
+  s_1f9b7c0e8aae9f::t_30f4e3296f158b 7-10
+Makefile
+  s_1f9b7c0e8aae9f::t_617b4ae57aa737 392
+test/chaos/k6.Dockerfile
+  s_1f9b7c0e8aae9f::t_493c72bdc12a27 5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b1194c7fd66936ddf9375095a3ac5b3cbdbe999",
+  "prompts": {},
+  "sessions": {
+    "s_1f9b7c0e8aae9f": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "s_1f9b7c0e8aae9f",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Alvarez Sabin <ivanasabi@ext.inditex.com>"
+    }
+  }
+}
