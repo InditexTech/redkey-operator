@@ -14,6 +14,7 @@ Format is based on [Keep a Changelog](http://keepachangelog.com/).
 - Go native fuzz tests for `mergeMeta` and `needsNewConfig`, plus a `make fuzz` target.
 ### Fixed
 - Bump `golang.org/x/net` to v0.61.0 to fix HTTP/2 vulnerabilities GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617.
+- Configure the controller-runtime logger in the e2e suite to stop the `log.SetLogger(...) was never called` warning when setup exceeds 30s (#100).
 ### Changed
 - Bump Go to 1.27.2, controller-runtime to v0.25.2, `k8s.io/*` to v0.37.1 and the remaining direct dependencies to their latest versions.
 - Bump controller-gen to v0.22.0 (markers migrated to `+required`/`+optional`) and golangci-lint to v2.14.0.
