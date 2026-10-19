@@ -86,17 +86,23 @@ clusters except those eligible for [fast scaling](#fast-scaling-data-purged).
 1. **Grow the StatefulSet.** Robin sets the StatefulSet replica count to the new total
    (all new primaries *and* replicas) and waits for every pod to be `Running` and
    `Ready`.
-2. **Discover topology.** Robin queries the existing cluster to classify nodes:
+2. **Reset stale new pods.** A new pod that remounts a PVC retained by an earlier
+   scale-down (`deletePVC: false`) comes up with the identity its previous incarnation
+   persisted in `nodes.conf`. Robin resets every pod that is not a cluster member and is not
+   pristine to an empty master (new node ID, no peers, no slots, no keys) so it is
+   classified and joined as a brand-new node. See
+   [Reused ordinals with `deletePVC: false`](delete-pvc.md#reused-ordinals-with-deletepvc-false).
+3. **Discover topology.** Robin queries the existing cluster to classify nodes:
    - *Existing primaries*: cluster members that are masters with slots assigned.
    - *Existing replicas*: cluster members that are replicas (left untouched).
    - *New nodes*: pods not yet in the cluster. Robin calculates how many new primaries
      are needed (`targetPrimaries − existingPrimaries`) and assigns that many new nodes
      the primary role; the rest will become replicas.
-3. **Join new primaries only.** Only the nodes destined to become primaries are
+4. **Join new primaries only.** Only the nodes destined to become primaries are
    introduced to the cluster with `CLUSTER MEET`. Existing replicas are never reset or
    disrupted. Future replica nodes are **not** joined yet — this prevents the rebalance
    from distributing slots to them.
-4. **Rebalance slots** ⚠️ *(`TRYAGAIN` window)*. Robin runs
+5. **Rebalance slots** ⚠️ *(`TRYAGAIN` window)*. Robin runs
    `redis-cli --cluster rebalance <node> --cluster-use-empty-masters --cluster-pipeline 50 --cluster-yes`,
    moving slots from the existing primaries onto the new empty masters. The
    `--cluster-pipeline 50` flag batches 50 keys per `MIGRATE` call to speed up the
@@ -112,14 +118,14 @@ clusters except those eligible for [fast scaling](#fast-scaling-data-purged).
    always converges. Retries stop only when the operation succeeds, the attempts are
    exhausted, or Robin is shutting down. This phase is **skipped on re-entry** if all
    target primaries already hold slots (idempotency).
-5. **Wait for stable slots.** Robin waits until no slot is in a `MIGRATING`/`IMPORTING`
+6. **Wait for stable slots.** Robin waits until no slot is in a `MIGRATING`/`IMPORTING`
    state before continuing.
-6. **Join and attach replicas.** Only once slots are stable, the new replica nodes are
+7. **Join and attach replicas.** Only once slots are stable, the new replica nodes are
    introduced to the cluster with `CLUSTER MEET`, and each replica is attached to its
    primary with `CLUSTER REPLICATE`. Attaching replicas after the rebalance avoids
    wasteful double resynchronisation and ensures the rebalance never assigns slots to
    replica-destined nodes.
-7. **Validate.** Robin verifies the cluster state is `ok` with all 16384 slots assigned,
+8. **Validate.** Robin verifies the cluster state is `ok` with all 16384 slots assigned,
    then returns the status to `Ready`.
 
 ### Scale down flow

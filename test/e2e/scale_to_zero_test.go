@@ -571,4 +571,87 @@ var _ = Describe("Scale to Zero", Ordered, Label("scale-to-zero"), func() {
 			Expect(size).To(Equal(10))
 		})
 	})
+
+	// --- Full cycle N→0→N on persistent clusters ---
+	//
+	// With deletePVC=false the cluster is restored from the PVCs retained at zero: every pod
+	// remounts its volume and Redis reloads the persisted nodes.conf and dataset, so the restored
+	// cluster must come back healthy with all its data. With deletePVC=true the PVCs are deleted at
+	// zero and the cluster comes back empty.
+	storageZeroCycleContext := func(
+		description, clusterName string, replicasPerPrimary int32, deletePVC bool, keyCount int,
+	) {
+		Context(description, func() {
+			totalNodes := 3 * (1 + int(replicasPerPrimary))
+			key := func() types.NamespacedName {
+				return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+			}
+			listPVCs := func() []corev1.PersistentVolumeClaim {
+				pvcs := &corev1.PersistentVolumeClaimList{}
+				Expect(k8sClient.List(ctx, pvcs,
+					client.InNamespace(clusterNs),
+					client.MatchingLabels(framework.RedisPodLabels(clusterName)),
+				)).To(Succeed())
+				return pvcs.Items
+			}
+
+			AfterAll(func() {
+				_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
+			})
+
+			It("creates a 3-primary storage cluster and inserts data", func() {
+				opts := framework.DefaultClusterOptions(clusterName, clusterNs).
+					WithPVC("100Mi").WithReplicas(replicasPerPrimary).WithDeletePVC(deletePVC).WithPersistence()
+				opts.Primaries = 3
+				_, err := framework.CreateRedkey(ctx, k8sClient, opts)
+				Expect(err).NotTo(HaveOccurred())
+
+				podNames := waitForScaledCluster(ctx, clusterName, clusterNs, totalNodes)
+				Expect(framework.InsertKeys(clusterNs, podNames[0], keyCount)).To(Succeed())
+			})
+
+			It("scales down to 0 primaries", func() {
+				updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+					c.Spec.Primaries = 0
+				})
+				waitForScaledToZero(ctx, clusterName, clusterNs)
+
+				if deletePVC {
+					By("waiting for the PVCs to be deleted")
+					Eventually(listPVCs, framework.HealthTimeout, framework.DefaultPollInterval).Should(BeEmpty())
+				} else {
+					By("verifying every ordinal's PVC is retained")
+					Expect(listPVCs()).To(HaveLen(totalNodes))
+				}
+			})
+
+			It("scales back up to 3 primaries", func() {
+				updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+					c.Spec.Primaries = 3
+					c.Spec.ReplicasPerPrimary = replicasPerPrimary
+				})
+				podNames := waitForScaledCluster(ctx, clusterName, clusterNs, totalNodes)
+
+				size, err := framework.GetDBSize(clusterNs, podNames)
+				Expect(err).NotTo(HaveOccurred())
+				if deletePVC {
+					Expect(size).To(Equal(0), "PVCs were deleted at zero: the cluster must come back empty")
+				} else {
+					Expect(size).To(BeNumerically(">=", keyCount), "the cluster must be restored with its persisted data")
+				}
+
+				By("verifying the cluster accepts writes")
+				Expect(framework.InsertKeys(clusterNs, podNames[0], 10)).To(Succeed())
+			})
+		})
+	}
+
+	storageZeroCycleContext("Full cycle: 3→0→3 - storage with deletePVC=false (data restored)",
+		"cycle-zero-stor-keep", 0, false, 40)
+
+	storageZeroCycleContext("Full cycle: 3/1→0→3/1 - storage with deletePVC=false (data restored)",
+		"cycle-zero-stor-keep-rep", 1, false, 40)
+
+	storageZeroCycleContext("Full cycle: 3→0→3 - storage with deletePVC=true (fresh cluster)",
+		"cycle-zero-stor-delete", 0, true, 40)
 })

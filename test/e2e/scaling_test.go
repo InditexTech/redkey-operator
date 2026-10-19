@@ -765,7 +765,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 	// volumes of the ordinals removed by a scale-down are preserved (data is kept).
 
 	Context("Persistent cluster with deletePVC=false (scale-down retains removed PVCs)", func() {
-		const clusterName = "scale-keeppvc"
+		const (
+			clusterName = "scale-keeppvc"
+			keepPVCKeys = 50
+		)
 		key := func() types.NamespacedName {
 			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
 		}
@@ -788,7 +791,7 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("creates a 3-primary persistent cluster with deletePVC=false", func() {
-			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi")
+			opts := framework.DefaultClusterOptions(clusterName, clusterNs).WithPVC("100Mi").WithPersistence()
 			opts.Primaries = 3
 			opts.ReplicasPerPrimary = 0
 			cluster := opts.BuildRedkey()
@@ -806,6 +809,10 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 		})
 
 		It("retains the removed ordinals' PVCs when scaling down 3→1", func() {
+			podNames, err := framework.GetRedisPodNames(ctx, k8sClient, clusterName, clusterNs, 3)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(framework.InsertKeys(clusterNs, podNames[0], keepPVCKeys)).To(Succeed())
+
 			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
 				c.Spec.Primaries = 1
 			})
@@ -820,6 +827,21 @@ var _ = Describe("Cluster Scaling", Ordered, Label("scaling"), func() {
 					"data-"+clusterName+"-1",
 					"data-"+clusterName+"-2",
 				))
+		})
+
+		// The re-created ordinals remount the retained PVCs, which hold the identity persisted in
+		// nodes.conf by the removed nodes. Robin must reset them to pristine empty primaries so the
+		// scale-up integrates them as new nodes instead of under their stale identity.
+		It("scales back up 1→3 reusing the retained PVCs and preserving data", func() {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+				c.Spec.Primaries = 3
+			})
+
+			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, 3)
+
+			size, err := framework.GetDBSize(clusterNs, podNames)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(size).To(BeNumerically(">=", keepPVCKeys), "scale-up must preserve all data")
 		})
 	})
 })

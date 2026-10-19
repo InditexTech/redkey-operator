@@ -301,4 +301,138 @@ var _ = Describe("Redis Image Upgrade", Ordered, Label("upgrade"), func() {
 
 	rollingUpgradeContext("Rolling N+1 upgrade (persistent, with replicas)",
 		"upgrade-rolling-persistent-replicas", 1, 6, 40, true)
+
+	// --- Consecutive Rolling N+1 upgrades on persistent clusters with deletePVC=false ---
+	//
+	// With deletePVC=false (the CRD default) the StatefulSet retains the PVCs of the extra (N+1)
+	// ordinals after each upgrade's scale-down. The next upgrade re-creates the extra pods on those
+	// volumes; before the fix they resumed the stale identity persisted in nodes.conf (the extra
+	// primary as a replica of node 0) and the second upgrade stalled forever. The default E2E
+	// options use deletePVC=true, which deletes those PVCs and hides the problem.
+
+	// extraPVCNames returns the data PVC names of the extra ordinals added by a Rolling N+1 upgrade.
+	extraPVCNames := func(clusterName string, primaries, replicasPerPrimary int32) []string {
+		first := primaries + primaries*replicasPerPrimary
+		names := make([]string, 0, 1+replicasPerPrimary)
+		for i := range 1 + replicasPerPrimary {
+			names = append(names, fmt.Sprintf("data-%s-%d", clusterName, first+i))
+		}
+		return names
+	}
+
+	expectPVCsRetained := func(names []string) {
+		By(fmt.Sprintf("verifying the extra ordinals' PVCs are retained: %v", names))
+		for _, name := range names {
+			pvc := &corev1.PersistentVolumeClaim{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: clusterNs}, pvc)).
+				To(Succeed(), "PVC %s should be retained after the upgrade scale-down (deletePVC=false)", name)
+		}
+	}
+
+	// rollingUpgradeTo upgrades the cluster image and verifies image, health and data preservation.
+	rollingUpgradeTo := func(clusterName, image string, totalNodes, keyCount int) {
+		By(fmt.Sprintf("updating cluster image to %s", image))
+		updateClusterImage(clusterName, image)
+
+		By("waiting for rolling upgrade to complete")
+		podNames := waitForUpgradeComplete(clusterName, totalNodes, framework.UpgradeTimeout)
+
+		verifyAllPodsRunImage(clusterName, image, totalNodes)
+
+		By("verifying data was preserved (zero data loss)")
+		dbSize, err := framework.GetDBSize(clusterNs, podNames)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(dbSize).To(BeNumerically(">=", keyCount), "Rolling N+1 upgrade must preserve all data")
+	}
+
+	createPersistentKeepPVCCluster := func(clusterName string, replicasPerPrimary int32, totalNodes, keyCount int) {
+		opts := framework.DefaultClusterOptions(clusterName, clusterNs).
+			WithPVC("100Mi").WithDeletePVC(false).WithPersistence()
+		opts.Primaries = 3
+		opts.ReplicasPerPrimary = replicasPerPrimary
+
+		_, err := framework.CreateRedkey(ctx, k8sClient, opts)
+		Expect(err).NotTo(HaveOccurred())
+
+		podNames := waitForUpgradeComplete(clusterName, totalNodes)
+
+		By("inserting keys that must survive the upgrades")
+		Expect(framework.InsertKeys(clusterNs, podNames[0], keyCount)).To(Succeed())
+	}
+
+	doubleRollingUpgradeContext := func(
+		description, clusterName string, replicasPerPrimary int32, totalNodes, keyCount int,
+	) {
+		Context(description, func() {
+			AfterAll(func() {
+				_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
+			})
+
+			It("creates a persistent cluster with deletePVC=false and inserts data", func() {
+				createPersistentKeepPVCCluster(clusterName, replicasPerPrimary, totalNodes, keyCount)
+			})
+
+			It("completes a first rolling upgrade and retains the extra ordinals' PVCs", func() {
+				rollingUpgradeTo(clusterName, getRedisUpgradeImage(), totalNodes, keyCount)
+				expectPVCsRetained(extraPVCNames(clusterName, 3, replicasPerPrimary))
+			})
+
+			It("completes a second rolling upgrade reusing the retained extra PVCs", func() {
+				rollingUpgradeTo(clusterName, framework.GetRedisImage(), totalNodes, keyCount)
+			})
+		})
+	}
+
+	doubleRollingUpgradeContext("Two consecutive rolling N+1 upgrades (persistent, deletePVC=false, no replicas)",
+		"upgrade-twice-keeppvc-noreplica", 0, 3, 60)
+
+	doubleRollingUpgradeContext("Two consecutive rolling N+1 upgrades (persistent, deletePVC=false, with replicas)",
+		"upgrade-twice-keeppvc-replicas", 1, 6, 40)
+
+	// Scale-to-zero restores a persistent deletePVC=false cluster from its persisted nodes.conf and
+	// data, while the retained extra PVC (not mounted by the restored topology) is reused by the
+	// following upgrade. Both mechanisms rely on persisted state and must not interfere.
+	Context("Rolling upgrade, scale 3→0→3 and rolling upgrade again (persistent, deletePVC=false)", func() {
+		const (
+			clusterName = "upgrade-zero-upgrade-keeppvc"
+			totalNodes  = 3
+			keyCount    = 50
+		)
+		key := func() types.NamespacedName {
+			return types.NamespacedName{Name: clusterName, Namespace: clusterNs}
+		}
+
+		AfterAll(func() {
+			_ = framework.DeleteRedkey(ctx, k8sClient, clusterName, clusterNs)
+		})
+
+		It("creates a persistent cluster with deletePVC=false and inserts data", func() {
+			createPersistentKeepPVCCluster(clusterName, 0, totalNodes, keyCount)
+		})
+
+		It("completes a first rolling upgrade", func() {
+			rollingUpgradeTo(clusterName, getRedisUpgradeImage(), totalNodes, keyCount)
+			expectPVCsRetained(extraPVCNames(clusterName, 3, 0))
+		})
+
+		It("scales to zero and back to 3 primaries restoring the persisted data", func() {
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+				c.Spec.Primaries = 0
+			})
+			waitForScaledToZero(ctx, clusterName, clusterNs)
+
+			updateClusterTopology(ctx, key(), func(c *redkeyv1beta1.Redkey) {
+				c.Spec.Primaries = 3
+			})
+			podNames := waitForScaledCluster(ctx, clusterName, clusterNs, totalNodes)
+
+			dbSize, err := framework.GetDBSize(clusterNs, podNames)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dbSize).To(BeNumerically(">=", keyCount), "scale 0→3 must restore the persisted data")
+		})
+
+		It("completes a second rolling upgrade reusing the retained extra PVC", func() {
+			rollingUpgradeTo(clusterName, framework.GetRedisImage(), totalNodes, keyCount)
+		})
+	})
 })
