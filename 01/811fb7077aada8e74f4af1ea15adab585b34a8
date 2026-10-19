@@ -1,0 +1,21 @@
+docs/operator-guide/scaling.md
+  s_e64992d7d6a879::t_3cd44964e4932e 89-95,101,105,121,123,128
+test/e2e/scaling_test.go
+  s_e64992d7d6a879::t_ba0822731d274f 768-771,794,812-815,831-845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01811fb7077aada8e74f4af1ea15adab585b34a8",
+  "prompts": {},
+  "sessions": {
+    "s_e64992d7d6a879": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "f602a975-edf4-481f-940a-c34ffdd7a8f4",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
