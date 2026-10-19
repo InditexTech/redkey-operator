@@ -1,0 +1,16 @@
+docs/architecture.md
+  h_daebd220e3f9d7 24,240-243,251,259-268,322,324-326,338-339
+test/e2e/scale_to_zero_lookahead_test.go
+  h_daebd220e3f9d7 1-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0bde9e3e1d835a12955682a1bc763a35595ca5a",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
