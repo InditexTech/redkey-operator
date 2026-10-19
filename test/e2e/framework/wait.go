@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	redkeyv1beta1 "github.com/inditextech/redkey-operator/api/v1beta1"
@@ -338,34 +339,38 @@ func ListConfigs(
 
 // SetClusterConfigStatus sets the status.status field of the active RedkeyConfig for a cluster.
 // This can be used to put Robin into Maintenance mode or restore it to Ready.
+// Robin writes the same status subresource on every reconcile cycle, so the update is
+// retried on conflict with a freshly listed config.
 func SetClusterConfigStatus(
 	ctx context.Context,
 	c client.Client,
 	clusterName, namespace string,
 	status string,
 ) error {
-	configs := &redkeyv1beta1.RedkeyConfigList{}
-	if err := c.List(ctx, configs, client.InNamespace(namespace),
-		client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
-		return fmt.Errorf("listing configs for cluster %s: %w", clusterName, err)
-	}
-	if len(configs.Items) == 0 {
-		return fmt.Errorf("no RedkeyConfig found for cluster %s in namespace %s", clusterName, namespace)
-	}
-
-	// Find highest-sequence config (active)
-	var active *redkeyv1beta1.RedkeyConfig
-	maxSeq := -1
-	for i := range configs.Items {
-		if configs.Items[i].Spec.Sequence > maxSeq {
-			maxSeq = configs.Items[i].Spec.Sequence
-			active = &configs.Items[i]
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		configs := &redkeyv1beta1.RedkeyConfigList{}
+		if err := c.List(ctx, configs, client.InNamespace(namespace),
+			client.MatchingLabels{"redkey.inditex.dev/cluster": clusterName}); err != nil {
+			return fmt.Errorf("listing configs for cluster %s: %w", clusterName, err)
 		}
-	}
+		if len(configs.Items) == 0 {
+			return fmt.Errorf("no RedkeyConfig found for cluster %s in namespace %s", clusterName, namespace)
+		}
 
-	active.Status.Status = status
-	if err := c.Status().Update(ctx, active); err != nil {
-		return fmt.Errorf("updating config %s status to %s: %w", active.Name, status, err)
-	}
-	return nil
+		// Find highest-sequence config (active)
+		var active *redkeyv1beta1.RedkeyConfig
+		maxSeq := -1
+		for i := range configs.Items {
+			if configs.Items[i].Spec.Sequence > maxSeq {
+				maxSeq = configs.Items[i].Spec.Sequence
+				active = &configs.Items[i]
+			}
+		}
+
+		active.Status.Status = status
+		if err := c.Status().Update(ctx, active); err != nil {
+			return fmt.Errorf("updating config %s status to %s: %w", active.Name, status, err)
+		}
+		return nil
+	})
 }
