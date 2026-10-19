@@ -544,14 +544,3 @@ func mergeEnvVars(base, overrides []corev1.EnvVar) []corev1.EnvVar {
 
 	return merged
 }
-
-// createIfNotExists creates the object if it doesn't already exist.
-func (r *RedkeyReconciler) createIfNotExists(ctx context.Context, obj client.Object) error {
-	key := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
-	existing := obj.DeepCopyObject().(client.Object)
-	err := r.Get(ctx, key, existing)
-	if errors.IsNotFound(err) {
-		return r.Create(ctx, obj)
-	}
-	return err
-}
