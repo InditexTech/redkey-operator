@@ -32,13 +32,27 @@ spec:
 ## Data on the PVC during a Rolling N+1 upgrade
 
 On persistent clusters (`ephemeral: false`), a [Rolling N+1 upgrade](upgrade.md) recycles
-one node at a time. Before a drained node's pod is deleted, Robin issues a `FLUSHALL`
-followed by a synchronous `SAVE`. By that point the node no longer owns any slots (its
-slots have already been migrated away), so its remaining keys are stale. Persisting an
-empty dataset guarantees the restarted pod reloads a clean RDB from its PVC instead of the
-pre-reshard snapshot, which would otherwise still contain keys for already-migrated slots.
+one node at a time. Before a drained node's pod is deleted, Robin resets it to a pristine
+empty master (`FLUSHALL`, `CLUSTER RESET HARD`, `FLUSHALL` and a synchronous `SAVE`). By that
+point the node no longer owns any slots (its slots have already been migrated away), so its
+remaining keys and cluster identity are stale. Persisting an empty dataset and a fresh
+`nodes.conf` guarantees the restarted pod does not reload the pre-reshard data (from the RDB or
+the AOF) nor rejoin under its old identity.
 
-This affects only the per-node RDB written to the PVC during the upgrade — it does not
+This affects only the per-node data written to the PVC during the upgrade — it does not
 remove or recreate the PVC itself, and it does not affect data on nodes that still own
 slots. Ephemeral clusters skip this step entirely.
+
+## Reused ordinals with `deletePVC: false`
+
+With `deletePVC: false` the PVCs of the ordinals removed by a scale-down are retained, so a later
+operation that re-creates those ordinals remounts them: the extra (N+1) nodes of every Rolling N+1
+upgrade, or the new nodes of a scale-up. Those volumes hold the identity the removed node persisted
+in `nodes.conf` (often as a replica) and possibly stale keys. Robin detects such pods before
+integrating them into the cluster (they are not cluster members but are not pristine either) and
+resets them to pristine empty masters, so they join exactly like brand-new pods. See
+[Retained PVCs of the extra nodes](upgrade.md#retained-pvcs-of-the-extra-nodes).
+
+Scaling a cluster to zero and back with `deletePVC: false` is different: every node remounts its
+own volume and the whole cluster is restored from its persisted state, data included.
 

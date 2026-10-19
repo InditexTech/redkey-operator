@@ -26,6 +26,11 @@ maxmemory-policy allkeys-lru
 protected-mode no
 appendonly no
 save ""`
+	// persistentConfig drops the persistence overrides of defaultConfig so persistent clusters keep
+	// Robin's defaults (appendonly yes) and really reload their data from the PVC after a restart.
+	persistentConfig = `maxmemory 90mb
+maxmemory-policy allkeys-lru
+protected-mode no`
 )
 
 // GetRedisImage returns the Redis image to use (from env or default).
@@ -71,6 +76,9 @@ type ClusterOptions struct {
 	Pdb                  redkeyv1beta1.Pdb
 	StatefulSetOverride  *redkeyv1beta1.PartialStatefulSet
 	ServiceOverride      *redkeyv1beta1.PartialService
+	// DeletePVC sets spec.deletePVC. nil keeps the E2E default (true) so suites do not leak PVCs;
+	// set it to false to exercise the CRD default, where removed ordinals' PVCs are retained.
+	DeletePVC *bool
 }
 
 // DefaultClusterOptions returns a basic ephemeral cluster configuration optimized for E2E tests.
@@ -110,6 +118,20 @@ func (o ClusterOptions) WithPVC(storage string) ClusterOptions {
 	o.Ephemeral = false
 	o.Storage = storage
 	o.PurgeKeysOnRebalance = new(false)
+	return o
+}
+
+// WithDeletePVC sets spec.deletePVC (whether PVCs are deleted on cluster deletion and scale-down).
+func (o ClusterOptions) WithDeletePVC(deletePVC bool) ClusterOptions {
+	o.DeletePVC = &deletePVC
+	return o
+}
+
+// WithPersistence keeps Redis persistence enabled (AOF) instead of the default E2E config, which
+// disables it to speed tests up. Use it with WithPVC when a test relies on data surviving a pod
+// restart (e.g. scaling to zero and back).
+func (o ClusterOptions) WithPersistence() ClusterOptions {
+	o.Config = persistentConfig
 	return o
 }
 
@@ -176,6 +198,9 @@ func (o ClusterOptions) BuildRedkey() *redkeyv1beta1.Redkey {
 	if o.Storage != "" {
 		cluster.Spec.Storage = o.Storage
 		cluster.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	}
+	if o.DeletePVC != nil {
+		cluster.Spec.DeletePVC = new(*o.DeletePVC)
 	}
 
 	if o.Mode != "" {

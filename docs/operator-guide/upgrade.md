@@ -74,7 +74,7 @@ For a cluster with 3 primaries and 1 replica/primary: pods 0–2 are primaries, 
 
 1. **Start**: If auth changed, apply `CONFIG SET requirepass` + `CONFIG SET masterauth` to all running nodes. Update ConfigMap + StatefulSet template (using **OnDelete** update strategy — no pods are recreated automatically). Scale StatefulSet up by 1 primary (+ replicas if configured). Extra pods get the new image and inherit the correct auth from the ConfigMap.
 
-2. **ScalingUp**: Wait for extra pods to be Ready. Meet all nodes into the cluster via `CLUSTER MEET`. If replicas configured: run `CLUSTER REPLICATE` on extra replica(s) to attach them to the extra primary. Set initial partition = (primaries - 1).
+2. **ScalingUp**: Wait for extra pods to be Ready. **Reset stale extra pods** (see [Retained PVCs of the extra nodes](#retained-pvcs-of-the-extra-nodes)). Meet all nodes into the cluster via `CLUSTER MEET`. If replicas configured: run `CLUSTER REPLICATE` on extra replica(s) to attach them to the extra primary. Set initial partition = (primaries - 1).
 
 3. **Resharding** (per partition, from last to first):
    - **Verify pivot replica** — ensure the extra primary still has its replica attached (safeguard for replica placement drift; Redkey disables Redis auto-migration via `cluster-allow-replica-migration no`). If missing, re-attach via `CLUSTER MEET` + `CLUSTER REPLICATE`
@@ -93,7 +93,7 @@ For a cluster with 3 primaries and 1 replica/primary: pods 0–2 are primaries, 
    - **Verify pivot replica** — re-check that the extra primary's replica was not auto-migrated after the replica recycle disruption
    - Advance to next partition (partition - 1) or proceed to Ending
 
-5. **Ending**: Migrate all remaining slots from the extra node back to node 0 (which was just recycled and is empty). Run `redis-cli --cluster fix` before reshard. `CLUSTER FORGET` the extra node (and its replicas) from all cluster members.
+5. **Ending**: Migrate all remaining slots from the extra node back to node 0 (which was just recycled and is empty). Run `redis-cli --cluster fix` before reshard. `CLUSTER FORGET` the extra node (and its replicas) from all cluster members. On persistent clusters, reset the extra pods to pristine empty masters so the PVCs retained after the scale-down hold a clean state.
 
 6. **ScalingDown**: Scale StatefulSet back to original size. Restore **RollingUpdate** strategy with partition=0 (normal operating mode). Run `CLUSTER CHECK` to verify health. If replicas configured: **rebalance replicas** — force the correct primary→replica mapping for all primaries via `CLUSTER REPLICATE` to fix any drift caused by Redis auto-migration during the upgrade. Set status to Ready.
 
@@ -111,11 +111,39 @@ coverage or stale-reads during the upgrade:
   reconcile waits and retries instead of advancing, preventing the upgrade from running
   ahead of an inconsistent topology.
 - **Flush + persist on persistent clusters** — for non-ephemeral clusters, before a
-  drained node's pod is deleted Robin issues a `FLUSHALL` followed by a synchronous
-  `SAVE`. The drained node no longer owns any slots, so its keys are stale; persisting an
-  empty dataset to disk ensures the restarted pod reloads a clean RDB instead of the
-  pre-reshard snapshot (which would still contain keys for slots that have already been
-  migrated). Ephemeral clusters skip this step since they have no persistent volumes.
+  drained node's pod is deleted Robin resets it to a pristine empty master: `FLUSHALL`
+  (if it is still a master), `CLUSTER RESET HARD` (new node ID, no slots, no known peers,
+  rewritten `nodes.conf`), a second `FLUSHALL` and a synchronous `SAVE`. The drained node no
+  longer owns any slots, so its keys are stale. A drained primary is often a replica by then
+  (Redis demotes a primary drained to zero slots into a replica of the node that received
+  all of them, even with `cluster-allow-replica-migration no`); resetting a replica empties
+  its dataset in memory only, so the second `FLUSHALL` is what records the empty dataset in
+  the AOF. Without it the restarted pod would reload the stale keys and claim their slots.
+  Ephemeral clusters skip this step since they have no persistent volumes.
+
+## Retained PVCs of the extra nodes
+
+With `deletePVC: false` (the default) the PVCs of the extra ordinals are retained when the
+StatefulSet is scaled back down at the end of an upgrade, and the next upgrade re-creates the
+extra pods on those same volumes. The extra primary ends every upgrade demoted to a replica of
+node 0 (its slots all moved back to the empty node 0), and Redis persists that identity in
+`nodes.conf`. Integrated as is, the remounted extra node would rejoin as a replica instead of the
+empty primary the upgrade needs, and the upgrade would never progress.
+
+Robin guarantees a clean slate for the extra nodes at two points:
+
+- **ScalingUp** (the guarantee): before meeting the extra pods, Robin inspects each one. A pod
+  that is not a cluster member and is not pristine (it knows other nodes, is a replica, owns
+  slots or holds keys) is reset to a pristine empty master and its old ID is forgotten
+  cluster-wide. If the extra primary needs a reset, the extra replicas are reset too. An extra
+  primary that is already a member but is a replica (a cluster stuck by a Robin version without
+  this safeguard) is reset as well, so such clusters recover automatically.
+- **Ending** (best effort): once the extra nodes are forgotten, Robin resets them so the retained
+  PVCs already hold a clean state for the next upgrade.
+
+Pods that are cluster members are never reset, which keeps this step idempotent across reconcile
+retries. The same safeguard applies to a regular [scale-up](scaling.md) that re-creates ordinals
+whose PVCs were retained by an earlier scale-down.
 
 ## Config Checksum
 
