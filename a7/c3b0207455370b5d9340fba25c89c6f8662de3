@@ -1,0 +1,14 @@
+test/e2e/framework/wait.go
+  h_daebd220e3f9d7 18,342-343,350-358,360-367,370-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7c3b0207455370b5d9340fba25c89c6f8662de3",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
