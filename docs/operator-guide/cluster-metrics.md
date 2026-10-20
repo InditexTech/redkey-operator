@@ -251,13 +251,26 @@ redkey_keyspace_avg_ttl{cluster="my-cluster",namespace="redis-prod",instanceId="
 
 ### Cluster INFO Metrics
 
-Robin exposes all fields from `CLUSTER INFO` returned by the reachable seed node selected for cluster health evaluation as labels on a single metric:
+Robin exposes the `CLUSTER INFO` output returned by the reachable seed node selected for cluster health evaluation as two kinds of metrics:
+
+- `redkey_cluster_info`: an info-style metric whose only extra label is `cluster_state`. It uses `SetToCurrentTime()`, so its value represents the last successful collection timestamp.
+- `redkey_cluster_info_<field>`: one gauge per numeric `CLUSTER INFO` field, carrying the field value (e.g., `cluster_slots_ok`, `cluster_known_nodes`, `cluster_size`, `cluster_stats_messages_sent`).
 
 ```
-redkey_cluster_metrics{cluster="my-cluster",namespace="redis-prod",cluster_state="ok",cluster_slots_assigned="16384",cluster_slots_ok="16384",cluster_known_nodes="6",...} <current_timestamp>
+redkey_cluster_info{cluster="my-cluster",namespace="redis-prod",cluster_state="ok",...} <current_timestamp>
+redkey_cluster_info_cluster_slots_assigned{cluster="my-cluster",namespace="redis-prod",...} 16384
+redkey_cluster_info_cluster_slots_ok{cluster="my-cluster",namespace="redis-prod",...} 16384
+redkey_cluster_info_cluster_slots_pfail{cluster="my-cluster",namespace="redis-prod",...} 0
+redkey_cluster_info_cluster_slots_fail{cluster="my-cluster",namespace="redis-prod",...} 0
+redkey_cluster_info_cluster_known_nodes{cluster="my-cluster",namespace="redis-prod",...} 6
+redkey_cluster_info_cluster_size{cluster="my-cluster",namespace="redis-prod",...} 3
 ```
 
-This metric uses `SetToCurrentTime()` so its value represents the last successful collection timestamp.
+Numeric fields are exposed as values rather than labels because several of them are counters (e.g., `cluster_stats_messages_sent`) that change on every cycle; as label values they would create a new time series per collection (see [Robin optimizations](robin-optimizations.md#1-cluster-info-as-prometheus-labels-infinite-time-series)).
+
+> **Migrating from the legacy Redis monitoring**: the previous `redis_cluster_metrics` metric carried all `CLUSTER INFO` fields as labels. Queries that read those labels must be rewritten against the `redkey_cluster_info_<field>` gauges, e.g. `redis_cluster_metrics{cluster_slots_ok!="16384"}` becomes `redkey_cluster_info_cluster_slots_ok != 16384`.
+
+Cluster INFO metrics are only collected in cluster mode; standalone Redkeys do not expose them.
 
 ### Cluster Nodes Metrics
 
@@ -350,7 +363,7 @@ Some metrics add extra labels depending on their scope:
 | Node-scoped `INFO` and keyspace metrics | `instanceId` |
 | Keyspace metrics | `database` |
 | `redkey_nodes_metrics` | `nodeId`, `nodeIp`, `role`, `slots`, `primaryId`, `state` |
-| `redkey_cluster_metrics` | all raw `CLUSTER INFO` fields as labels |
+| `redkey_cluster_info` | `cluster_state` |
 
 Cluster-scoped health gauges such as `redkey_cluster_healthy` do not include `instanceId` because they describe the cluster as a whole.
 
