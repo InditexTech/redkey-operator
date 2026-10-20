@@ -1,0 +1,16 @@
+docs/observability.md
+  h_daebd220e3f9d7 268
+docs/operator-guide/cluster-metrics.md
+  h_daebd220e3f9d7 254-257,260-266,269-273,366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50ca628e59c0dd5007295008a91e98d8653b87df",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
