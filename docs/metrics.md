@@ -27,6 +27,7 @@ This document describes the metrics exposure mechanism implemented in the Redkey
   - [Work Queue Metrics](#work-queue-metrics-workqueue_)
   - [Kubernetes API Client Metrics](#kubernetes-api-client-metrics-rest_client_)
   - [What to Monitor in Production](#what-to-monitor-in-production)
+- [Build Info Metrics](#build-info-metrics)
 
 ---
 
@@ -225,3 +226,20 @@ These standard metrics cover the **operational health** of the operator process.
 - **`rest_client_requests_total`** — pressure and errors against the API server. Error spikes often correlate with control-plane issues.
 
 > **Important:** These metrics tell you whether the operator is healthy as a process, not whether your product is healthy. For example, you can have fast, error-free reconciles while your clusters remain stuck in `Configuring` or `Error` indefinitely.
+
+## Build Info Metrics
+
+Both components expose a constant gauge (value always `1`) whose labels identify the running build:
+
+| Metric | Exposed by | Labels | Description |
+| ------ | ---------- | ------ | ----------- |
+| `redkey_operator_build_info` | Operator `/metrics` | `version`, `go_version` | Operator version and the Go version it was built with. |
+| `redkey_robin_build_info` | Robin `/metrics` (port `8080`) | `version`, `go_version` | Robin version (injected at build time via `-ldflags -X main.version`, `dev` for plain `go build`) and Go version. |
+
+Count Robin instances per version, e.g. to follow a rollout:
+
+```promql
+count by (version) (redkey_robin_build_info)
+```
+
+Robin also reports its version with `robin --version` and as the Kubernetes client `User-Agent` (`redkey-robin/<version>`).
