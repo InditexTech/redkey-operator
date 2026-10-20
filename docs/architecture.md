@@ -21,6 +21,7 @@ This document describes the architecture of the Redkey system, which manages Red
 - [Sequenced Configuration Changes](#sequenced-configuration-changes)
   - [Configuration Lifecycle](#configuration-lifecycle)
   - [Skip-If-Superseded Policy](#skip-if-superseded-policy)
+  - [Scale-to-Zero Lookahead](#scale-to-zero-lookahead)
   - [Cleanup](#cleanup)
 - [State Machines](#state-machines)
   - [RedkeyConfig — Configuration Phase](#redkeyconfig--configuration-phase)
@@ -236,8 +237,10 @@ Each `RedkeyConfig` transitions through the following phases in `status.configPh
 
 ```ascii
 Pending  ──►  InProgress  ──►  Applied  ──►  (deleted by Operator)
-                                  │
-Pending  ──►  Superseded  ──►  (deleted by Operator)
+   │              │
+   │              └──►  Superseded  ──►  (deleted by Operator)   (scale-to-zero lookahead only)
+   │
+   └──►  Superseded  ──►  (deleted by Operator)
 ```
 
 | Phase | Description |
@@ -245,13 +248,23 @@ Pending  ──►  Superseded  ──►  (deleted by Operator)
 | `Pending` | Created by the Operator. Robin has not yet started processing it. |
 | `InProgress` | Robin is actively applying this configuration. |
 | `Applied` | Configuration has been fully applied. This is the current baseline. |
-| `Superseded` | Skipped via skip-if-superseded without executing changes. |
+| `Superseded` | Skipped without completing its changes, either via skip-if-superseded or via the scale-to-zero lookahead. |
 
 ### Skip-If-Superseded Policy
 
 The `skipIfSuperseded` field is configured on the `Redkey` spec and propagated by the Operator to each `RedkeyConfig` it creates. When `spec.skipIfSuperseded` is `true` and Robin detects that a newer config with a higher sequence is also `Pending`, Robin may skip the current config by transitioning it directly from `Pending` to `Superseded` without executing any changes.
 
 This is useful when intermediate states are not needed. For example, if two consecutive scaling changes are queued (`primaries: 3 → 5 → 7`), only the final target (`7`) matters.
+
+### Scale-to-Zero Lookahead
+
+Before processing the selected config, Robin looks ahead at the configs queued after it. If any later `Pending` config targets `primaries: 0`, Robin jumps straight to the **last** such config and marks every config in between as `Superseded`, including the selected one even if it is already `InProgress`. Configs queued after the scale-to-zero config are processed normally afterwards.
+
+Unlike skip-if-superseded, this applies **unconditionally**: it ignores `skipIfSuperseded` and is not limited to topology-only changes. Scaling to zero deletes every cluster object, so applying the intermediate changes first adds no value. The jump also works as an escape hatch for a config wedged `InProgress`. For example, an upgrade to a non-existent image never completes, but setting `primaries: 0` afterwards recovers the cluster.
+
+The scale-to-zero config is moved directly to the `ScalingToZero` cluster status, with `InProgress` and `ScalingToZero` written in a single status update. Robin then deletes all cluster objects (and the PVCs when `deletePVC` is `true`) and marks the config `Applied`, whatever state the superseded configs left the cluster in. If a config cannot be marked `Superseded`, Robin retries on the next cycle and never starts an intermediate config.
+
+No jump happens when the selected config is itself an `InProgress` scale-to-zero.
 
 ### Cleanup
 
@@ -306,11 +319,11 @@ Tracks the lifecycle of each configuration change as processed by Robin.
     (skip policy)  │          │ (process)  │
                    │          │            │
          ┌─────────▼──┐   ┌───▼──────────┐ │
-         │ Superseded │   │  InProgress  │ │
+         │ Superseded │◄──┤  InProgress  │ │
          └────────────┘   └───┬──────────┘ │
-                              │            │
-                              │ (complete) │
-                              │            │
+                (scale-to-    │            │
+                 zero         │ (complete) │
+                 lookahead)   │            │
                         ┌─────▼────────┐   │
                         │   Applied    │   │
                         └──────────────┘   │
@@ -322,7 +335,8 @@ Tracks the lifecycle of each configuration change as processed by Robin.
 | Transition | Trigger |
 | ---------- | ------- |
 | `Pending → InProgress` | Robin picks up the config as the next to process |
-| `Pending → Superseded` | `skipIfSuperseded: true` and a higher-sequence `Pending` config exists |
+| `Pending → Superseded` | `skipIfSuperseded: true` and a higher-sequence `Pending` config exists, or a later `Pending` config targets `primaries: 0` (scale-to-zero lookahead) |
+| `InProgress → Superseded` | A later `Pending` config targets `primaries: 0` (scale-to-zero lookahead) |
 | `InProgress → Applied` | Robin completes all K8s resource and Redis operations for this config |
 
 ### RedkeyConfig — Cluster Operational Status
