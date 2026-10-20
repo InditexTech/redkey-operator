@@ -258,9 +258,15 @@ This is useful when intermediate states are not needed. For example, if two cons
 
 ### Scale-to-Zero Lookahead
 
-Before processing the selected config, Robin looks ahead at the configs queued after it. If any later `Pending` config targets `primaries: 0`, Robin jumps straight to the **last** such config and marks every config in between as `Superseded`, including the selected one even if it is already `InProgress`. Configs queued after the scale-to-zero config are processed normally afterwards.
+Before processing the selected config, Robin looks ahead at the configs queued after it. If any later `Pending` config targets `primaries: 0`, Robin jumps straight to the **last** such config and marks every config in between as `Superseded`. Configs queued after the scale-to-zero config are processed normally afterwards.
 
-Unlike skip-if-superseded, this applies **unconditionally**: it ignores `skipIfSuperseded` and is not limited to topology-only changes. Scaling to zero deletes every cluster object, so applying the intermediate changes first adds no value. The jump also works as an escape hatch for a config wedged `InProgress`. For example, an upgrade to a non-existent image never completes, but setting `primaries: 0` afterwards recovers the cluster.
+The jump ignores `skipIfSuperseded` and is not limited to topology-only changes. Scaling to zero deletes every cluster object, so applying the intermediate changes first adds no value.
+
+If the selected config is already `InProgress`, it is only superseded when scaling to zero discards the cluster data: the cluster is ephemeral, or the scale-to-zero config has `deletePVC: true`. This makes the jump an escape hatch for a config wedged `InProgress`. For example, an upgrade to a non-existent image never completes, but setting `primaries: 0` afterwards recovers the cluster.
+
+Storage clusters that keep their PVCs (`deletePVC: false`, the default) never abandon an `InProgress` operation: Robin waits for it to finish before scaling to zero. Cutting an upgrade or a scaling operation midway could leave slots on nodes that are not recreated, or partially drained primaries, and that persisted state could not be restored when scaling back up from zero. `Pending` configs are still superseded, since they have not touched the cluster.
+
+To recover a wedged storage cluster by scaling it to zero, set `primaries: 0` **and** `deletePVC: true` in the same update. This deletes the cluster data. While a scale-to-zero config is pending, the Operator does not create new configs, so changing `deletePVC` in a later update has no effect.
 
 The scale-to-zero config is moved directly to the `ScalingToZero` cluster status, with `InProgress` and `ScalingToZero` written in a single status update. Robin then deletes all cluster objects (and the PVCs when `deletePVC` is `true`) and marks the config `Applied`, whatever state the superseded configs left the cluster in. If a config cannot be marked `Superseded`, Robin retries on the next cycle and never starts an intermediate config.
 
@@ -336,7 +342,7 @@ Tracks the lifecycle of each configuration change as processed by Robin.
 | ---------- | ------- |
 | `Pending → InProgress` | Robin picks up the config as the next to process |
 | `Pending → Superseded` | `skipIfSuperseded: true` and a higher-sequence `Pending` config exists, or a later `Pending` config targets `primaries: 0` (scale-to-zero lookahead) |
-| `InProgress → Superseded` | A later `Pending` config targets `primaries: 0` (scale-to-zero lookahead) |
+| `InProgress → Superseded` | A later `Pending` config targets `primaries: 0` and scaling to zero discards the cluster data (ephemeral cluster or `deletePVC: true`) (scale-to-zero lookahead) |
 | `InProgress → Applied` | Robin completes all K8s resource and Redis operations for this config |
 
 ### RedkeyConfig — Cluster Operational Status
