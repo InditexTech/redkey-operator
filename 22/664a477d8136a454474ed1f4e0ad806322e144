@@ -1,0 +1,29 @@
+CHANGELOG.md
+  s_938cb2b9bf63fc::t_73829e8d551aac 16,25,28
+Dockerfile
+  s_938cb2b9bf63fc::t_c39c099ac47226 33-35
+Makefile
+  s_938cb2b9bf63fc::t_9d2dd2784e25ff 13-15,21-23,444,452,459,476
+cmd/main_test.go
+  s_938cb2b9bf63fc::t_ae7d1bee40ff07 1-75
+docs/developer-guide/development-guide.md
+  s_938cb2b9bf63fc::t_c31805a26991f8 23,134-141
+docs/metrics.md
+  s_938cb2b9bf63fc::t_8e6a2b3097d120 236,245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22664a477d8136a454474ed1f4e0ad806322e144",
+  "prompts": {},
+  "sessions": {
+    "s_938cb2b9bf63fc": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "671636f0-b8a2-4eb6-aae0-b1a4e12fcf73",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
