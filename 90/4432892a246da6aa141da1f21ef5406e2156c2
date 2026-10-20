@@ -1,0 +1,20 @@
+CHANGELOG.md
+  h_daebd220e3f9d7 14
+docs/metrics.md
+  h_daebd220e3f9d7 30,229-245
+docs/observability.md
+  h_daebd220e3f9d7 201,208
+hack/observability/dashboards/redkey-robin.json
+  h_daebd220e3f9d7 62,97-158,185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "904432892a246da6aa141da1f21ef5406e2156c2",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
