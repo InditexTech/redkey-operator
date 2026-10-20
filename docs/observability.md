@@ -198,14 +198,14 @@ This dashboard monitors Robin itself as a process — its runtime health, resour
 
 | Section | Panels |
 | ------- | ------ |
-| **Overview** | Fleet summary: Robin instances (count) and Go version (per-version count), plus *goroutines per instance* and *open FDs per instance* time series for quick outlier/leak spotting |
+| **Overview** | Fleet summary: Robin instances (count), Robin version (per-version count from `redkey_robin_build_info`; more than one entry means a rollout in progress or out-of-sync instances) and Go version (per-version count), plus *goroutines per instance* and *open FDs per instance* time series for quick outlier/leak spotting |
 | **Kubernetes API Client** | Per-interval counts using `increase()`: requests by method/status and errors (4xx/5xx) — the exact number of operations/errors per time bucket |
 | **Memory** | Process RSS vs virtual memory, Go heap (in-use, idle, stack), allocation rate, GC cycles rate |
 | **CPU & Scheduling** | Process CPU usage rate, goroutines over time, GC pause duration quantiles, live objects & heap objects |
 | **File Descriptors** | Open FDs vs limit over time, FD utilisation gauge |
 | **Kubernetes Container (cAdvisor + kube-state-metrics)** | CPU usage vs requests/limits, CPU throttling ratio, memory working set vs requests/limits, memory usage %, container restarts, deployment replicas (desired vs available) — filtered to `container="robin"` |
 
-Metrics come from Go runtime collectors (`go_*`), process collectors (`process_*`), the Kubernetes client-go adapter (`rest_client_requests_total`), and — for the Kubernetes Container section — the kubelet/cAdvisor scrape and kube-state-metrics (`container_*`, `kube_pod_*`, `kube_deployment_*`).
+Metrics come from Robin's build info gauge (`redkey_robin_build_info`), Go runtime collectors (`go_*`), process collectors (`process_*`), the Kubernetes client-go adapter (`rest_client_requests_total`), and — for the Kubernetes Container section — the kubelet/cAdvisor scrape and kube-state-metrics (`container_*`, `kube_pod_*`, `kube_deployment_*`).
 
 **Variables:**
 - `datasource` — select the Prometheus data source
