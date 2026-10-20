@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -43,10 +44,10 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
-const (
-	USER_AGENT_NAME    = "redkey-operator"
-	USER_AGENT_VERSION = "0.2.0"
-)
+const USER_AGENT_NAME = "redkey-operator"
+
+// Overridden at build time via -ldflags "-X main.version=<v>".
+var version = "dev"
 
 var (
 	scheme   = runtime.NewScheme()
@@ -71,7 +72,7 @@ func registerBuildInfo() {
 		Name: "redkey_operator_build_info",
 		Help: "Build information for the Redkey operator (value is always 1; see labels).",
 		ConstLabels: prometheus.Labels{
-			"version":    USER_AGENT_VERSION,
+			"version":    version,
 			"go_version": goruntime.Version(),
 		},
 	})
@@ -123,6 +124,8 @@ func main() {
 	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 10,
 		"Maximum number of Redkey reconciles to run concurrently. "+
 			"Higher values prevent a slow or backing-off cluster from starving the others.")
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Print the operator version and exit.")
 
 	// Keep console logs as the default output while preserving production log levels
 	// unless the user explicitly opts into debug or development mode via flags.
@@ -138,6 +141,11 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println(version)
+		return
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -248,7 +256,7 @@ func main() {
 	// Identify the operator in requests to the Kubernetes API server so its
 	// traffic can be distinguished from other clients in audit logs and metrics.
 	restConfig := ctrl.GetConfigOrDie()
-	restConfig.UserAgent = USER_AGENT_NAME + "/" + USER_AGENT_VERSION
+	restConfig.UserAgent = USER_AGENT_NAME + "/" + version
 
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                 scheme,

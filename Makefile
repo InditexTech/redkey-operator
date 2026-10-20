@@ -10,12 +10,16 @@ SHELL = /usr/bin/env bash -o pipefail
 # NAME defines the name of the operator, which is also used as the default name for the operator, bundle and catalog images.
 NAME := redkey-operator
 
-# VERSION defines the project version for the bundle.
-# Update this value when you upgrade the version of your project.
+# VERSION defines the project version and is its single source of truth: it is injected into the manager
+# binary (LDFLAGS), and used for the image tag (IMG), the bundle/catalog and config/manager newTag.
+# Update this value when you upgrade the version of your project; the release tag must match it.
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.2.0
+
+# LDFLAGS injects VERSION into the binary (plain `go build` falls back to "dev").
+LDFLAGS := -X main.version=$(VERSION)
 
 # ROBIN_VERSION defines the version of the Robin image used in E2E tests.
 ROBIN_VERSION ?= 0.2.0
@@ -153,16 +157,6 @@ verify: tidy fmt vet lint build test-all ## Run all verification steps (fmt, vet
 .PHONY: version
 version:: ## Print the current version of the project.
 	@echo "$(VERSION)"
-
-.PHONY: version-next
-version-next:: ## Bump to next development version
-	@echo "Bumping to next development version"
-	sed -ri 's/(.*)(VERSION\s*:=\s*)([0-9]+)\.([0-9]+)\.([0-9]+)(.*)/echo "\1\2\3.$$((\4+1)).0-SNAPSHOT\6"/ge' Makefile
-
-.PHONY: version-set
-version-set:: ## Set the project version to the given version, using the NEW_VERSION environment variable
-	@echo "Setting version to $(NEW_VERSION)"
-	sed -ri 's/(.*)(VERSION\s*:=\s*)([0-9]+\.[0-9]+\.[0-9]+)(-SNAPSHOT)(.*)/echo "\1\2$(NEW_VERSION)\5"/ge' Makefile
 
 
 ##@ Development
@@ -447,7 +441,7 @@ clean: ## Clean de build artifacts, installed tools, Go cache and generated file
 
 .PHONY: build
 build: manifests generate fmt vet test-all ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -ldflags "$(LDFLAGS)" -o bin/manager cmd/main.go
 
 # By default, the manager will be run with info log level. To run the manager with debug log level, set the LOG_DEBUG variable to true:
 # - make run LOG_DEBUG=true
@@ -455,14 +449,14 @@ LOG_DEBUG ?= false
 
 .PHONY: run
 run: manifests generate fmt vet test ## Run a controller from your host.
-	go run ./cmd/main.go $(if $(filter true,$(LOG_DEBUG)),--zap-log-level=debug)
+	go run -ldflags "$(LDFLAGS)" ./cmd/main.go $(if $(filter true,$(LOG_DEBUG)),--zap-log-level=debug)
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test-all ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build --build-arg VERSION=$(VERSION) -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -479,7 +473,7 @@ PLATFORMS ?= linux/amd64,linux/arm64
 docker-buildx: test-all ## Build and push docker image for the manager for cross-platform support
 	- $(CONTAINER_TOOL) buildx create --name redkey-operator-builder
 	$(CONTAINER_TOOL) buildx use redkey-operator-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --annotation "index:org.opencontainers.image.description=Redkey Operator" --tag ${IMG} --tag $(IMAGE_TAG_BASE):latest .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --annotation "index:org.opencontainers.image.description=Redkey Operator" --build-arg VERSION=$(VERSION) --tag ${IMG} --tag $(IMAGE_TAG_BASE):latest .
 	- $(CONTAINER_TOOL) buildx rm redkey-operator-builder
 
 .PHONY: build-installer

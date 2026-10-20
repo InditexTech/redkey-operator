@@ -20,6 +20,7 @@ We tried to make it as comprehensive as possible, but if you have any questions 
     - [Run the Operator from your local machine](#run-the-operator-from-your-local-machine)
     - [Build and push the Operator image](#build-and-push-the-operator-image)
     - [Build and push the Robin image](#build-and-push-the-robin-image)
+    - [Versioning](#versioning)
   - [Deploy an example Redkey Cluster](#deploy-an-example-redkey-cluster)
   - [Cleanup](#cleanup)
 - [Local testing](#local-testing)
@@ -129,6 +130,14 @@ When you need to publish a cross-platform image, use `make docker-buildx` instea
 ```shell
 make docker-buildx IMG=ghcr.io/inditextech/redkey-operator:<tag>
 ```
+
+#### Versioning
+
+The `VERSION` variable in the `Makefile` is the single source of truth for the Operator version. It is injected into the manager binary at build time with `-ldflags "-X main.version=$(VERSION)"` (`make build`, `make run`, and the `Dockerfile` via the `VERSION` build argument used by `make docker-build`/`make docker-buildx`). A plain `go build` without ldflags reports `dev`.
+
+The injected version is reported by `manager --version`, the `redkey_operator_build_info` metric, and the Kubernetes API client `User-Agent` (`redkey-operator/<version>`). The image tag (`IMG`), the OLM bundle/catalog and the `newTag` in `config/manager/kustomization.yaml` (rewritten by `make deploy`, `make build-installer` and `make bundle`) are also derived from it.
+
+To cut a release, bump `VERSION` in the `Makefile` and create a GitHub release whose tag matches it; the release workflow fails if `make version` does not match the release tag.
 
 #### Build and push the Robin image
 
