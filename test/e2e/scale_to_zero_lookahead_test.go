@@ -73,12 +73,16 @@ func expectNoOrphanedClusterObjects(ctx context.Context, clusterName, clusterNs 
 // expectInProgressNotAbandoned verifies that a pending scale-to-zero config does not supersede
 // the wedged InProgress config with nonExistentRedisImage: both stay in place and the StatefulSet is kept.
 func expectInProgressNotAbandoned(ctx context.Context, clusterName, clusterNs string) {
-	By("waiting for the scale-to-zero config to be queued")
+	// Robin initialises the config phase to Pending in the same cycle, right before evaluating the
+	// lookahead, so seeing Pending proves Robin has already considered the scale-to-zero config.
+	By("waiting for Robin to pick up the scale-to-zero config")
 	Eventually(func(g Gomega) {
 		configs, err := framework.ListConfigs(ctx, k8sClient, clusterName, clusterNs)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configs).NotTo(BeEmpty())
-		g.Expect(configs[len(configs)-1].Spec.Primaries).To(BeZero())
+		latest := configs[len(configs)-1]
+		g.Expect(latest.Spec.Primaries).To(BeZero())
+		g.Expect(latest.Status.ConfigPhase).To(Equal(redkeyv1beta1.ConfigPhasePending))
 	}, framework.HealthTimeout, framework.DefaultPollInterval).Should(Succeed())
 
 	By("verifying the wedged config is not abandoned and the cluster is kept")
