@@ -265,7 +265,7 @@ Robin exposes metrics with the `redkey_` prefix:
 - **Redis INFO metrics** — `redkey_connected_clients`, `redkey_used_memory_rss`, `redkey_maxmemory`, `redkey_total_commands_processed`, `redkey_used_cpu_sys`, `redkey_used_cpu_user`, `redkey_keyspace_hits`, `redkey_keyspace_misses`, `redkey_evicted_keys`, `redkey_expired_keys`, `redkey_total_net_input_bytes`, `redkey_total_net_output_bytes`, `redkey_mem_aof_buffer`
 - **Cluster health metrics** — `redkey_cluster_healthy`, `redkey_cluster_membership_ok`, `redkey_cluster_slots_covered_ok`, `redkey_cluster_balanced_ok`, `redkey_cluster_check_errors`, `redkey_cluster_check_warnings`
 - **Cluster node metrics** — `redkey_nodes_metrics` (per-node with role, slots, state labels)
-- **Cluster info metrics** — `redkey_cluster_metrics` (cluster-level info as labels)
+- **Cluster info metrics** — `redkey_cluster_info` (`cluster_state` label) and one `redkey_cluster_info_<field>` gauge per numeric `CLUSTER INFO` field (e.g., `redkey_cluster_info_cluster_known_nodes`)
 
 ### Managed Redkey Fleet metrics
 

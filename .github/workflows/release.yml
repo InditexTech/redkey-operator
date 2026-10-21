@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      user_agent_version: ${{ steps.version.outputs.user_agent_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,7 +31,6 @@ jobs:
         id: version
         run: |
           echo "version=$(make version)" >> "$GITHUB_OUTPUT"
-          echo "user_agent_version=$(cat cmd/main.go | grep 'USER_AGENT_VERSION =' | cut -d'=' -f2 | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
           echo "$GITHUB_OUTPUT"
 
   check:
@@ -43,16 +41,10 @@ jobs:
       - name: Check versions
         run: |
           echo "version: ${{ needs.release.outputs.version }}"
-          echo "user_agent_version: ${{ needs.release.outputs.user_agent_version }}"
           echo "tag_name: ${{ github.event.release.tag_name }}"
 
           if [ "${{ github.event.release.tag_name }}" != "${{ needs.release.outputs.version }}" ]; then
             echo "Version in Makefile does not match release tag"
-            exit 1
-          fi
-
-          if [ "${{ github.event.release.tag_name }}" != "${{ needs.release.outputs.user_agent_version }}" ]; then
-            echo "Version in main.go/USER_AGENT_VERSION does not match release tag"
             exit 1
           fi
 

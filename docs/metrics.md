@@ -233,7 +233,7 @@ Both components expose a constant gauge (value always `1`) whose labels identify
 
 | Metric | Exposed by | Labels | Description |
 | ------ | ---------- | ------ | ----------- |
-| `redkey_operator_build_info` | Operator `/metrics` | `version`, `go_version` | Operator version and the Go version it was built with. |
+| `redkey_operator_build_info` | Operator `/metrics` | `version`, `go_version` | Operator version (injected at build time via `-ldflags -X main.version`, `dev` for plain `go build`) and Go version. |
 | `redkey_robin_build_info` | Robin `/metrics` (port `8080`) | `version`, `go_version` | Robin version (injected at build time via `-ldflags -X main.version`, `dev` for plain `go build`) and Go version. |
 
 Count Robin instances per version, e.g. to follow a rollout:
@@ -242,4 +242,4 @@ Count Robin instances per version, e.g. to follow a rollout:
 count by (version) (redkey_robin_build_info)
 ```
 
-Robin also reports its version with `robin --version` and as the Kubernetes client `User-Agent` (`redkey-robin/<version>`).
+The operator also reports its version with `manager --version` and as the Kubernetes client `User-Agent` (`redkey-operator/<version>`). Robin does the same with `robin --version` and `redkey-robin/<version>`.
