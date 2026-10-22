@@ -8,4 +8,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: localhost:5005/redkey-operator
-  newTag: 0.2.0
+  newTag: 0.2.1

@@ -16,13 +16,13 @@ NAME := redkey-operator
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.2.0
+VERSION ?= 0.2.1
 
 # LDFLAGS injects VERSION into the binary (plain `go build` falls back to "dev").
 LDFLAGS := -X main.version=$(VERSION)
 
 # ROBIN_VERSION defines the version of the Robin image used in E2E tests.
-ROBIN_VERSION ?= 0.2.0
+ROBIN_VERSION ?= 0.2.1
 
 ## Tool Versions and Configuration
 

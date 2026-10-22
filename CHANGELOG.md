@@ -11,6 +11,11 @@ Format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## [Unreleased] - dd.mm.yyyy
 ### Added
+### Fixed
+### Changed
+
+## [0.2.1] - 22.10.2026
+### Added
 - "Robin Version" stat in the Redkey Robin Grafana dashboard (Overview row), based on Robin's new `redkey_robin_build_info` metric, and a "Build Info Metrics" section in `docs/metrics.md`.
 - Go native fuzz tests for `mergeMeta` and `needsNewConfig`, plus a `make fuzz` target.
 - `--version` flag for the operator manager binary, printing the version and exiting.
