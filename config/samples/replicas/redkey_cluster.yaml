@@ -28,8 +28,6 @@ spec:
     maxmemory-samples 5
     maxmemory-policy allkeys-lru
     protected-mode no
-    appendonly no
-    save ""
   resources:
     limits:
       cpu: 100m

@@ -11,8 +11,11 @@ Format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## [Unreleased] - dd.mm.yyyy
 ### Added
+- E2E spec `persistence` (`test/e2e/persistence_config_test.go`) covering the persistence ownership: an ephemeral cluster gets a single `appendonly no` / `save ""` from Robin, a persistent cluster without persistence directives runs with the Redis defaults, and a persistent cluster switches AOF on → off → on through `spec.config` without repeated directives or data loss (#113).
 ### Fixed
 ### Changed
+- Persistence directives are now owned by exactly one layer (requires the matching Robin change, which no longer forces `appendonly yes` on persistent clusters). Removed the redundant `appendonly no` / `save ""` from the ephemeral samples (`config/samples/{ephemeral,auth,replicas}`) and from the default `config` of `charts/redkey`. The E2E framework sets persistence explicitly on persistent clusters (`WithPVC` disables it, `WithPersistence` enables AOF) and no longer sets it on ephemeral ones (#113).
+- Docs: the persistence parameters in `cluster-configuration.md` (who writes `appendonly`/`save`, Redis defaults, and changing persistence on a running cluster, including the standalone AOF caveat), the persistent example in `redkey-deployment.md`, the standalone storage notes, and `backup-configuration.md`, which wrongly stated that the operator configures RDB backups every 15 minutes (#113).
 
 ## [0.2.1] - 22.10.2026
 ### Added

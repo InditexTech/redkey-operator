@@ -21,16 +21,21 @@ import (
 // Default images and constants.
 const (
 	defaultRedisImage = "redis:8.10"
-	defaultConfig     = `maxmemory 90mb
-maxmemory-policy allkeys-lru
-protected-mode no
-appendonly no
-save ""`
-	// persistentConfig drops the persistence overrides of defaultConfig so persistent clusters keep
-	// Robin's defaults (appendonly yes) and really reload their data from the PVC after a restart.
-	persistentConfig = `maxmemory 90mb
+	// defaultConfig sets no persistence directive: Robin writes `appendonly no` + `save ""` for
+	// ephemeral clusters, and WithPVC adds them explicitly for persistent ones (noPersistenceConfig).
+	defaultConfig = `maxmemory 90mb
 maxmemory-policy allkeys-lru
 protected-mode no`
+	// noPersistenceConfig disables AOF and RDB explicitly on persistent clusters to speed tests up.
+	// Robin writes no persistence directive for them, so omitting these lines would fall back to the
+	// Redis defaults (RDB snapshots with the default save points).
+	noPersistenceConfig = defaultConfig + `
+appendonly no
+save ""`
+	// persistentConfig enables AOF explicitly (RDB keeps the Redis default save points) so persistent
+	// clusters really reload their data from the PVC after a restart.
+	persistentConfig = defaultConfig + `
+appendonly yes`
 )
 
 // GetRedisImage returns the Redis image to use (from env or default).
@@ -113,11 +118,15 @@ func (o ClusterOptions) WithMode(mode string) ClusterOptions {
 	return o
 }
 
-// WithPVC configures persistent storage instead of ephemeral.
+// WithPVC configures persistent storage instead of ephemeral. Unless the config was customized
+// (e.g. WithPersistence), AOF and RDB are disabled explicitly to speed tests up.
 func (o ClusterOptions) WithPVC(storage string) ClusterOptions {
 	o.Ephemeral = false
 	o.Storage = storage
 	o.PurgeKeysOnRebalance = new(false)
+	if o.Config == defaultConfig {
+		o.Config = noPersistenceConfig
+	}
 	return o
 }
 
@@ -127,9 +136,9 @@ func (o ClusterOptions) WithDeletePVC(deletePVC bool) ClusterOptions {
 	return o
 }
 
-// WithPersistence keeps Redis persistence enabled (AOF) instead of the default E2E config, which
-// disables it to speed tests up. Use it with WithPVC when a test relies on data surviving a pod
-// restart (e.g. scaling to zero and back).
+// WithPersistence enables Redis persistence explicitly (AOF, plus the Redis default RDB save
+// points) instead of the default E2E config, which keeps it disabled to speed tests up. Use it with
+// WithPVC when a test relies on data surviving a pod restart (e.g. scaling to zero and back).
 func (o ClusterOptions) WithPersistence() ClusterOptions {
 	o.Config = persistentConfig
 	return o
