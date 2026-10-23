@@ -1,0 +1,21 @@
+charts/redkey/values.yaml
+  s_271288edb63db1::t_bbe0e996bcae50 53-56
+docs/operator-guide/redkey-deployment.md
+  s_271288edb63db1::t_52c5f3f4ba5719 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "19ef0a5be1bb65ad830541e394f45ea582b6de3a",
+  "prompts": {},
+  "sessions": {
+    "s_271288edb63db1": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8b929f0d-4492-490c-add6-fae7ca91a97f",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
