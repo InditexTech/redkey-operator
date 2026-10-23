@@ -43,12 +43,51 @@ Because Robin already manages replica placement explicitly (via `CLUSTER REPLICA
 
 ## Persistence Parameters
 
-Robin additionally sets the working directory and persistence-related parameters based on the `ephemeral` flag:
+Robin sets the working directory based on the `ephemeral` flag. The persistence directives
+(`appendonly`, `save`) are written by **exactly one layer**, so the generated `redis.conf` never
+repeats them:
 
-| Condition | Parameters | Behavior |
-|-----------|-----------|----------|
-| `ephemeral = true` | `dir /tmp`, `cluster-config-file /tmp/nodes.conf`, `appendonly no`, `save ""` | No persistence and no data volume is mounted. Redis' working directory is `/tmp`, so `nodes.conf` (cluster topology metadata) is written there. Pod restart = data loss for that node. |
-| `ephemeral = false` | `dir /data`, `cluster-config-file /data/nodes.conf`, `appendonly yes` | AOF (Append Only File) persistence enabled. Redis' working directory is the PVC mounted at `/data`, so `nodes.conf` and the AOF/RDB survive pod restarts. |
+| Condition | Parameters written by Robin | Persistence (`appendonly` / `save`) |
+|-----------|-----------------------------|-------------------------------------|
+| `ephemeral = true` | `dir /tmp`, `cluster-config-file /tmp/nodes.conf`, `appendonly no`, `save ""` | **Robin**: AOF and RDB disabled. No data volume is mounted, so Redis' working directory is `/tmp` and `nodes.conf` (cluster topology metadata) is written there. Pod restart = data loss for that node. Do not set `appendonly` / `save` in `spec.config`. |
+| `ephemeral = false` | `dir /data`, `cluster-config-file /data/nodes.conf` | **The user**, through `spec.config`. Robin writes neither. If `spec.config` sets none, the Redis defaults apply: AOF off (`appendonly no`) and RDB snapshots with the default save points (`save 3600 1 300 100 60 10000`). Redis' working directory is the PVC mounted at `/data`, so `nodes.conf` and the AOF/RDB files survive pod restarts. |
+
+For persistent clusters, set both directives explicitly so the intent is clear and a disabled
+option really is disabled (omitting `save` keeps RDB on). For example, AOF only:
+
+```yaml
+spec:
+  ephemeral: false
+  storage: 1Gi
+  config: |
+    appendonly yes
+    appendfsync everysec
+    save ""
+```
+
+### Why does Robin disable persistence on ephemeral clusters?
+
+Ephemeral clusters run Redis in the container writable layer (`/tmp`), which is discarded when the
+container restarts, so an RDB or AOF file is never reloaded. Leaving the Redis defaults would only
+add cost and risk: periodic `BGSAVE` forks (copy-on-write memory, OOMKill risk near the memory
+limit), disk usage counted as ephemeral storage (eviction), a blocking `SAVE` on every shutdown,
+and rejected writes (`MISCONF`) if a snapshot fails.
+
+### Changing persistence on a running cluster
+
+A change in `spec.config` recycles the Redis pods (see
+[Which changes recycle the Redis pods?](#which-changes-recycle-the-redis-pods)), and each new
+process reads `redis.conf` from scratch:
+
+- **Cluster mode**: the Rolling N+1 upgrade migrates the slots off each node before recycling it,
+  so enabling or disabling AOF/RDB does not lose data.
+- **Standalone mode**: the single pod is restarted, and Redis reloads only what the new
+  configuration reads. Enabling AOF on an existing dataset starts Redis **empty**: Redis does not
+  load `dump.rdb` when AOF is enabled and no AOF exists yet. Disabling AOF while `save ""` is set
+  also starts empty, because nothing is written at shutdown. To enable AOF on a standalone instance
+  with data, run `CONFIG SET appendonly yes` on the running node first, wait for the rewrite to
+  finish (`INFO persistence` shows `aof_rewrite_in_progress:0`), and then add `appendonly yes` to
+  `spec.config`.
 
 ### Why `/tmp` for ephemeral clusters?
 

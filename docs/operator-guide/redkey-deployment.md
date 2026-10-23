@@ -36,8 +36,9 @@ spec:
       cpu: 1
       memory: 2Gi
   config: |
+    appendonly yes
+    appendfsync everysec
     save ""
-    appendonly no
     maxmemory 1400mb
   robin:
     template:

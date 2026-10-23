@@ -52,6 +52,11 @@ spec:
 
 When `storage` is omitted, the instance runs in ephemeral mode and no PVC is created.
 
+With storage, Robin does not set `appendonly` or `save`. Set them in `spec.config` to choose AOF
+and/or RDB; otherwise the Redis defaults apply. Enabling AOF later on an instance that already
+holds data needs an extra step, because the single pod restart would otherwise start Redis empty.
+See [Changing persistence on a running cluster](cluster-configuration.md#changing-persistence-on-a-running-cluster).
+
 ## Scaling to Zero and Back
 
 Standalone instances can be scaled to zero to release compute resources (for example, to pause a development environment) and scaled back up to one without losing persistent data when storage is configured:

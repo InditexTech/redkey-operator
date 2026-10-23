@@ -50,13 +50,15 @@ crAnnotations: {}
 redisPodLabels: {}
 redisPodAnnotations: {}
 
+# Redis configuration (spec.config). Persistence: for ephemeral clusters Robin sets
+# `appendonly no` + `save ""`, so do not set them here. For persistent clusters
+# (ephemeral: false) set `appendonly` and `save` explicitly; Robin writes neither and the
+# Redis defaults would apply (AOF off, RDB with the default save points).
 config: |
   maxmemory 90mb
   maxmemory-samples 5
   maxmemory-policy allkeys-lru
   protected-mode no
-  appendonly no
-  save ""
 
 resources:
   limits:
