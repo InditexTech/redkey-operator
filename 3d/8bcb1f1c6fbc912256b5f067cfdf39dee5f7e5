@@ -1,0 +1,22 @@
+charts/redkey-operator/templates/deployment.yaml
+  h_daebd220e3f9d7 48-50
+charts/redkey-operator/values.yaml
+  h_daebd220e3f9d7 33-35
+config/manifests/kustomization.yaml
+  h_daebd220e3f9d7 17-22
+config/manifests/manager_watch_namespaces_patch.yaml
+  h_daebd220e3f9d7 1-17
+docs/olm.md
+  h_daebd220e3f9d7 227-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3d8bcb1f1c6fbc912256b5f067cfdf39dee5f7e5",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
