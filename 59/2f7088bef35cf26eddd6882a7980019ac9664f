@@ -1,0 +1,16 @@
+config/default/manager_metrics_patch.yaml
+  h_daebd220e3f9d7 4-6,8-9,13-24
+docs/olm.md
+  h_daebd220e3f9d7 301-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "592f7088bef35cf26eddd6882a7980019ac9664f",
+  "prompts": {},
+  "humans": {
+    "h_daebd220e3f9d7": {
+      "author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
