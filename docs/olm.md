@@ -224,6 +224,8 @@ redkey-operator                                                   4m37s
 
 The namespaces where the operator will be installed must be defined in an `OperatorGroup` resource. This resource defines the scope of the operator, which can be a single namespace, multiple namespaces, or the entire cluster.
 
+OLM exposes the `OperatorGroup` target namespaces to the operator pod through the `olm.targetNamespaces` annotation, which the bundle passes to the operator as `--watch-namespaces`. An `OperatorGroup` without `targetNamespaces` makes the operator watch all namespaces. Note that the operator RBAC is still cluster-wide (`clusterPermissions`) regardless of the target namespaces.
+
 Create an `OperatorGroup` resource that targets the `default` namespace:
 
 ```yaml
