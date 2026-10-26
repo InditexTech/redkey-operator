@@ -22,7 +22,7 @@ VERSION ?= 0.2.1
 LDFLAGS := -X main.version=$(VERSION)
 
 # ROBIN_VERSION defines the version of the Robin image used in E2E tests.
-ROBIN_VERSION ?= 0.2.1
+ROBIN_VERSION ?= 0.2.2
 
 ## Tool Versions and Configuration
 
