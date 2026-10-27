@@ -300,6 +300,14 @@ NAME                               READY   STATUS    RESTARTS   AGE
 redkey-operator-749595567c-qdq4g   1/1     Running   0          72s
 ```
 
+The operator pod exposes its metrics at `:8080/metrics` over plain HTTP and is annotated with
+`prometheus.io/scrape`, `prometheus.io/path`, `prometheus.io/port` and `prometheus.io/scheme`, so
+Prometheus setups that discover targets by pod annotations scrape it with no extra configuration.
+To add or override pod annotations without rebuilding the
+bundle, use `spec.config.annotations` in the `Subscription`. If you use the Prometheus Operator
+instead, create a `ServiceMonitor` for the `redkey-operator-controller-manager-metrics-service`
+Service (port `http`); see [Observability](observability.md).
+
 #### Deploy a Redkey Cluster using the Operator
 
 Use the included sample manifests to create a `Redkey` by executing the following command:
