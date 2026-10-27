@@ -45,15 +45,15 @@ spec:
             - /manager
           args:
             - "--leader-elect={{ .Values.leaderElection.enabled }}"
+            {{- with .Values.watchNamespaces }}
+            - "--watch-namespaces={{ . }}"
+            {{- end }}
             {{- if .Values.metrics.enabled }}
             - "--metrics-bind-address=:{{ .Values.metrics.port }}"
             - "--metrics-secure={{ .Values.metrics.secure }}"
             {{- else }}
             - "--metrics-bind-address=0"
             {{- end }}
-          env:
-            - name: WATCH_NAMESPACE
-              value: {{ .Release.Namespace }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

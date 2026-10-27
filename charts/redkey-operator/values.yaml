@@ -30,6 +30,9 @@ rbac:
 leaderElection:
   enabled: true
 
+# Comma-separated list of namespaces watched by the operator. Empty watches all namespaces.
+watchNamespaces: ""
+
 # Metrics endpoint configuration.
 # By default the operator exposes /metrics over plain HTTP without authentication,
 # which works out of the box with Prometheus setups that scrape by pod annotations.

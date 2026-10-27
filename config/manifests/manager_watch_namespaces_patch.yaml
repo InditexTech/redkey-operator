@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
+# SPDX-License-Identifier: Apache-2.0
+
+# Scope the operator to the target namespaces of its OperatorGroup.
+# OLM sets the olm.targetNamespaces annotation on the operator pods (empty for
+# AllNamespaces), and Kubernetes expands $(WATCH_NAMESPACE) in the args, so an
+# empty value keeps the cluster-wide behaviour.
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --watch-namespaces=$(WATCH_NAMESPACE)
+- op: add
+  path: /spec/template/spec/containers/0/env
+  value:
+  - name: WATCH_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['olm.targetNamespaces']
