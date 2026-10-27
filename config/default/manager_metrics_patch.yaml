@@ -1,9 +1,24 @@
 # SPDX-FileCopyrightText: 2025 INDUSTRIA DE DISEÑO TEXTIL S.A. (INDITEX S.A.)
 # SPDX-License-Identifier: Apache-2.0
 
-# This patch adds the args to expose the metrics endpoint over plain HTTP on :8080.
+# This patch adds the args to expose the metrics endpoint over plain HTTP on :8080,
+# plus the prometheus.io/* pod annotations for annotation-based scraping (same set
+# the Helm chart adds with metrics.annotations.enabled).
 # To serve metrics over HTTPS with authentication instead, set the value to
-# --metrics-bind-address=:8443 and add --metrics-secure=true.
+# --metrics-bind-address=:8443, add --metrics-secure=true and update the
+# prometheus.io/port and prometheus.io/scheme annotations accordingly.
 - op: add
   path: /spec/template/spec/containers/0/args/0
   value: --metrics-bind-address=:8080
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1scrape
+  value: "true"
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1path
+  value: /metrics
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1port
+  value: "8080"
+- op: add
+  path: /spec/template/metadata/annotations/prometheus.io~1scheme
+  value: http
