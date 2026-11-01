@@ -252,6 +252,7 @@ func main() {
 		cacheOpts.DefaultNamespaces = defaultNamespaces
 		setupLog.Info("Watching specific namespaces", "namespaces", watchNamespaces)
 	}
+	controller.ConfigureCache(&cacheOpts)
 
 	// Identify the operator in requests to the Kubernetes API server so its
 	// traffic can be distinguished from other clients in audit logs and metrics.
@@ -285,6 +286,7 @@ func main() {
 
 	if err := (&controller.RedkeyReconciler{
 		Client:                  mgr.GetClient(),
+		APIReader:               mgr.GetAPIReader(),
 		Scheme:                  mgr.GetScheme(),
 		ResyncInterval:          resyncInterval,
 		MaxConcurrentReconciles: maxConcurrentReconciles,
