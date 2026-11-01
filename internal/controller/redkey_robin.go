@@ -59,6 +59,29 @@ func mergeMeta(spec, override, base map[string]string) map[string]string {
 	return out
 }
 
+// getOwned reads an owned Robin object from the cache and, if it is not there, from the
+// API server. The cache only holds objects carrying the Robin component label, so an
+// object whose label was removed would otherwise look missing and the subsequent Create
+// would fail with AlreadyExists. Once read, the drift check restores the label and the
+// object is cached again.
+func (r *RedkeyReconciler) getOwned(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+	err := r.Get(ctx, key, obj)
+	if !errors.IsNotFound(err) || r.APIReader == nil {
+		return err
+	}
+	return r.APIReader.Get(ctx, key, obj)
+}
+
+// robinBaseLabels returns the internal labels stamped on every Robin object. They
+// always win over user labels and double as the Deployment / pod selector, and the
+// operator cache is scoped by ComponentLabel, so they must never be removed.
+func robinBaseLabels(cluster *redisv1.Redkey) map[string]string {
+	return map[string]string{
+		ClusterLabel:   cluster.Name,
+		ComponentLabel: RobinComponent,
+	}
+}
+
 // DesiredRobinRules returns the RBAC PolicyRules that the Robin ServiceAccount needs.
 func DesiredRobinRules() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
@@ -121,11 +144,7 @@ func (r *RedkeyReconciler) ensureRBAC(ctx context.Context, cluster *redisv1.Redk
 
 	// Internal base labels for Robin-owned RBAC objects. spec.labels / spec.annotations
 	// decorate the objects, but the internal labels always win on collision.
-	rbacBaseLabels := map[string]string{
-		ClusterLabel:                   cluster.Name,
-		"redkey.inditex.dev/component": "robin",
-	}
-	rbacLabels := mergeMeta(derefMap(cluster.Spec.Labels), nil, rbacBaseLabels)
+	rbacLabels := mergeMeta(derefMap(cluster.Spec.Labels), nil, robinBaseLabels(cluster))
 	rbacAnnotations := mergeMeta(derefMap(cluster.Spec.Annotations), nil, nil)
 
 	// --- ServiceAccount ---
@@ -142,7 +161,7 @@ func (r *RedkeyReconciler) ensureRBAC(ctx context.Context, cluster *redisv1.Redk
 	}
 
 	var existingSA corev1.ServiceAccount
-	if err := r.Get(ctx, key, &existingSA); errors.IsNotFound(err) {
+	if err := r.getOwned(ctx, key, &existingSA); errors.IsNotFound(err) {
 		log.Info("Creating Robin ServiceAccount", "serviceaccount", saName)
 		if err := r.Create(ctx, desiredSA); err != nil {
 			return err
@@ -175,7 +194,7 @@ func (r *RedkeyReconciler) ensureRBAC(ctx context.Context, cluster *redisv1.Redk
 	}
 
 	var existingRole rbacv1.Role
-	if err := r.Get(ctx, key, &existingRole); errors.IsNotFound(err) {
+	if err := r.getOwned(ctx, key, &existingRole); errors.IsNotFound(err) {
 		log.Info("Creating Robin Role", "role", saName)
 		if err := r.Create(ctx, desiredRole); err != nil {
 			return err
@@ -221,7 +240,7 @@ func (r *RedkeyReconciler) ensureRBAC(ctx context.Context, cluster *redisv1.Redk
 	}
 
 	var existingRB rbacv1.RoleBinding
-	if err := r.Get(ctx, key, &existingRB); errors.IsNotFound(err) {
+	if err := r.getOwned(ctx, key, &existingRB); errors.IsNotFound(err) {
 		log.Info("Creating Robin RoleBinding", "rolebinding", saName)
 		return r.Create(ctx, desiredRB)
 	} else if err != nil {
@@ -263,7 +282,7 @@ func (r *RedkeyReconciler) ensureRobinDeployment(ctx context.Context, cluster *r
 	}
 
 	var existing appsv1.Deployment
-	err := r.Get(ctx, types.NamespacedName{Name: desired.Name, Namespace: desired.Namespace}, &existing)
+	err := r.getOwned(ctx, types.NamespacedName{Name: desired.Name, Namespace: desired.Namespace}, &existing)
 	if errors.IsNotFound(err) {
 		log.Info("Creating Robin Deployment", "deployment", desired.Name)
 		if err := r.Create(ctx, desired); err != nil {
@@ -305,10 +324,7 @@ func (r *RedkeyReconciler) buildDesiredRobinDeployment(cluster *redisv1.Redkey) 
 
 	// Base labels (always present, internal — they always win over user input and
 	// double as the Deployment / pod selector labels).
-	baseLabels := map[string]string{
-		ClusterLabel:                   cluster.Name,
-		"redkey.inditex.dev/component": "robin",
-	}
+	baseLabels := robinBaseLabels(cluster)
 
 	specLabels := derefMap(cluster.Spec.Labels)
 	specAnnotations := derefMap(cluster.Spec.Annotations)
@@ -423,10 +439,7 @@ func (r *RedkeyReconciler) buildDesiredRobinDeployment(cluster *redisv1.Redkey) 
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					ClusterLabel:                   cluster.Name,
-					"redkey.inditex.dev/component": "robin",
-				},
+				MatchLabels: robinBaseLabels(cluster),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
