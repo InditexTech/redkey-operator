@@ -1,0 +1,19 @@
+test/integration/cache_scoping_test.go
+  s_31d6af7a9e8a2e::t_5ab5fd56d2c827 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dcfcdb310cbb12d7d954c232390635a28d12b25a",
+  "prompts": {},
+  "sessions": {
+    "s_31d6af7a9e8a2e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e12fcdf2-73b8-4b30-8a16-75f7f3b504ac",
+        "model": "unknown"
+      },
+      "human_author": "Alberto Martínez Pérez <albertompe@ext.inditex.com>"
+    }
+  }
+}
