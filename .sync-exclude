@@ -1,4 +1,5 @@
 # One normalized relative path per line. Lines in this file are not reconciled by InditexTech CI governance.
 .github/ISSUE_TEMPLATE/1-bug.yml
+.github/dependabot.yml
 CONTRIBUTING.md
 SECURITY.md
