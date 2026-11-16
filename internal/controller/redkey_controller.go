@@ -34,6 +34,9 @@ const (
 // A periodic resync acts as a safety net against missed events.
 type RedkeyReconciler struct {
 	client.Client
+	// APIReader reads directly from the API server. It is used as a fallback for owned
+	// objects missing from the label-scoped cache (see ConfigureCache). Optional.
+	APIReader      client.Reader
 	Scheme         *runtime.Scheme
 	ResyncInterval time.Duration
 	// MaxConcurrentReconciles is the number of reconciles that may run in parallel.
