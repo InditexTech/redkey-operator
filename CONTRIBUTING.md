@@ -13,7 +13,7 @@ Thank you for your interest in contributing to this project! We value and apprec
 When you open a Pull Request (PR), you must ensure that:
 
 1. **Contributor License Agreement (CLA):**
-   - You are agreeing to the terms of the CLA by submitting your PR. The CLA document is available [here](./CLA.md).
+   - You are agreeing to the terms of the CLA by submitting your PR. The CLA document is available [here](https://github.com/InditexTech/foss/blob/main/CLA.md).
 
 2. **Sign Off Each Commit:**
    - Every commit in your PR must include the `Signed-off-by` line in the commit message. This is done by using the `-s` option with `git commit`:
