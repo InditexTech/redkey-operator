@@ -1,0 +1,21 @@
+AGENTS.md
+  s_1927b14d183016::t_da80495929ce9b 380
+CONTRIBUTING.md
+  s_1927b14d183016::t_7a2cba1d40aaff 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "81deba8d418963008f1b9586db2a893aacf572ca",
+  "prompts": {},
+  "sessions": {
+    "s_1927b14d183016": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "4ba8c769-4ec6-41d7-853e-01c5a673f676",
+        "model": "claude-sonnet-5.5"
+      },
+      "human_author": "amagan <andreamr@ext.zara.com>"
+    }
+  }
+}
