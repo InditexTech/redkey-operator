@@ -377,7 +377,7 @@ Common types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`.
 
 Every commit in a PR **must**:
 
-1. Include a `Signed-off-by` trailer (`git commit -s`). This certifies agreement with the [CLA](./CLA.md).
+1. Include a `Signed-off-by` trailer (`git commit -s`). This certifies agreement with the [CLA](https://github.com/InditexTech/foss/blob/main/CLA.md).
 2. Be GPG-signed with a verified key (`git commit -S`, or set `git config --local commit.gpgsign true`).
 3. Use a verified email address associated with the GitHub account.
 
